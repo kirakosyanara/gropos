@@ -4,24 +4,18 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -32,22 +26,31 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.unisight.gropos.core.components.OutlineButton
+import com.unisight.gropos.core.components.SuccessButton
+import com.unisight.gropos.core.components.TenKey
+import com.unisight.gropos.core.components.TenKeyMode
+import com.unisight.gropos.core.components.TenKeyState
+import com.unisight.gropos.core.components.WhiteBox
+import com.unisight.gropos.core.theme.GroPOSColors
+import com.unisight.gropos.core.theme.GroPOSRadius
+import com.unisight.gropos.core.theme.GroPOSSpacing
 import com.unisight.gropos.features.auth.domain.model.AuthUser
 import com.unisight.gropos.features.auth.domain.model.UserRole
 import com.unisight.gropos.features.auth.presentation.LoginUiState
 
 /**
  * Login screen content with hoisted state.
+ * 
+ * Per SCREEN_LAYOUTS.md (Login Screen):
+ * - Layout: 50/50 horizontal split
+ * - LEFT: Branding (Station Name, Logo, Time, Footer)
+ * - RIGHT: Authentication (QR Registration, Employee List, PIN Entry)
  * 
  * Per code-quality.mdc: State hoisting - this composable is stateless
  * and receives data via parameters, emits events via lambdas.
@@ -69,212 +72,382 @@ fun LoginContent(
     
     val isLoading = state is LoginUiState.Loading
     
-    // Rich gradient background
+    Row(
+        modifier = modifier.fillMaxSize()
+    ) {
+        // ====================================================================
+        // LEFT SECTION (50%) - Branding
+        // Per UI_DESIGN_SYSTEM.md: PrimaryGreen background
+        // ====================================================================
+        LeftBrandingSection(
+            modifier = Modifier
+                .weight(0.5f)
+                .fillMaxHeight()
+        )
+        
+        // ====================================================================
+        // RIGHT SECTION (50%) - Authentication
+        // Per UI_DESIGN_SYSTEM.md: LightGray1 background
+        // ====================================================================
+        RightAuthSection(
+            username = username,
+            pin = pin,
+            state = state,
+            isLoading = isLoading,
+            onUsernameChange = { username = it },
+            onPinChange = { newPin ->
+                // Only allow digits, max 4 characters
+                if (newPin.length <= 4 && newPin.all { it.isDigit() }) {
+                    pin = newPin
+                }
+            },
+            onPinDigit = { digit ->
+                if (pin.length < 4 && digit.all { it.isDigit() }) {
+                    pin += digit
+                }
+            },
+            onPinClear = { pin = "" },
+            onPinBackspace = { 
+                if (pin.isNotEmpty()) {
+                    pin = pin.dropLast(1)
+                }
+            },
+            onLoginClick = {
+                onLoginClick(username, pin)
+                pin = "" // Clear PIN after submission (security)
+            },
+            onErrorDismissed = onErrorDismissed,
+            modifier = Modifier
+                .weight(0.5f)
+                .fillMaxHeight()
+        )
+    }
+}
+
+// ============================================================================
+// LEFT SECTION - Branding
+// ============================================================================
+
+@Composable
+private fun LeftBrandingSection(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
-            .fillMaxSize()
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFF1A1A2E),
-                        Color(0xFF16213E),
-                        Color(0xFF0F3460)
-                    )
-                )
-            ),
-        contentAlignment = Alignment.Center
+            .background(GroPOSColors.PrimaryGreen)
+            .padding(GroPOSSpacing.XXL)
     ) {
-        Card(
-            modifier = Modifier
-                .widthIn(max = 400.dp)
-                .padding(24.dp),
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = Color(0xFF1F1F3D)
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 16.dp)
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Column(
+            // Station Name Box
+            WhiteBox {
+                Text(
+                    text = "Station 1",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = GroPOSColors.TextPrimary
+                )
+            }
+            
+            // Logo Area
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .weight(1f),
+                contentAlignment = Alignment.Center
             ) {
-                // Logo/Title area
-                Text(
-                    text = "GroPOS",
-                    style = MaterialTheme.typography.headlineLarge.copy(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 36.sp,
-                        letterSpacing = 2.sp
-                    ),
-                    color = Color(0xFF00D9FF)
-                )
-                
-                Text(
-                    text = "Point of Sale System",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFF8892B0)
-                )
-                
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                // Username field
-                OutlinedTextField(
-                    value = username,
-                    onValueChange = { username = it },
-                    label = { Text("Username") },
-                    placeholder = { Text("Enter username") },
-                    singleLine = true,
-                    enabled = !isLoading,
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Text,
-                        imeAction = ImeAction.Next
-                    ),
-                    colors = loginTextFieldColors(),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("username_field")
-                )
-                
-                // PIN field
-                OutlinedTextField(
-                    value = pin,
-                    onValueChange = { newValue ->
-                        // Only allow digits, max 4 characters
-                        if (newValue.length <= 4 && newValue.all { it.isDigit() }) {
-                            pin = newValue
-                        }
-                    },
-                    label = { Text("PIN") },
-                    placeholder = { Text("4-digit PIN") },
-                    singleLine = true,
-                    enabled = !isLoading,
-                    visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.NumberPassword,
-                        imeAction = ImeAction.Done
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onDone = {
-                            if (username.isNotBlank() && pin.length == 4) {
-                                onLoginClick(username, pin)
-                                pin = "" // Clear PIN after submission (security)
-                            }
-                        }
-                    ),
-                    colors = loginTextFieldColors(),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("pin_field")
-                )
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                // Error message
-                if (state is LoginUiState.Error) {
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = Color(0xFF4A1C1C)
-                        ),
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.testTag("error_card")
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // Logo Placeholder
+                    Surface(
+                        modifier = Modifier.size(180.dp),
+                        shape = RoundedCornerShape(GroPOSRadius.Pill),
+                        color = GroPOSColors.White.copy(alpha = 0.15f)
                     ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                        Box(
+                            contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = state.message,
-                                color = Color(0xFFFF6B6B),
-                                style = MaterialTheme.typography.bodyMedium,
-                                textAlign = TextAlign.Center
+                                text = "GroPOS",
+                                style = MaterialTheme.typography.displayLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = GroPOSColors.White
                             )
-                            TextButton(
-                                onClick = onErrorDismissed
-                            ) {
-                                Text(
-                                    text = "Dismiss",
-                                    color = Color(0xFFFF6B6B)
-                                )
-                            }
                         }
                     }
+                    
+                    Spacer(modifier = Modifier.height(GroPOSSpacing.L))
+                    
+                    Text(
+                        text = "Point of Sale System",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = GroPOSColors.White.copy(alpha = 0.9f)
+                    )
                 }
+            }
+            
+            // Footer
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                // Time Display
+                Text(
+                    text = "12:00 PM", // TODO: Replace with actual time
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = GroPOSColors.White
+                )
                 
-                // Success message
-                if (state is LoginUiState.Success) {
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = Color(0xFF1C4A2E)
-                        ),
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.testTag("success_card")
-                    ) {
-                        Text(
-                            text = "Welcome, ${state.user.username}!",
-                            color = Color(0xFF6BFF8E),
-                            style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.padding(16.dp),
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                }
+                Spacer(modifier = Modifier.height(GroPOSSpacing.M))
                 
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                // Login button
-                Button(
-                    onClick = {
-                        onLoginClick(username, pin)
-                        pin = "" // Clear PIN after submission (security)
-                    },
-                    enabled = !isLoading && username.isNotBlank() && pin.length == 4,
+                // Copyright
+                Text(
+                    text = "© Unisight BIT 2024",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = GroPOSColors.White.copy(alpha = 0.7f)
+                )
+            }
+        }
+    }
+}
+
+// ============================================================================
+// RIGHT SECTION - Authentication
+// ============================================================================
+
+@Composable
+private fun RightAuthSection(
+    username: String,
+    pin: String,
+    state: LoginUiState,
+    isLoading: Boolean,
+    onUsernameChange: (String) -> Unit,
+    onPinChange: (String) -> Unit,
+    onPinDigit: (String) -> Unit,
+    onPinClear: () -> Unit,
+    onPinBackspace: () -> Unit,
+    onLoginClick: () -> Unit,
+    onErrorDismissed: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .background(GroPOSColors.LightGray1)
+            .padding(GroPOSSpacing.XXL),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // Welcome Header
+        Text(
+            text = "Welcome to GroPOS",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            color = GroPOSColors.TextPrimary
+        )
+        
+        Spacer(modifier = Modifier.height(GroPOSSpacing.XL))
+        
+        // Username Input
+        WhiteBox(modifier = Modifier.fillMaxWidth()) {
+            Column {
+                Text(
+                    text = "Username",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = GroPOSColors.TextSecondary
+                )
+                Spacer(modifier = Modifier.height(GroPOSSpacing.S))
+                androidx.compose.material3.OutlinedTextField(
+                    value = username,
+                    onValueChange = onUsernameChange,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(56.dp)
-                        .testTag("login_button"),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF00D9FF),
-                        contentColor = Color(0xFF1A1A2E),
-                        disabledContainerColor = Color(0xFF3D3D5C),
-                        disabledContentColor = Color(0xFF8892B0)
-                    )
+                        .testTag("username_field"),
+                    enabled = !isLoading,
+                    placeholder = { Text("Enter username") },
+                    singleLine = true,
+                    shape = RoundedCornerShape(GroPOSRadius.Small)
+                )
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(GroPOSSpacing.M))
+        
+        // PIN Display
+        WhiteBox(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Enter PIN",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = GroPOSColors.TextSecondary
+                )
+                Spacer(modifier = Modifier.height(GroPOSSpacing.S))
+                
+                // PIN Dots Display
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(GroPOSSpacing.M),
+                    modifier = Modifier.padding(vertical = GroPOSSpacing.M)
                 ) {
-                    if (isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            color = Color(0xFF1A1A2E),
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        Text(
-                            text = "Sign In",
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.Bold
-                            )
-                        )
+                    repeat(4) { index ->
+                        PinDot(filled = index < pin.length)
                     }
                 }
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(GroPOSSpacing.M))
+        
+        // Error/Success Message
+        when (state) {
+            is LoginUiState.Error -> {
+                ErrorCard(
+                    message = state.message,
+                    onDismiss = onErrorDismissed,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(GroPOSSpacing.M))
+            }
+            is LoginUiState.Success -> {
+                SuccessCard(
+                    username = state.user.username,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(GroPOSSpacing.M))
+            }
+            else -> {}
+        }
+        
+        // Ten-Key Pad for PIN Entry
+        TenKey(
+            state = TenKeyState(inputValue = pin, mode = TenKeyMode.Login),
+            onDigitClick = onPinDigit,
+            onOkClick = { 
+                if (username.isNotBlank() && pin.length == 4) {
+                    onLoginClick()
+                }
+            },
+            onClearClick = onPinClear,
+            onBackspaceClick = onPinBackspace,
+            showQtyButton = false,
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("pin_keypad")
+        )
+        
+        Spacer(modifier = Modifier.height(GroPOSSpacing.M))
+        
+        // Sign In Button
+        SuccessButton(
+            onClick = onLoginClick,
+            enabled = !isLoading && username.isNotBlank() && pin.length == 4,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .testTag("login_button")
+        ) {
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = GroPOSColors.White,
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Text(
+                    text = "Sign In",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+        
+        Spacer(modifier = Modifier.weight(1f))
+        
+        // Footer Actions (Keypad/NFC/Back)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            OutlineButton(onClick = { /* TODO: Keypad toggle */ }) {
+                Text("Keypad")
+            }
+            OutlineButton(onClick = { /* TODO: NFC toggle */ }) {
+                Text("NFC")
+            }
+            OutlineButton(onClick = { /* TODO: Back */ }) {
+                Text("Back")
+            }
+        }
+    }
+}
+
+// ============================================================================
+// Helper Components
+// ============================================================================
+
+@Composable
+private fun PinDot(filled: Boolean) {
+    Surface(
+        modifier = Modifier.size(20.dp),
+        shape = RoundedCornerShape(GroPOSRadius.Round),
+        color = if (filled) GroPOSColors.PrimaryGreen else GroPOSColors.DisabledGray
+    ) {}
+}
+
+@Composable
+private fun ErrorCard(
+    message: String,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(GroPOSRadius.Medium),
+        color = Color(0xFFFFDAD6) // Light red
+    ) {
+        Column(
+            modifier = Modifier.padding(GroPOSSpacing.M),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium,
+                color = GroPOSColors.DangerRed,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(GroPOSSpacing.S))
+            TextButton(onClick = onDismiss) {
+                Text(
+                    text = "Dismiss",
+                    color = GroPOSColors.DangerRed
+                )
             }
         }
     }
 }
 
 @Composable
-private fun loginTextFieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedTextColor = Color.White,
-    unfocusedTextColor = Color(0xFFCCD6F6),
-    focusedBorderColor = Color(0xFF00D9FF),
-    unfocusedBorderColor = Color(0xFF3D3D5C),
-    focusedLabelColor = Color(0xFF00D9FF),
-    unfocusedLabelColor = Color(0xFF8892B0),
-    cursorColor = Color(0xFF00D9FF),
-    focusedPlaceholderColor = Color(0xFF5C5C7A),
-    unfocusedPlaceholderColor = Color(0xFF5C5C7A)
-)
+private fun SuccessCard(
+    username: String,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(GroPOSRadius.Medium),
+        color = GroPOSColors.SnapBadgeBackground // Light green
+    ) {
+        Text(
+            text = "Welcome, $username!",
+            style = MaterialTheme.typography.bodyLarge,
+            color = GroPOSColors.PrimaryGreen,
+            modifier = Modifier
+                .padding(GroPOSSpacing.M)
+                .fillMaxWidth(),
+            textAlign = TextAlign.Center
+        )
+    }
+}
 
 // ============================================================================
 // Previews (per agent-behavior.mdc: Must generate @Preview for distinct states)
@@ -329,4 +502,3 @@ fun LoginContentPreviewSuccess() {
         )
     }
 }
-

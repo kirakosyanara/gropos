@@ -7,6 +7,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased] - 2026-01-01
 
 ### Added
+- UI/UX Design System: `Color.kt` with GroPOS color palette per UI_DESIGN_SYSTEM.md
+- UI/UX Design System: `Typography.kt` with Archivo-based typography scale
+- UI/UX Design System: `Spacing.kt` with GroPOSSpacing and GroPOSRadius values
+- Core components: `Buttons.kt` with SuccessButton, PrimaryButton, DangerButton, WarningButton, OutlineButton, BackButton
+- Core components: `Containers.kt` with LeftBlock, RightBlock, WhiteBox, GreenBox, CardBox
+- Core components: `TenKey.kt` numeric keypad component with TenKeyMode states
+- Core components: `FormFields.kt` with SearchField, QuantityField, PasswordField, BarcodeInputField
+- Core components: `FunctionsPanel.kt` with FunctionsGrid and tabbed FunctionsPanel
+
+### Changed
 - Initial Kotlin Multiplatform project scaffolding
 - Gradle version catalog (`libs.versions.toml`) with all core dependencies
 - Root `build.gradle.kts` and `settings.gradle.kts` configuration
@@ -60,6 +70,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Android resources: strings.xml, themes.xml for app configuration
 
 ### Changed
+- **UI/UX Overhaul**: Refactored entire UI layer to match new UI/UX Source of Truth (docs/development-plan/ui-ux/)
+- Refactored `GroPOSTheme.kt` to use GroPOS color palette from UI_DESIGN_SYSTEM.md
+  - Primary: PrimaryGreen (#04571B) for success actions
+  - Secondary: PrimaryBlue (#2073BE) for alternative actions
+  - Error: DangerRed (#FA1B1B) for danger states
+  - Backgrounds: LightGray1, LightGray2 for panel sections
+- Refactored `CheckoutContent.kt` with 70/30 split layout per SCREEN_LAYOUTS.md
+  - LEFT (70%): Order list with info bar and barcode input
+  - RIGHT (30%): Totals card, Ten-Key pad, Functions Grid, Pay button
+  - Added Order List Item component with 10/10/60/5/15 column weights
+  - Moved logout button to left panel header
+- Refactored `LoginContent.kt` with 50/50 split layout per SCREEN_LAYOUTS.md
+  - LEFT: Branding section with station name, logo, time display
+  - RIGHT: Authentication with PIN dot display, Ten-Key pad, Sign In button
+- Replaced generic Material3 buttons with custom GroPOS button components
 - Renamed application from "GrowPOS" to "GroPOS" across all documentation files (39 occurrences in 8 files)
 - Modernized "Food Stamp" terminology to "SNAP" across entire codebase
   - Documentation: Updated DATABASE_SCHEMA.md, ARCHITECTURE_BLUEPRINT.md, TEST_SCENARIOS.md, ANDROID_HARDWARE_GUIDE.md
