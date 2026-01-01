@@ -15,8 +15,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Core components: `TenKey.kt` numeric keypad component with TenKeyMode states
 - Core components: `FormFields.kt` with SearchField, QuantityField, PasswordField, BarcodeInputField
 - Core components: `FunctionsPanel.kt` with FunctionsGrid and tabbed FunctionsPanel
-
-### Changed
+- Customer Display: `CustomerDisplayScreen.kt` for secondary monitor (per SCREEN_LAYOUTS.md)
+- Multi-window support: `Main.kt` updated to detect multiple monitors and launch Customer Display
+- Dev Mode: `DEV_FORCE_CUSTOMER_DISPLAY` flag to test dual-window on single monitor
+- `SharedAppState` object for cross-window state sharing (placeholder for DI integration)
 - Initial Kotlin Multiplatform project scaffolding
 - Gradle version catalog (`libs.versions.toml`) with all core dependencies
 - Root `build.gradle.kts` and `settings.gradle.kts` configuration
