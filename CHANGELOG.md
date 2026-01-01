@@ -41,6 +41,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 - Renamed application from "GrowPOS" to "GroPOS" across all documentation files (39 occurrences in 8 files)
+- Modernized "Food Stamp" terminology to "SNAP" across entire codebase
+  - Documentation: Updated DATABASE_SCHEMA.md, ARCHITECTURE_BLUEPRINT.md, TEST_SCENARIOS.md, ANDROID_HARDWARE_GUIDE.md
+  - Code: Renamed `isFoodStampEligible` to `isSnapEligible` in Product, CartItem models
+  - Hardware: Renamed `processEbtFoodStamp()` to `processEbtSnap()`, `EBT_FOODSTAMP` to `EBT_SNAP`
 
 ### Refactored
 - **BREAKING**: Refactored `Product` model to align with DATABASE_SCHEMA.md

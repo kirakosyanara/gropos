@@ -142,13 +142,13 @@ data class CartItem(
      * Tax indicator for receipt (T = taxable, F = food stamp eligible).
      */
     val taxIndicator: String
-        get() = if (product.isFoodStampEligible) "F" else "T"
+        get() = if (product.isSnapEligible) "F" else "T"
     
     /**
      * Whether item is food stamp eligible.
      */
-    val isFoodStampEligible: Boolean
-        get() = product.isFoodStampEligible
+    val isSnapEligible: Boolean
+        get() = product.isSnapEligible
     
     /**
      * Sold by type from product.

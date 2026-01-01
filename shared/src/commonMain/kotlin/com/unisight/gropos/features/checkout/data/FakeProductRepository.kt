@@ -41,7 +41,7 @@ class FakeProductRepository : ProductRepository {
             cost = BigDecimal("3.50"),
             soldById = "Quantity",
             soldByName = "Each",
-            isFoodStampEligible = true,
+            isSnapEligible = true,
             isActive = true,
             isForSale = true,
             ageRestriction = "NO",
@@ -67,7 +67,7 @@ class FakeProductRepository : ProductRepository {
             departmentId = 1,
             departmentName = "Fresh",
             retailPrice = BigDecimal("1.00"),
-            isFoodStampEligible = true,
+            isSnapEligible = true,
             itemNumbers = listOf(
                 ItemNumber("111", isPrimary = true)
             ),
@@ -85,7 +85,7 @@ class FakeProductRepository : ProductRepository {
             retailPrice = BigDecimal("0.50"),
             soldById = "Weight",
             soldByName = "Per Pound",
-            isFoodStampEligible = true,
+            isSnapEligible = true,
             itemNumbers = listOf(
                 ItemNumber("222", isPrimary = true)
             ),
@@ -99,7 +99,7 @@ class FakeProductRepository : ProductRepository {
             category = 3,
             categoryName = "Produce",
             retailPrice = BigDecimal("0.75"),
-            isFoodStampEligible = true,
+            isSnapEligible = true,
             itemNumbers = listOf(
                 ItemNumber("333", isPrimary = true)
             ),
@@ -113,7 +113,7 @@ class FakeProductRepository : ProductRepository {
             category = 4,
             categoryName = "Bakery",
             retailPrice = BigDecimal("2.49"),
-            isFoodStampEligible = true,
+            isSnapEligible = true,
             itemNumbers = listOf(
                 ItemNumber("444", isPrimary = true)
             ),

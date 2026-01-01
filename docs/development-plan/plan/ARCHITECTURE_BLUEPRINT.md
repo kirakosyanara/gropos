@@ -866,7 +866,7 @@ public class TransactionItem {
     private BigDecimal quantity;
     private BigDecimal lineTotal;
     private BigDecimal taxAmount;
-    private Boolean isFoodStampable;
+    private Boolean isSnapEligible;
     // ... getters, setters, etc.
 }
 
@@ -879,7 +879,7 @@ data class TransactionItem(
     val unitPrice: BigDecimal,
     val quantity: BigDecimal = BigDecimal.ONE,
     val discounts: List<AppliedDiscount> = emptyList(),
-    val isFoodStampable: Boolean = false,
+    val isSnapEligible: Boolean = false,
     val isWicEligible: Boolean = false,
     val taxRates: List<TaxRate> = emptyList(),
     val crvAmount: BigDecimal = BigDecimal.ZERO
@@ -1316,7 +1316,7 @@ class TaxCalculatorTest {
             productId = "123",
             name = "Food Item",
             unitPrice = BigDecimal("10.00"),
-            isFoodStampable = true,
+            isSnapEligible = true,
             taxRates = listOf(TaxRate("CA", BigDecimal("9.5")))
         )
         

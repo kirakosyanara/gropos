@@ -277,13 +277,13 @@ class PaxPaymentService(private val context: Context) {
             )
         }
     
-    suspend fun processEbtFoodStamp(amount: BigDecimal): PaymentResult = 
+    suspend fun processEbtSnap(amount: BigDecimal): PaymentResult = 
         withContext(Dispatchers.IO) {
             val request = PaymentRequest().apply {
                 transType = TransType.SALE
                 amountValue = (amount * BigDecimal(100)).toLong()
                 cardReadModes = CardReadMode.MAGNETIC // EBT typically swipe only
-                paymentType = PaymentType.EBT_FOODSTAMP
+                paymentType = PaymentType.EBT_SNAP
                 isPinRequired = true
             }
             
@@ -321,7 +321,7 @@ class PaxPaymentService(private val context: Context) {
     suspend fun checkEbtBalance(): EbtBalanceResult = withContext(Dispatchers.IO) {
         val request = PaymentRequest().apply {
             transType = TransType.BALANCE_INQUIRY
-            paymentType = PaymentType.EBT_FOODSTAMP
+            paymentType = PaymentType.EBT_SNAP
             cardReadModes = CardReadMode.MAGNETIC
             isPinRequired = true
         }
@@ -329,7 +329,7 @@ class PaxPaymentService(private val context: Context) {
         val response = PaymentManager.getInstance().startTransaction(request)
         
         EbtBalanceResult(
-            foodStampBalance = response.foodStampBalance?.let { 
+            snapBalance = response.snapBalance?.let { 
                 BigDecimal(it).divide(BigDecimal(100)) 
             } ?: BigDecimal.ZERO,
             cashBenefitBalance = response.cashBalance?.let {
@@ -351,7 +351,7 @@ data class PaymentResult(
 )
 
 data class EbtBalanceResult(
-    val foodStampBalance: BigDecimal,
+    val snapBalance: BigDecimal,
     val cashBenefitBalance: BigDecimal
 )
 ```
@@ -558,7 +558,7 @@ expect class ScannerService {
 expect class PaymentService {
     suspend fun processCreditSale(amount: BigDecimal): PaymentResult
     suspend fun processDebitSale(amount: BigDecimal): PaymentResult
-    suspend fun processEbtFoodStamp(amount: BigDecimal): PaymentResult
+    suspend fun processEbtSnap(amount: BigDecimal): PaymentResult
     suspend fun processEbtCash(amount: BigDecimal): PaymentResult
     suspend fun voidPayment(referenceNumber: String): PaymentResult
     suspend fun checkEbtBalance(): EbtBalanceResult
