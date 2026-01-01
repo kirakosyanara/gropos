@@ -821,7 +821,7 @@ fun `SNAP payment reduces tax on partially covered items`() {
         branchProductId = 100,
         productName = "Prepared Food",
         retailPrice = BigDecimal("10.00"),
-        isFoodStampEligible = true,
+        isSnapEligible = true,
         taxes = listOf(
             ProductTaxViewModel(taxId = 2, tax = "Food Tax", percent = BigDecimal("2.0"))
         )

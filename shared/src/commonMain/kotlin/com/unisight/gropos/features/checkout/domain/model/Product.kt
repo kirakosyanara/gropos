@@ -58,7 +58,7 @@ data class ProductSale(
  * @property cost Product cost
  * @property soldById How product is sold (Quantity, Weight)
  * @property soldByName Display name for sold by
- * @property isFoodStampEligible SNAP/EBT eligible
+ * @property isSnapEligible SNAP/EBT eligible
  * @property isActive Product is active
  * @property isForSale Product is available for sale
  * @property ageRestriction Age restriction (NO, 18, 21)
@@ -83,7 +83,7 @@ data class Product(
     val cost: BigDecimal? = null,
     val soldById: String = "Quantity",
     val soldByName: String = "Each",
-    val isFoodStampEligible: Boolean = false,
+    val isSnapEligible: Boolean = false,
     val isActive: Boolean = true,
     val isForSale: Boolean = true,
     val ageRestriction: String = "NO",

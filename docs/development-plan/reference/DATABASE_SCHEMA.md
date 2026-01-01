@@ -122,7 +122,7 @@ Transactions awaiting sync.
   
   "soldById": "Quantity",
   "soldByName": "Each",
-  "isFoodStampEligible": true,
+  "isSnapEligible": true,
   "isActive": true,
   "isForSale": true,
   "ageRestriction": "NO",
@@ -221,7 +221,7 @@ Transactions awaiting sync.
       "isFloorPriceOverridden": false,
       "soldById": "Quantity",
       "taxIndicator": "F",
-      "isFoodStampEligible": true,
+      "isSnapEligible": true,
       "scanDateTime": "2024-01-15T10:31:00Z"
     }
   ],
