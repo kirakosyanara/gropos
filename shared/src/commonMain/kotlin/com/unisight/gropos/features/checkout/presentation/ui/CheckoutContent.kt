@@ -143,7 +143,12 @@ fun CheckoutContent(
                         tenKeyInput = ""
                     }
                 },
-                onPayClick = { /* TODO: Navigate to payment screen */ },
+                onPayClick = { 
+                    // Only navigate if cart is not empty
+                    if (!state.isEmpty) {
+                        onEvent(CheckoutEvent.NavigateToPay)
+                    }
+                },
                 onClearCart = { onEvent(CheckoutEvent.ClearCart) },
                 onLookupClick = { onEvent(CheckoutEvent.OpenLookup) },
                 onRecallClick = { /* TODO: Show recall dialog */ },

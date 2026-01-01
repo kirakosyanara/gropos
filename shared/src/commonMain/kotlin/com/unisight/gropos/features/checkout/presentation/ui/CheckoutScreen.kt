@@ -10,6 +10,7 @@ import cafe.adriel.voyager.navigator.currentOrThrow
 import com.unisight.gropos.features.auth.presentation.ui.LoginScreen
 import com.unisight.gropos.features.checkout.presentation.CheckoutViewModel
 import com.unisight.gropos.features.checkout.presentation.components.ProductLookupUiModel
+import com.unisight.gropos.features.payment.presentation.ui.PayScreen
 
 /**
  * Voyager Screen for the Checkout feature.
@@ -68,6 +69,12 @@ class CheckoutScreen : Screen {
                     is CheckoutEvent.ProductSelected -> {
                         viewModel.onProductSelected(event.product)
                     }
+                    // Navigation Events
+                    CheckoutEvent.NavigateToPay -> {
+                        // Navigate to Payment screen
+                        // PayScreen observes the same CartRepository singleton
+                        navigator.push(PayScreen())
+                    }
                 }
             }
         )
@@ -93,4 +100,7 @@ sealed interface CheckoutEvent {
     data class LookupSearchChange(val query: String) : CheckoutEvent
     data class LookupCategorySelect(val categoryId: Int?) : CheckoutEvent
     data class ProductSelected(val product: ProductLookupUiModel) : CheckoutEvent
+    
+    // Navigation Events
+    data object NavigateToPay : CheckoutEvent
 }

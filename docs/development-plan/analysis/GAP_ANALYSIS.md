@@ -82,7 +82,7 @@ Created new folders within development-plan:
 | `lottery/API.md` | ✅ Complete | Backend API specification |
 | `lottery/COMPLIANCE.md` | ✅ Complete | Age verification, W-2G, IRS |
 
-### Phase 6: P1 Features (COMPLETE - 4 files)
+### Phase 6: P1 Features (COMPLETE - 5 files)
 
 | File | Status | Description |
 |------|--------|-------------|
@@ -90,6 +90,7 @@ Created new folders within development-plan:
 | `features/RETURNS.md` | ✅ Complete | Return flow, refund methods |
 | `features/AUTHENTICATION.md` | ✅ Complete | Login, lock, token refresh |
 | `features/TRANSACTION_FLOW.md` | ✅ Complete | Full transaction lifecycle |
+| `features/PRODUCT_LOOKUP.md` | ✅ Complete | Barcode scanning, PLU, quick lookup categories |
 
 ### Phase 7: Architecture (COMPLETE - 5 files)
 
@@ -167,6 +168,7 @@ All completed files include:
 | Data sync | ✅ Yes | `data/SYNC_MECHANISM.md` |
 | Barcode handling | ✅ Yes | `data/BARCODE_FORMATS.md` |
 | Navigation | ✅ Yes | `architecture/NAVIGATION.md` |
+| Product lookup | ✅ Yes | `features/PRODUCT_LOOKUP.md` |
 
 ---
 
