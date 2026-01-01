@@ -1,6 +1,7 @@
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.DpSize
@@ -12,6 +13,8 @@ import androidx.compose.ui.window.rememberWindowState
 import com.unisight.gropos.App
 import com.unisight.gropos.core.di.appModules
 import com.unisight.gropos.core.theme.GroPOSTheme
+import com.unisight.gropos.core.util.CurrencyFormatter
+import com.unisight.gropos.features.checkout.domain.repository.CartRepository
 import com.unisight.gropos.features.customer.presentation.CustomerDisplayScreen
 import com.unisight.gropos.features.customer.presentation.CustomerDisplayViewModel
 import org.koin.core.context.GlobalContext
@@ -35,6 +38,9 @@ import java.awt.GraphicsEnvironment
  * - CheckoutViewModel (Cashier) and CustomerDisplayViewModel (Customer) 
  *   both observe the same CartRepository
  * - Any changes from Cashier are instantly reflected on Customer Display
+ * 
+ * IMPORTANT: CustomerDisplayViewModel is used OUTSIDE of Voyager's Navigator,
+ * so we must inject a CoroutineScope manually (screenModelScope won't work).
  * 
  * Dev Mode:
  * - Set DEV_FORCE_CUSTOMER_DISPLAY=true to force customer display window
@@ -101,10 +107,13 @@ fun main() = application {
     // Per SCREEN_LAYOUTS.md: Customer Screen for secondary display
     // 
     // State Synchronization:
-    // - Gets CustomerDisplayViewModel from Koin
-    // - ViewModel observes CartRepository (Singleton)
-    // - Same CartRepository is used by CheckoutViewModel
+    // - Gets CartRepository from Koin (SINGLETON)
+    // - Creates CustomerDisplayViewModel with injected CoroutineScope
+    // - Same CartRepository is used by CheckoutViewModel in Cashier window
     // - Changes in Cashier window are instantly visible here
+    // 
+    // IMPORTANT: We must inject a CoroutineScope because this ViewModel
+    // is used outside of Voyager's Navigator, so screenModelScope won't work.
     // ========================================================================
     if (isCustomerDisplayVisible) {
         val customerWindowState = rememberWindowState(
@@ -140,10 +149,25 @@ fun main() = application {
             alwaysOnTop = false // Can be true in production
         ) {
             GroPOSTheme {
-                // Get CustomerDisplayViewModel from Koin
-                // This ViewModel observes the same CartRepository singleton as CheckoutViewModel
-                val viewModel: CustomerDisplayViewModel = remember {
-                    GlobalContext.get().get()
+                // Get a CoroutineScope that's tied to this Window's lifecycle
+                // This is CRITICAL: CustomerDisplayViewModel extends ScreenModel,
+                // but it's NOT managed by Voyager's Navigator here.
+                // Without an injected scope, the screenModelScope is inactive
+                // and observeCartChanges() silently fails.
+                val coroutineScope = rememberCoroutineScope()
+                
+                // Get dependencies from Koin (CartRepository is SINGLETON)
+                val cartRepository: CartRepository = remember { GlobalContext.get().get() }
+                val currencyFormatter: CurrencyFormatter = remember { GlobalContext.get().get() }
+                
+                // Create ViewModel with injected scope
+                // This ensures the cart observation coroutine actually runs
+                val viewModel = remember(coroutineScope) {
+                    CustomerDisplayViewModel(
+                        cartRepository = cartRepository,
+                        currencyFormatter = currencyFormatter,
+                        scope = coroutineScope  // CRITICAL: Inject the scope!
+                    )
                 }
                 
                 CustomerDisplayScreen(
