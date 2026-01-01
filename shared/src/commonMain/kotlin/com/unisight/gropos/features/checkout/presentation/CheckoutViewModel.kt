@@ -5,6 +5,7 @@ import cafe.adriel.voyager.core.model.screenModelScope
 import com.unisight.gropos.core.util.CurrencyFormatter
 import com.unisight.gropos.features.checkout.domain.model.Cart
 import com.unisight.gropos.features.checkout.domain.model.CartItem
+import com.unisight.gropos.features.checkout.domain.repository.CartRepository
 import com.unisight.gropos.features.checkout.domain.repository.ScannerRepository
 import com.unisight.gropos.features.checkout.domain.usecase.ScanItemUseCase
 import com.unisight.gropos.features.checkout.domain.usecase.ScanResult
@@ -18,12 +19,17 @@ import kotlinx.coroutines.launch
 import java.math.BigDecimal
 
 /**
- * ViewModel for the Checkout screen.
+ * ViewModel for the Checkout screen (Cashier window).
  * 
  * Manages the checkout UI state by:
  * 1. Reactively collecting scanned barcodes from hardware
  * 2. Delegating product lookup to ScanItemUseCase
- * 3. Mapping Cart state to UI-friendly CheckoutUiState
+ * 3. Observing cart state from CartRepository (shared with Customer Display)
+ * 
+ * Per ARCHITECTURE_BLUEPRINT.md:
+ * - Cart state is managed by CartRepository (Singleton)
+ * - This ViewModel OBSERVES the repository, it does NOT own the state
+ * - Any changes here are automatically reflected on Customer Display
  * 
  * Per project-structure.mdc: Named [Feature]ViewModel
  * Per kotlin-standards.mdc: Uses ScreenModel for Voyager compatibility
@@ -32,6 +38,7 @@ import java.math.BigDecimal
 class CheckoutViewModel(
     private val scanItemUseCase: ScanItemUseCase,
     private val scannerRepository: ScannerRepository,
+    private val cartRepository: CartRepository,
     private val currencyFormatter: CurrencyFormatter,
     // Inject scope for testability (per testing-strategy.mdc)
     private val scope: CoroutineScope? = null
@@ -53,7 +60,8 @@ class CheckoutViewModel(
         // Per requirement: In init{}, collect scannerRepository.scannedCodes
         observeScannerFlow()
         
-        // Observe cart changes from UseCase
+        // Observe cart changes from the SHARED CartRepository
+        // This is the key change - we observe the repository, not use case
         observeCartChanges()
     }
     
@@ -67,10 +75,13 @@ class CheckoutViewModel(
     }
     
     /**
-     * Observes cart state changes and updates UI accordingly.
+     * Observes cart state changes from the SHARED CartRepository.
+     * 
+     * Since CartRepository is a singleton, when Customer Display observes
+     * the same repository, both windows stay in sync.
      */
     private fun observeCartChanges() {
-        scanItemUseCase.cart
+        cartRepository.cart
             .onEach { cart -> updateStateFromCart(cart) }
             .launchIn(effectiveScope)
     }
@@ -127,7 +138,9 @@ class CheckoutViewModel(
      * @param branchProductId The product ID to remove
      */
     fun onRemoveItem(branchProductId: Int) {
-        scanItemUseCase.removeProduct(branchProductId)
+        effectiveScope.launch {
+            scanItemUseCase.removeProduct(branchProductId)
+        }
     }
     
     /**
@@ -136,7 +149,9 @@ class CheckoutViewModel(
      * @param branchProductId The product ID to void
      */
     fun onVoidItem(branchProductId: Int) {
-        scanItemUseCase.voidProduct(branchProductId)
+        effectiveScope.launch {
+            scanItemUseCase.voidProduct(branchProductId)
+        }
     }
     
     /**
@@ -144,7 +159,9 @@ class CheckoutViewModel(
      * Called after transaction completion or void all.
      */
     fun onClearCart() {
-        scanItemUseCase.clearCart()
+        effectiveScope.launch {
+            scanItemUseCase.clearCart()
+        }
     }
     
     /**
@@ -222,4 +239,3 @@ class CheckoutViewModel(
         return if (intCount == 1) "1 item" else "$intCount items"
     }
 }
-

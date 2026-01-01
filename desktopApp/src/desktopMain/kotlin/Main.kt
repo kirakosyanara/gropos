@@ -12,10 +12,9 @@ import androidx.compose.ui.window.rememberWindowState
 import com.unisight.gropos.App
 import com.unisight.gropos.core.di.appModules
 import com.unisight.gropos.core.theme.GroPOSTheme
-import com.unisight.gropos.features.checkout.presentation.CheckoutUiState
-import com.unisight.gropos.features.customer.presentation.CustomerDisplayContent
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
+import com.unisight.gropos.features.customer.presentation.CustomerDisplayScreen
+import com.unisight.gropos.features.customer.presentation.CustomerDisplayViewModel
+import org.koin.core.context.GlobalContext
 import org.koin.core.context.startKoin
 import java.awt.GraphicsEnvironment
 
@@ -25,10 +24,17 @@ import java.awt.GraphicsEnvironment
  * Per ARCHITECTURE_BLUEPRINT.md (Section 6, Phase 3):
  * - Multi-window support: Primary window (Cashier) + Customer Display (Secondary monitor)
  * - Detects available monitors and positions windows accordingly
+ * - Both windows share the same CartRepository (Singleton) via Koin DI
  * 
  * Window Configuration:
  * - Primary Window: 1280x800 on primary monitor
  * - Customer Display: Full screen on secondary monitor (if available)
+ * 
+ * State Synchronization:
+ * - CartRepository is a SINGLETON in Koin
+ * - CheckoutViewModel (Cashier) and CustomerDisplayViewModel (Customer) 
+ *   both observe the same CartRepository
+ * - Any changes from Cashier are instantly reflected on Customer Display
  * 
  * Dev Mode:
  * - Set DEV_FORCE_CUSTOMER_DISPLAY=true to force customer display window
@@ -44,27 +50,6 @@ import java.awt.GraphicsEnvironment
  * Set to true for testing dual-window logic on a single monitor.
  */
 private const val DEV_FORCE_CUSTOMER_DISPLAY = true
-
-// ============================================================================
-// Shared State for Cross-Window Communication
-// ============================================================================
-
-/**
- * Shared checkout state between Cashier and Customer Display windows.
- * 
- * Per ARCHITECTURE_BLUEPRINT.md: Both windows observe the same transaction state.
- * In production, this would be provided by Koin and shared via DI.
- * 
- * TODO: Move to DI module and inject into CheckoutViewModel
- */
-object SharedAppState {
-    private val _checkoutState = MutableStateFlow(CheckoutUiState())
-    val checkoutState: StateFlow<CheckoutUiState> = _checkoutState
-    
-    fun updateCheckoutState(state: CheckoutUiState) {
-        _checkoutState.value = state
-    }
-}
 
 // ============================================================================
 // Main Entry Point
@@ -114,6 +99,12 @@ fun main() = application {
     // ========================================================================
     // Customer Display Window (Secondary Monitor)
     // Per SCREEN_LAYOUTS.md: Customer Screen for secondary display
+    // 
+    // State Synchronization:
+    // - Gets CustomerDisplayViewModel from Koin
+    // - ViewModel observes CartRepository (Singleton)
+    // - Same CartRepository is used by CheckoutViewModel
+    // - Changes in Cashier window are instantly visible here
     // ========================================================================
     if (isCustomerDisplayVisible) {
         val customerWindowState = rememberWindowState(
@@ -149,11 +140,15 @@ fun main() = application {
             alwaysOnTop = false // Can be true in production
         ) {
             GroPOSTheme {
-                CustomerDisplayContent(
-                    items = SharedAppState.checkoutState.value.items,
-                    totals = SharedAppState.checkoutState.value.totals,
-                    storeName = "GroPOS Store",
-                    isEmpty = SharedAppState.checkoutState.value.isEmpty
+                // Get CustomerDisplayViewModel from Koin
+                // This ViewModel observes the same CartRepository singleton as CheckoutViewModel
+                val viewModel: CustomerDisplayViewModel = remember {
+                    GlobalContext.get().get()
+                }
+                
+                CustomerDisplayScreen(
+                    viewModel = viewModel,
+                    storeName = "GroPOS Store"
                 )
             }
         }
@@ -167,6 +162,11 @@ fun main() = application {
 /**
  * Initializes Koin dependency injection.
  * Checks if Koin is already started to prevent crashes during development hot reload.
+ * 
+ * Key DI Singletons for Multi-Window:
+ * - CartRepository: Single source of truth for cart state
+ * - ScannerRepository: Single source for scanner events
+ * - CurrencyFormatter: Shared formatter
  */
 private fun initKoin() {
     try {

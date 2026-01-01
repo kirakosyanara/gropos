@@ -1,12 +1,11 @@
 package com.unisight.gropos.features.checkout.domain.usecase
 
 import com.unisight.gropos.features.checkout.domain.model.Cart
+import com.unisight.gropos.features.checkout.domain.repository.CartRepository
 import com.unisight.gropos.features.checkout.domain.repository.ProductRepository
 import com.unisight.gropos.features.checkout.domain.repository.ScannerRepository
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 
 /**
@@ -35,24 +34,31 @@ sealed interface ScanResult {
  * This use case:
  * 1. Listens to the scanner flow for barcodes
  * 2. Looks up products using getByBarcode (per DATABASE_SCHEMA.md)
- * 3. Adds found products to the cart
+ * 3. Adds found products to the cart via CartRepository
  * 4. Handles quantity incrementing for duplicate scans
+ * 
+ * Per ARCHITECTURE_BLUEPRINT.md:
+ * - Cart state is managed by CartRepository (Singleton)
+ * - This UseCase delegates cart operations to the repository
+ * - Multiple ViewModels can observe the same cart state
  * 
  * Per project-structure.mdc: UseCase naming is Verb-based.
  * Per code-quality.mdc: Use Flow for reactive streams.
  */
 class ScanItemUseCase(
     private val scannerRepository: ScannerRepository,
-    private val productRepository: ProductRepository
+    private val productRepository: ProductRepository,
+    private val cartRepository: CartRepository
 ) {
-    
-    private val _cart = MutableStateFlow(Cart.empty())
     
     /**
      * Current cart state.
      * Observe this to react to cart changes.
+     * 
+     * This delegates to CartRepository.cart - the single source of truth.
+     * Both Cashier and Customer Display observe this same state.
      */
-    val cart: StateFlow<Cart> = _cart.asStateFlow()
+    val cart: StateFlow<Cart> = cartRepository.cart
     
     /**
      * Flow that emits scan results for each scanned barcode.
@@ -71,7 +77,7 @@ class ScanItemUseCase(
      * 
      * Business Logic:
      * 1. Look up product by barcode (checks itemNumbers array per schema)
-     * 2. If found, add to cart (or increment if already present by branchProductId)
+     * 2. If found, add to cart via CartRepository (or increment if already present)
      * 3. Return appropriate result
      * 
      * Per DATABASE_SCHEMA.md: Uses getByBarcode which searches itemNumbers[].itemNumber
@@ -83,9 +89,9 @@ class ScanItemUseCase(
         val product = productRepository.getByBarcode(barcode)
         
         return if (product != null) {
-            // Add product to cart (Cart handles quantity increment by branchProductId)
-            _cart.value = _cart.value.addProduct(product)
-            ScanResult.Success(_cart.value)
+            // Add product to cart via repository (handles quantity increment)
+            cartRepository.addToCart(product)
+            ScanResult.Success(cartRepository.getCurrentCart())
         } else {
             ScanResult.ProductNotFound(barcode)
         }
@@ -108,8 +114,8 @@ class ScanItemUseCase(
      * 
      * Called after transaction completion or void.
      */
-    fun clearCart() {
-        _cart.value = Cart.empty()
+    suspend fun clearCart() {
+        cartRepository.clearCart()
     }
     
     /**
@@ -119,8 +125,8 @@ class ScanItemUseCase(
      * 
      * @param branchProductId The branchProductId of the product to remove
      */
-    fun removeProduct(branchProductId: Int) {
-        _cart.value = _cart.value.removeProduct(branchProductId)
+    suspend fun removeProduct(branchProductId: Int) {
+        cartRepository.removeFromCart(branchProductId)
     }
     
     /**
@@ -128,8 +134,8 @@ class ScanItemUseCase(
      * 
      * @param branchProductId The branchProductId of the product to void
      */
-    fun voidProduct(branchProductId: Int) {
-        _cart.value = _cart.value.voidProduct(branchProductId)
+    suspend fun voidProduct(branchProductId: Int) {
+        cartRepository.voidItem(branchProductId)
     }
     
     /**
@@ -137,5 +143,5 @@ class ScanItemUseCase(
      * 
      * Prefer observing [cart] StateFlow for reactive updates.
      */
-    fun getCurrentCart(): Cart = _cart.value
+    fun getCurrentCart(): Cart = cartRepository.getCurrentCart()
 }

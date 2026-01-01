@@ -7,6 +7,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased] - 2026-01-01
 
 ### Added
+- **Multi-Window State Synchronization**: Implemented true cross-window cart state sharing
+  - Created `CartRepository` interface in domain layer (Single Source of Truth pattern)
+  - Created `CartRepositoryImpl` as singleton for shared cart state across windows
+  - Created `CustomerDisplayViewModel` to observe shared cart state
+  - Refactored `ScanItemUseCase` to use CartRepository instead of internal state
+  - Refactored `CheckoutViewModel` to observe CartRepository (not own state)
+  - Updated Koin module: `CartRepository` as `single {}` for true singleton
+  - Updated `CustomerDisplayScreen` with Voyager Screen wrapper
+  - Removed placeholder `SharedAppState` object in favor of proper DI
 - UI/UX Design System: `Color.kt` with GroPOS color palette per UI_DESIGN_SYSTEM.md
 - UI/UX Design System: `Typography.kt` with Archivo-based typography scale
 - UI/UX Design System: `Spacing.kt` with GroPOSSpacing and GroPOSRadius values

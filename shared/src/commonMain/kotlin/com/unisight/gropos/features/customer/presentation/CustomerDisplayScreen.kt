@@ -24,10 +24,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import cafe.adriel.voyager.core.screen.Screen
+import cafe.adriel.voyager.koin.koinScreenModel
 import com.unisight.gropos.core.components.WhiteBox
 import com.unisight.gropos.core.theme.GroPOSColors
 import com.unisight.gropos.core.theme.GroPOSRadius
@@ -35,14 +36,18 @@ import com.unisight.gropos.core.theme.GroPOSSpacing
 import com.unisight.gropos.features.checkout.presentation.CheckoutItemUiModel
 import com.unisight.gropos.features.checkout.presentation.CheckoutTotalsUiModel
 import com.unisight.gropos.features.checkout.presentation.CheckoutUiState
-import kotlinx.coroutines.flow.StateFlow
 
 /**
- * Customer Display Screen
+ * Customer Display Screen (Voyager Screen)
  * 
  * Per SCREEN_LAYOUTS.md (Customer Screen):
  * - Secondary display for customer viewing
  * - Shows order items, totals, and advertisements
+ * 
+ * Per ARCHITECTURE_BLUEPRINT.md:
+ * - Observes CartRepository via CustomerDisplayViewModel
+ * - Read-only view of cart state
+ * - State synchronized with Cashier window automatically
  * 
  * Layout:
  * ┌─────────────────────────────────────────────────────────────────┐
@@ -62,12 +67,36 @@ import kotlinx.coroutines.flow.StateFlow
  * │                                        │  └───────────────────┘ │
  * └────────────────────────────────────────┴────────────────────────┘
  */
+class CustomerDisplayVoyagerScreen(
+    private val storeName: String = "GroPOS Store"
+) : Screen {
+    
+    @Composable
+    override fun Content() {
+        val viewModel = koinScreenModel<CustomerDisplayViewModel>()
+        val state by viewModel.state.collectAsState()
+        
+        CustomerDisplayContent(
+            items = state.items,
+            totals = state.totals,
+            storeName = storeName,
+            isEmpty = state.isEmpty
+        )
+    }
+}
+
+/**
+ * Composable wrapper for use in desktop Window (non-Voyager context).
+ * 
+ * This is used in Main.kt for the secondary customer display window.
+ * It creates its own ViewModel via Koin.
+ */
 @Composable
 fun CustomerDisplayScreen(
-    checkoutState: StateFlow<CheckoutUiState>,
+    viewModel: CustomerDisplayViewModel,
     storeName: String = "GroPOS Store"
 ) {
-    val state by checkoutState.collectAsState()
+    val state by viewModel.state.collectAsState()
     
     CustomerDisplayContent(
         items = state.items,
@@ -410,4 +439,3 @@ private fun TotalRow(
         )
     }
 }
-

@@ -1,6 +1,7 @@
 package com.unisight.gropos.features.checkout.presentation
 
 import com.unisight.gropos.core.util.UsdCurrencyFormatter
+import com.unisight.gropos.features.checkout.data.CartRepositoryImpl
 import com.unisight.gropos.features.checkout.data.FakeProductRepository
 import com.unisight.gropos.features.checkout.data.FakeScannerRepository
 import com.unisight.gropos.features.checkout.domain.usecase.ScanItemUseCase
@@ -22,6 +23,10 @@ import kotlin.test.assertTrue
  * - Use runTest for coroutine testing
  * - Use Fakes for repositories
  * - Inject TestScope for controllable execution
+ * 
+ * Per ARCHITECTURE_BLUEPRINT.md:
+ * - CheckoutViewModel observes CartRepository
+ * - CartRepository is singleton in production, fresh instance per test
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class CheckoutViewModelTest {
@@ -43,12 +48,14 @@ class CheckoutViewModelTest {
         
         val fakeScanner = FakeScannerRepository()
         val fakeProducts = FakeProductRepository()
-        val useCase = ScanItemUseCase(fakeScanner, fakeProducts)
+        val cartRepository = CartRepositoryImpl()
+        val useCase = ScanItemUseCase(fakeScanner, fakeProducts, cartRepository)
         val currencyFormatter = UsdCurrencyFormatter()
         
         val viewModel = CheckoutViewModel(
             scanItemUseCase = useCase,
             scannerRepository = fakeScanner,
+            cartRepository = cartRepository,
             currencyFormatter = currencyFormatter,
             scope = testScope
         )
