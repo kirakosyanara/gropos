@@ -19,9 +19,9 @@ sealed interface ScanResult {
     data class Success(val cart: Cart) : ScanResult
     
     /**
-     * Product was not found for the scanned code.
+     * Product was not found for the scanned barcode.
      */
-    data class ProductNotFound(val sku: String) : ScanResult
+    data class ProductNotFound(val barcode: String) : ScanResult
     
     /**
      * An error occurred during the scan operation.
@@ -34,7 +34,7 @@ sealed interface ScanResult {
  * 
  * This use case:
  * 1. Listens to the scanner flow for barcodes
- * 2. Looks up products in the repository
+ * 2. Looks up products using getByBarcode (per DATABASE_SCHEMA.md)
  * 3. Adds found products to the cart
  * 4. Handles quantity incrementing for duplicate scans
  * 
@@ -58,49 +58,49 @@ class ScanItemUseCase(
      * Flow that emits scan results for each scanned barcode.
      * 
      * Transforms scanner events into cart updates:
-     * - On valid barcode: looks up product, adds to cart, emits Success
+     * - On valid barcode: looks up product via getByBarcode, adds to cart, emits Success
      * - On unknown barcode: emits ProductNotFound
      * - On error: emits Error
      */
-    val scanResults: Flow<ScanResult> = scannerRepository.scannedCodes.map { sku ->
-        processScan(sku)
+    val scanResults: Flow<ScanResult> = scannerRepository.scannedCodes.map { barcode ->
+        processScan(barcode)
     }
     
     /**
      * Processes a single scan event.
      * 
      * Business Logic:
-     * 1. Look up product by SKU
-     * 2. If found, add to cart (or increment if already present)
+     * 1. Look up product by barcode (checks itemNumbers array per schema)
+     * 2. If found, add to cart (or increment if already present by branchProductId)
      * 3. Return appropriate result
      * 
-     * @param sku The scanned barcode/SKU
+     * Per DATABASE_SCHEMA.md: Uses getByBarcode which searches itemNumbers[].itemNumber
+     * 
+     * @param barcode The scanned barcode
      * @return ScanResult indicating success or failure
      */
-    suspend fun processScan(sku: String): ScanResult {
-        return productRepository.findBySku(sku)
-            .fold(
-                onSuccess = { product ->
-                    // Add product to cart (Cart handles quantity increment)
-                    _cart.value = _cart.value.addProduct(product)
-                    ScanResult.Success(_cart.value)
-                },
-                onFailure = { error ->
-                    ScanResult.ProductNotFound(sku)
-                }
-            )
+    suspend fun processScan(barcode: String): ScanResult {
+        val product = productRepository.getByBarcode(barcode)
+        
+        return if (product != null) {
+            // Add product to cart (Cart handles quantity increment by branchProductId)
+            _cart.value = _cart.value.addProduct(product)
+            ScanResult.Success(_cart.value)
+        } else {
+            ScanResult.ProductNotFound(barcode)
+        }
     }
     
     /**
-     * Manually adds a product to the cart by SKU.
+     * Manually adds a product to the cart by barcode.
      * 
      * Used for manual product lookup/entry.
      * 
-     * @param sku The product SKU to add
+     * @param barcode The product barcode to add
      * @return ScanResult indicating success or failure
      */
-    suspend fun addProductBySku(sku: String): ScanResult {
-        return processScan(sku)
+    suspend fun addProductByBarcode(barcode: String): ScanResult {
+        return processScan(barcode)
     }
     
     /**
@@ -113,12 +113,23 @@ class ScanItemUseCase(
     }
     
     /**
-     * Removes a product from the cart by SKU.
+     * Removes a product from the cart by branchProductId.
      * 
-     * @param sku The SKU of the product to remove
+     * Per DATABASE_SCHEMA.md: Products identified by branchProductId.
+     * 
+     * @param branchProductId The branchProductId of the product to remove
      */
-    fun removeProduct(sku: String) {
-        _cart.value = _cart.value.removeProduct(sku)
+    fun removeProduct(branchProductId: Int) {
+        _cart.value = _cart.value.removeProduct(branchProductId)
+    }
+    
+    /**
+     * Voids a product in the cart (marks as removed but keeps in history).
+     * 
+     * @param branchProductId The branchProductId of the product to void
+     */
+    fun voidProduct(branchProductId: Int) {
+        _cart.value = _cart.value.voidProduct(branchProductId)
     }
     
     /**
@@ -128,4 +139,3 @@ class ScanItemUseCase(
      */
     fun getCurrentCart(): Cart = _cart.value
 }
-
