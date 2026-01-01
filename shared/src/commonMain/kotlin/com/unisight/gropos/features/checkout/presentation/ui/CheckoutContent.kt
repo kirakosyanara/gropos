@@ -20,13 +20,17 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,6 +51,8 @@ import com.unisight.gropos.features.checkout.presentation.ScanEvent
 // ============================================================================
 object CheckoutTestTags {
     const val SCREEN = "checkout_screen"
+    const val TOP_APP_BAR = "checkout_top_app_bar"
+    const val LOGOUT_BUTTON = "checkout_logout_button"
     const val ITEMS_LIST = "checkout_items_list"
     const val TOTALS_PANEL = "checkout_totals_panel"
     const val EMPTY_STATE = "checkout_empty_state"
@@ -68,58 +74,95 @@ private val SavingsColor = Color(0xFFD32F2F)
  * Main content composable for the Checkout screen.
  * 
  * Standard POS layout:
+ * - TopAppBar with title and logout action
  * - Left/Top: List of items (LazyColumn)
  * - Right/Bottom: Totals panel
  * 
  * Per code-quality.mdc: State hoisting - receives state and emits events.
  * Per Governance: No math here - all values are pre-formatted strings.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CheckoutContent(
     state: CheckoutUiState,
     onEvent: (CheckoutEvent) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .testTag(CheckoutTestTags.SCREEN)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxSize()
+    Scaffold(
+        modifier = modifier.testTag(CheckoutTestTags.SCREEN),
+        topBar = {
+            TopAppBar(
+                modifier = Modifier.testTag(CheckoutTestTags.TOP_APP_BAR),
+                title = {
+                    Text(
+                        text = "GroPOS",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                ),
+                actions = {
+                    // Logout button
+                    IconButton(
+                        onClick = { onEvent(CheckoutEvent.Logout) },
+                        modifier = Modifier.testTag(CheckoutTestTags.LOGOUT_BUTTON)
+                    ) {
+                        // Using text instead of icon for simplicity (no icon imports needed)
+                        Text(
+                            text = "⏻",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
+                }
+            )
+        }
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
         ) {
-            // Left Panel: Items List
-            ItemsListPanel(
-                items = state.items,
-                isEmpty = state.isEmpty,
-                onRemoveItem = { id -> onEvent(CheckoutEvent.RemoveItem(id)) },
-                modifier = Modifier
-                    .weight(0.6f)
-                    .fillMaxHeight()
-            )
+            Row(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                // Left Panel: Items List
+                ItemsListPanel(
+                    items = state.items,
+                    isEmpty = state.isEmpty,
+                    onRemoveItem = { id -> onEvent(CheckoutEvent.RemoveItem(id)) },
+                    modifier = Modifier
+                        .weight(0.6f)
+                        .fillMaxHeight()
+                )
+                
+                // Right Panel: Totals
+                TotalsPanel(
+                    totals = state.totals,
+                    onClearCart = { onEvent(CheckoutEvent.ClearCart) },
+                    modifier = Modifier
+                        .weight(0.4f)
+                        .fillMaxHeight()
+                )
+            }
             
-            // Right Panel: Totals
-            TotalsPanel(
-                totals = state.totals,
-                onClearCart = { onEvent(CheckoutEvent.ClearCart) },
-                modifier = Modifier
-                    .weight(0.4f)
-                    .fillMaxHeight()
-            )
-        }
-        
-        // Loading Overlay
-        if (state.isLoading) {
-            LoadingOverlay()
-        }
-        
-        // Scan Feedback Snackbar
-        state.lastScanEvent?.let { event ->
-            ScanFeedbackSnackbar(
-                event = event,
-                onDismiss = { onEvent(CheckoutEvent.DismissScanEvent) },
-                modifier = Modifier.align(Alignment.BottomCenter)
-            )
+            // Loading Overlay
+            if (state.isLoading) {
+                LoadingOverlay()
+            }
+            
+            // Scan Feedback Snackbar
+            state.lastScanEvent?.let { event ->
+                ScanFeedbackSnackbar(
+                    event = event,
+                    onDismiss = { onEvent(CheckoutEvent.DismissScanEvent) },
+                    modifier = Modifier.align(Alignment.BottomCenter)
+                )
+            }
         }
     }
 }

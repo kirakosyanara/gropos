@@ -4,19 +4,26 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import cafe.adriel.voyager.core.screen.Screen
-import cafe.adriel.voyager.koin.getScreenModel
+import cafe.adriel.voyager.koin.koinScreenModel
+import cafe.adriel.voyager.navigator.LocalNavigator
+import cafe.adriel.voyager.navigator.currentOrThrow
+import com.unisight.gropos.features.auth.presentation.ui.LoginScreen
 import com.unisight.gropos.features.checkout.presentation.CheckoutViewModel
 
 /**
  * Voyager Screen for the Checkout feature.
  * 
  * Per project-structure.mdc: Screens are in presentation/ui.
+ * 
+ * Navigation:
+ * - Logout button navigates back to LoginScreen
  */
 class CheckoutScreen : Screen {
     
     @Composable
     override fun Content() {
-        val viewModel = getScreenModel<CheckoutViewModel>()
+        val navigator = LocalNavigator.currentOrThrow
+        val viewModel = koinScreenModel<CheckoutViewModel>()
         val state by viewModel.state.collectAsState()
         
         CheckoutContent(
@@ -38,6 +45,12 @@ class CheckoutScreen : Screen {
                     CheckoutEvent.DismissScanEvent -> {
                         viewModel.onDismissScanEvent()
                     }
+                    CheckoutEvent.Logout -> {
+                        // Clear cart before logout
+                        viewModel.onClearCart()
+                        // Navigate back to LoginScreen, replacing the entire stack
+                        navigator.replaceAll(LoginScreen())
+                    }
                 }
             }
         )
@@ -55,5 +68,5 @@ sealed interface CheckoutEvent {
     data class VoidItem(val branchProductId: Int) : CheckoutEvent
     data object ClearCart : CheckoutEvent
     data object DismissScanEvent : CheckoutEvent
+    data object Logout : CheckoutEvent
 }
-
