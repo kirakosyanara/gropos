@@ -54,6 +54,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Navigation: `LoginScreen` → `CheckoutScreen` transition on successful login
 - Navigation: TopAppBar with logout button on `CheckoutScreen`
 - Navigation: `CheckoutEvent.Logout` event for logout action
+- Desktop entry point: `Main.kt` with Koin initialization and 1280x800 window
+- Android entry point: `MainActivity.kt` with Koin initialization and edge-to-edge display
+- Android manifest with network, camera, and Bluetooth permissions
+- Android resources: strings.xml, themes.xml for app configuration
 
 ### Changed
 - Renamed application from "GrowPOS" to "GroPOS" across all documentation files (39 occurrences in 8 files)

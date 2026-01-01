@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 
+        Base theme for GroPOS Android.
+        The actual theming is done in Compose via GroPOSTheme.
+        This is only for the splash screen and system UI.
+    -->
+    <style name="Theme.GroPOS" parent="android:Theme.Material.Light.NoActionBar">
+        <!-- Status bar color matching GroPOS primary -->
+        <item name="android:statusBarColor">#006B5A</item>
+        <item name="android:navigationBarColor">#006B5A</item>
+        
+        <!-- Window background -->
+        <item name="android:windowBackground">#FBFDF9</item>
+    </style>
+</resources>
+
