@@ -10,6 +10,7 @@ import org.koin.dsl.module
  */
 val appModule = module {
     includes(authModule)
+    includes(checkoutModule)
     
     // Future feature modules will be added here:
     // includes(transactionModule)
