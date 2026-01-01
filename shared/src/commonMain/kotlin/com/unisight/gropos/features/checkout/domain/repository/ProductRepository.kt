@@ -5,6 +5,9 @@ import com.unisight.gropos.features.checkout.domain.model.Product
 /**
  * Repository interface for product data access.
  * 
+ * Per DATABASE_SCHEMA.md - Kotlin Multiplatform Equivalent section.
+ * Method signatures match the schema exactly.
+ * 
  * Defined in Domain layer, implemented in Data layer.
  * Per Clean Architecture: Domain defines the contract,
  * Data provides the implementation (CouchbaseLite, API, etc.).
@@ -12,23 +15,40 @@ import com.unisight.gropos.features.checkout.domain.model.Product
 interface ProductRepository {
     
     /**
-     * Finds a product by its SKU (barcode).
+     * Finds a product by barcode (item number).
      * 
-     * @param sku The Stock Keeping Unit / barcode to search for
-     * @return Result containing the Product if found, or an error
+     * Per DATABASE_SCHEMA.md: Query checks if barcode exists in itemNumbers array.
+     * Uses ArrayExpression.any() to match against itemNumbers[].itemNumber.
+     * 
+     * @param barcode The barcode/item number to search for
+     * @return Product if found, null otherwise
      */
-    suspend fun findBySku(sku: String): Result<Product>
+    suspend fun getByBarcode(barcode: String): Product?
     
     /**
-     * Finds a product by its unique ID.
+     * Finds products by category.
      * 
-     * @param id The product's unique identifier
-     * @return Result containing the Product if found, or an error
+     * Per DATABASE_SCHEMA.md: Query by category ID, ordered by order field.
+     * 
+     * @param categoryId The category ID to filter by
+     * @return List of products in the category
      */
-    suspend fun findById(id: String): Result<Product>
+    suspend fun getByCategory(categoryId: Int): List<Product>
+    
+    /**
+     * Finds a product by its branchProductId.
+     * 
+     * Per DATABASE_SCHEMA.md: Document ID is branchProductId.
+     * 
+     * @param branchProductId The product's unique identifier
+     * @return Product if found, null otherwise
+     */
+    suspend fun getById(branchProductId: Int): Product?
     
     /**
      * Searches products by name (partial match).
+     * 
+     * Per DATABASE_SCHEMA.md: Uses full-text index on productName.
      * 
      * @param query The search query
      * @return List of matching products
@@ -39,5 +59,4 @@ interface ProductRepository {
 /**
  * Error thrown when a product cannot be found.
  */
-class ProductNotFoundException(val sku: String) : Exception("Product not found: $sku")
-
+class ProductNotFoundException(val barcode: String) : Exception("Product not found: $barcode")

@@ -30,13 +30,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Koin dependency injection: `AppModule` aggregating all feature modules
 - Integration tests for `LoginViewModel` (6 test cases)
 - Checkout feature domain models: `Product`, `CartItem`, `Cart` with BigDecimal precision
-- Checkout feature domain model: `Cart.addProduct()` with quantity increment logic
+- Checkout feature domain model: `ItemNumber`, `ProductTax`, `ProductSale` supporting types
+- Checkout feature domain model: `Cart.addProduct()` with quantity increment by branchProductId
 - Checkout feature hardware abstraction: `ScannerRepository` interface with `Flow<String>`
-- Checkout feature data interface: `ProductRepository` with `findBySku()` method
+- Checkout feature data interface: `ProductRepository` with `getByBarcode()` method (per DATABASE_SCHEMA.md)
 - Checkout feature business logic: `ScanItemUseCase` reactive scanning with cart management
-- Checkout feature data layer: `FakeProductRepository` with sample products (Apple, Banana, etc.)
+- Checkout feature data layer: `FakeProductRepository` with schema-compliant sample data
 - Checkout feature data layer: `FakeScannerRepository` with `emitScan()` for testing
-- Unit tests for `ScanItemUseCase` (9 test cases including BigDecimal precision tests)
+- Unit tests for `ScanItemUseCase` (12 test cases including schema compliance tests)
 
 ### Changed
 - Renamed application from "GrowPOS" to "GroPOS" across all documentation files (39 occurrences in 8 files)
+
+### Refactored
+- **BREAKING**: Refactored `Product` model to align with DATABASE_SCHEMA.md
+  - Changed `id` to `branchProductId` (Int)
+  - Changed `name` to `productName`
+  - Changed `price` to `retailPrice`
+  - Changed `sku` to `itemNumbers: List<ItemNumber>` (supports multiple barcodes)
+  - Added schema-required fields: category, department, taxes, currentSale, etc.
+- **BREAKING**: Refactored `CartItem` to align with TransactionItem schema
+  - Changed `quantity` to `quantityUsed`
+  - Added `priceUsed`, `taxPerUnit`, `taxTotal`, `crvRatePerUnit` fields
+  - Added computed properties matching schema: subTotal, savingsTotal, lineTotal
+- **BREAKING**: Refactored `ProductRepository` interface
+  - Renamed `findBySku()` to `getByBarcode()` per schema specification
+  - Added `getByCategory(categoryId: Int)` method
+  - Changed return types to nullable (null instead of Result.failure)
+- Updated `FakeProductRepository` to use schema example data (Milk: branchProductId=12345)
