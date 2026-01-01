@@ -7,6 +7,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased] - 2026-01-01
 
 ### Added
+- **Product Lookup Dialog**: Full product search/browse dialog (per SCREEN_LAYOUTS.md)
+  - Created `ProductLookupDialog.kt` with categories sidebar and products grid
+  - Extended `ProductRepository` with `searchProducts(query)` and `getCategories()` methods
+  - Updated `FakeProductRepository` to support combined search (name + barcode)
+  - Added lookup state management to `CheckoutUiState` and `CheckoutViewModel`
+  - Integrated with checkout screen via "Lookup" button in Functions Grid
+  - Auto-focus search field on dialog open
+  - SNAP eligibility badge on product cards
+  - Category filtering and "All Products" view
+  - Product selection adds item to cart and closes dialog
 - **Multi-Window State Synchronization**: Implemented true cross-window cart state sharing
   - Created `CartRepository` interface in domain layer (Single Source of Truth pattern)
   - Created `CartRepositoryImpl` as singleton for shared cart state across windows

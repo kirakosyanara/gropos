@@ -3,6 +3,7 @@ package com.unisight.gropos.features.checkout.data
 import com.unisight.gropos.features.checkout.domain.model.ItemNumber
 import com.unisight.gropos.features.checkout.domain.model.Product
 import com.unisight.gropos.features.checkout.domain.model.ProductTax
+import com.unisight.gropos.features.checkout.domain.repository.LookupCategory
 import com.unisight.gropos.features.checkout.domain.repository.ProductRepository
 import java.math.BigDecimal
 
@@ -163,6 +164,49 @@ class FakeProductRepository : ProductRepository {
         return products.values.filter { 
             it.productName.lowercase().contains(lowercaseQuery) 
         }
+    }
+    
+    /**
+     * Searches products by name OR barcode.
+     * 
+     * Per SCREEN_LAYOUTS.md: Product Lookup Dialog supports search by name and barcode.
+     * Searches both productName (LIKE) and itemNumbers (exact match).
+     */
+    override suspend fun searchProducts(query: String): List<Product> {
+        if (query.isBlank()) {
+            return products.values
+                .filter { it.isActive && it.isForSale }
+                .sortedBy { it.productName }
+        }
+        
+        val lowercaseQuery = query.lowercase().trim()
+        return products.values.filter { product ->
+            // Match by product name (partial)
+            product.productName.lowercase().contains(lowercaseQuery) ||
+            // Match by barcode (exact or partial)
+            product.itemNumbers.any { 
+                it.itemNumber.contains(lowercaseQuery) 
+            }
+        }.filter { it.isActive && it.isForSale }
+    }
+    
+    /**
+     * Gets all available lookup categories.
+     * 
+     * Per DATA_MODELS.md: Builds categories from product catalog.
+     */
+    override suspend fun getCategories(): List<LookupCategory> {
+        return products.values
+            .filter { it.isActive && it.isForSale && it.category != null }
+            .groupBy { it.category!! to (it.categoryName ?: "Unknown") }
+            .map { (categoryPair, _) ->
+                LookupCategory(
+                    id = categoryPair.first,
+                    name = categoryPair.second,
+                    displayOrder = categoryPair.first
+                )
+            }
+            .sortedBy { it.displayOrder }
     }
     
     /**

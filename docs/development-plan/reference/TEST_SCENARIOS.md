@@ -1,4 +1,4 @@
-# GroPOS Test Scenarios
+# GrowPOS Test Scenarios
 
 > Complete test scenarios for validating calculation accuracy and feature functionality
 
@@ -821,7 +821,7 @@ fun `SNAP payment reduces tax on partially covered items`() {
         branchProductId = 100,
         productName = "Prepared Food",
         retailPrice = BigDecimal("10.00"),
-        isSnapEligible = true,
+        isFoodStampEligible = true,
         taxes = listOf(
             ProductTaxViewModel(taxId = 2, tax = "Food Tax", percent = BigDecimal("2.0"))
         )

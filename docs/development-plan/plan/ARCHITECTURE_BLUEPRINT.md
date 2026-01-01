@@ -1,15 +1,15 @@
-# GroPOS Architecture Blueprint: Kotlin + Compose Multiplatform
+# GrowPOS Architecture Blueprint: Kotlin + Compose Multiplatform
 
 **Version:** 1.0  
 **Status:** Development Plan  
 **Date:** January 2026  
-**Purpose:** Complete guide to build GroPOS from scratch with Kotlin + Compose Multiplatform
+**Purpose:** Complete guide to build GrowPOS from scratch with Kotlin + Compose Multiplatform
 
 ---
 
 ## Executive Summary
 
-This document is the complete blueprint for building GroPOS from scratch using **Kotlin + Compose Multiplatform**. A single codebase will power **Windows**, **Linux**, and **Android** platforms with full hardware integration, modern architecture, and exceptional maintainability.
+This document is the complete blueprint for building GrowPOS from scratch using **Kotlin + Compose Multiplatform**. A single codebase will power **Windows**, **Linux**, and **Android** platforms with full hardware integration, modern architecture, and exceptional maintainability.
 
 ### Why This Will Be Awesome
 
@@ -760,7 +760,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "GroPOS"
+rootProject.name = "GrowPOS"
 include(":shared")
 include(":desktopApp")
 include(":androidApp")
@@ -866,7 +866,7 @@ public class TransactionItem {
     private BigDecimal quantity;
     private BigDecimal lineTotal;
     private BigDecimal taxAmount;
-    private Boolean isSnapEligible;
+    private Boolean isFoodStampable;
     // ... getters, setters, etc.
 }
 
@@ -879,7 +879,7 @@ data class TransactionItem(
     val unitPrice: BigDecimal,
     val quantity: BigDecimal = BigDecimal.ONE,
     val discounts: List<AppliedDiscount> = emptyList(),
-    val isSnapEligible: Boolean = false,
+    val isFoodStampable: Boolean = false,
     val isWicEligible: Boolean = false,
     val taxRates: List<TaxRate> = emptyList(),
     val crvAmount: BigDecimal = BigDecimal.ZERO
@@ -943,14 +943,14 @@ fun main() = application {
     // Main POS window
     Window(
         onCloseRequest = ::exitApplication,
-        title = "GroPOS",
+        title = "GrowPOS",
         state = rememberWindowState(
             width = 1280.dp,
             height = 800.dp,
             position = WindowPosition(Alignment.Center)
         )
     ) {
-        GroPOSTheme {
+        GrowPOSTheme {
             App()
         }
     }
@@ -969,7 +969,7 @@ fun main() = application {
                 placement = WindowPlacement.Fullscreen
             )
         ) {
-            GroPOSTheme {
+            GrowPOSTheme {
                 CustomerDisplayScreen()
             }
         }
@@ -1016,7 +1016,7 @@ class MainActivity : ComponentActivity() {
         }
         
         setContent {
-            GroPOSTheme {
+            GrowPOSTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -1054,8 +1054,8 @@ class MainActivity : ComponentActivity() {
 
 **Installation Location:**
 ```
-C:\Program Files\GroPOS\
-├── GroPOS.exe
+C:\Program Files\GrowPOS\
+├── GrowPOS.exe
 ├── runtime\                 # Bundled JRE
 ├── lib\                     # Application JARs
 ├── hardware\                # Hardware drivers
@@ -1072,7 +1072,7 @@ C:\Program Files\GroPOS\
 
 **Windows Service (Optional):**
 ```batch
-sc create GroPOS binPath= "C:\Program Files\GroPOS\GroPOS.exe --service"
+sc create GrowPOS binPath= "C:\Program Files\GrowPOS\GrowPOS.exe --service"
 ```
 
 ### 7.2 Linux
@@ -1105,7 +1105,7 @@ sudo chmod 666 /dev/ttyUSB*
 **Systemd Service:**
 ```ini
 [Unit]
-Description=GroPOS Point of Sale
+Description=GrowPOS Point of Sale
 After=network.target
 
 [Service]
@@ -1189,7 +1189,7 @@ class MainActivity : ComponentActivity() {
 include required("/stdlib/jdk/17/openjdk.conf")
 
 app {
-    display-name = "GroPOS"
+    display-name = "GrowPOS"
     fsname = growpos
     version = "2.0.0"
     
@@ -1316,7 +1316,7 @@ class TaxCalculatorTest {
             productId = "123",
             name = "Food Item",
             unitPrice = BigDecimal("10.00"),
-            isSnapEligible = true,
+            isFoodStampable = true,
             taxRates = listOf(TaxRate("CA", BigDecimal("9.5")))
         )
         

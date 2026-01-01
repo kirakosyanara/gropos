@@ -9,6 +9,7 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.unisight.gropos.features.auth.presentation.ui.LoginScreen
 import com.unisight.gropos.features.checkout.presentation.CheckoutViewModel
+import com.unisight.gropos.features.checkout.presentation.components.ProductLookupUiModel
 
 /**
  * Voyager Screen for the Checkout feature.
@@ -51,6 +52,22 @@ class CheckoutScreen : Screen {
                         // Navigate back to LoginScreen, replacing the entire stack
                         navigator.replaceAll(LoginScreen())
                     }
+                    // Product Lookup Events
+                    CheckoutEvent.OpenLookup -> {
+                        viewModel.onOpenLookup()
+                    }
+                    CheckoutEvent.CloseLookup -> {
+                        viewModel.onCloseLookup()
+                    }
+                    is CheckoutEvent.LookupSearchChange -> {
+                        viewModel.onLookupSearchChange(event.query)
+                    }
+                    is CheckoutEvent.LookupCategorySelect -> {
+                        viewModel.onLookupCategorySelect(event.categoryId)
+                    }
+                    is CheckoutEvent.ProductSelected -> {
+                        viewModel.onProductSelected(event.product)
+                    }
                 }
             }
         )
@@ -69,4 +86,11 @@ sealed interface CheckoutEvent {
     data object ClearCart : CheckoutEvent
     data object DismissScanEvent : CheckoutEvent
     data object Logout : CheckoutEvent
+    
+    // Product Lookup Dialog Events
+    data object OpenLookup : CheckoutEvent
+    data object CloseLookup : CheckoutEvent
+    data class LookupSearchChange(val query: String) : CheckoutEvent
+    data class LookupCategorySelect(val categoryId: Int?) : CheckoutEvent
+    data class ProductSelected(val product: ProductLookupUiModel) : CheckoutEvent
 }

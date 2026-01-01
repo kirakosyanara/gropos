@@ -51,6 +51,7 @@ import com.unisight.gropos.features.checkout.presentation.CheckoutItemUiModel
 import com.unisight.gropos.features.checkout.presentation.CheckoutTotalsUiModel
 import com.unisight.gropos.features.checkout.presentation.CheckoutUiState
 import com.unisight.gropos.features.checkout.presentation.ScanEvent
+import com.unisight.gropos.features.checkout.presentation.components.ProductLookupDialog
 
 // ============================================================================
 // Test Tags (per testing-strategy.mdc: Use testTag for UI testing)
@@ -144,7 +145,7 @@ fun CheckoutContent(
                 },
                 onPayClick = { /* TODO: Navigate to payment screen */ },
                 onClearCart = { onEvent(CheckoutEvent.ClearCart) },
-                onLookupClick = { /* TODO: Show lookup dialog */ },
+                onLookupClick = { onEvent(CheckoutEvent.OpenLookup) },
                 onRecallClick = { /* TODO: Show recall dialog */ },
                 onFunctionsClick = { /* TODO: Show functions panel */ },
                 modifier = Modifier
@@ -167,6 +168,16 @@ fun CheckoutContent(
                 modifier = Modifier.align(Alignment.BottomCenter)
             )
         }
+        
+        // Product Lookup Dialog
+        // Per SCREEN_LAYOUTS.md: Product Lookup Dialog for manual product selection
+        ProductLookupDialog(
+            state = state.lookupState,
+            onSearchQueryChange = { query -> onEvent(CheckoutEvent.LookupSearchChange(query)) },
+            onCategorySelect = { categoryId -> onEvent(CheckoutEvent.LookupCategorySelect(categoryId)) },
+            onProductSelect = { product -> onEvent(CheckoutEvent.ProductSelected(product)) },
+            onDismiss = { onEvent(CheckoutEvent.CloseLookup) }
+        )
     }
 }
 

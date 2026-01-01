@@ -1,6 +1,6 @@
-# GroPOS Build Checklist
+# GrowPOS Build Checklist
 
-Use this checklist to track progress as we build GroPOS from scratch with Kotlin + Compose Multiplatform. Let's make this awesome! 🚀
+Use this checklist to track progress as we build GrowPOS from scratch with Kotlin + Compose Multiplatform. Let's make this awesome! 🚀
 
 ---
 

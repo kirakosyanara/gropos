@@ -1,6 +1,6 @@
 # 🖥️ Platform Requirements & Configuration
 
-Everything you need to know about Windows, Linux, and Android — your target platforms for the new GroPOS.
+Everything you need to know about Windows, Linux, and Android — your target platforms for the new GrowPOS.
 
 ---
 
@@ -138,13 +138,13 @@ val serialSettings = SerialPortSettings(
 
 ```powershell
 # Silent installation
-msiexec /i GroPOS-2.0.0.msi /quiet /norestart
+msiexec /i GrowPOS-2.0.0.msi /quiet /norestart
 
 # Installation with custom path
-msiexec /i GroPOS-2.0.0.msi INSTALLDIR="D:\POS\GroPOS" /quiet
+msiexec /i GrowPOS-2.0.0.msi INSTALLDIR="D:\POS\GrowPOS" /quiet
 
 # Uninstallation
-msiexec /x GroPOS-2.0.0.msi /quiet
+msiexec /x GrowPOS-2.0.0.msi /quiet
 ```
 
 #### Auto-Start Configuration
@@ -154,7 +154,7 @@ msiexec /x GroPOS-2.0.0.msi /quiet
 Windows Registry Editor Version 5.00
 
 [HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Run]
-"GroPOS"="\"C:\\Program Files\\GroPOS\\GroPOS.exe\" --minimized"
+"GrowPOS"="\"C:\\Program Files\\GrowPOS\\GrowPOS.exe\" --minimized"
 ```
 
 **Task Scheduler (Recommended):**
@@ -168,7 +168,7 @@ Windows Registry Editor Version 5.00
   </Triggers>
   <Actions>
     <Exec>
-      <Command>C:\Program Files\GroPOS\GroPOS.exe</Command>
+      <Command>C:\Program Files\GrowPOS\GrowPOS.exe</Command>
     </Exec>
   </Actions>
   <Settings>
@@ -186,8 +186,8 @@ Windows Registry Editor Version 5.00
 ### 1.5 Windows Firewall Rules
 
 ```powershell
-# Allow GroPOS through firewall
-New-NetFirewallRule -DisplayName "GroPOS" -Direction Inbound -Program "C:\Program Files\GroPOS\GroPOS.exe" -Action Allow
+# Allow GrowPOS through firewall
+New-NetFirewallRule -DisplayName "GrowPOS" -Direction Inbound -Program "C:\Program Files\GrowPOS\GrowPOS.exe" -Action Allow
 
 # Allow PAX terminal communication
 New-NetFirewallRule -DisplayName "PAX Terminal" -Direction Inbound -LocalPort 10009 -Protocol TCP -Action Allow
@@ -345,13 +345,13 @@ sudo dnf remove growpos
 
 ```bash
 # Make executable
-chmod +x GroPOS-2.0.0.AppImage
+chmod +x GrowPOS-2.0.0.AppImage
 
 # Run
-./GroPOS-2.0.0.AppImage
+./GrowPOS-2.0.0.AppImage
 
 # Optional: Integrate with desktop
-./GroPOS-2.0.0.AppImage --install
+./GrowPOS-2.0.0.AppImage --install
 ```
 
 ### 2.6 Systemd Service
@@ -360,7 +360,7 @@ Create `/etc/systemd/system/growpos.service`:
 
 ```ini
 [Unit]
-Description=GroPOS Point of Sale Application
+Description=GrowPOS Point of Sale Application
 After=network.target graphical.target
 Wants=graphical.target
 
@@ -547,11 +547,11 @@ dependencies {
     <uses-feature android:name="android.hardware.nfc" android:required="false" />
     
     <application
-        android:name=".GroPOSApplication"
-        android:label="GroPOS"
+        android:name=".GrowPOSApplication"
+        android:label="GrowPOS"
         android:icon="@mipmap/ic_launcher"
         android:allowBackup="false"
-        android:theme="@style/Theme.GroPOS">
+        android:theme="@style/Theme.GrowPOS">
         
         <activity
             android:name=".MainActivity"
@@ -600,7 +600,7 @@ class MainActivity : ComponentActivity() {
         }
         
         setContent {
-            GroPOSTheme {
+            GrowPOSTheme {
                 App()
             }
         }
@@ -705,7 +705,7 @@ actual fun getPlatformKeyboardShortcuts() = KeyboardShortcuts(
 
 | Platform | App Data | Cache | Database |
 |----------|----------|-------|----------|
-| Windows | `%APPDATA%\GroPOS` | `%LOCALAPPDATA%\GroPOS\cache` | `%APPDATA%\GroPOS\db` |
+| Windows | `%APPDATA%\GrowPOS` | `%LOCALAPPDATA%\GrowPOS\cache` | `%APPDATA%\GrowPOS\db` |
 | Linux | `~/.local/share/growpos` | `~/.cache/growpos` | `~/.local/share/growpos/db` |
 | Android | `context.filesDir` | `context.cacheDir` | `context.getDatabasePath()` |
 
