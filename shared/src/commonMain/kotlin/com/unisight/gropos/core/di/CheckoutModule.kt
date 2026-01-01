@@ -90,8 +90,15 @@ val checkoutModule: Module = module {
      * 
      * Factory scope - each screen gets a fresh instance.
      * All instances share the same CartRepository singleton.
+     * 
+     * Dependencies:
+     * - ScanItemUseCase: For processing scanned barcodes
+     * - ScannerRepository: For hardware scanner flow
+     * - CartRepository: Shared cart state (singleton)
+     * - ProductRepository: For product lookup dialog
+     * - CurrencyFormatter: For price formatting
      */
-    factory { CheckoutViewModel(get(), get(), get(), get()) }
+    factory { CheckoutViewModel(get(), get(), get(), get(), get()) }
     
     /**
      * Customer Display ViewModel/ScreenModel.

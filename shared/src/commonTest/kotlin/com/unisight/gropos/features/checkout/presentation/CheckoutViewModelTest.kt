@@ -56,6 +56,7 @@ class CheckoutViewModelTest {
             scanItemUseCase = useCase,
             scannerRepository = fakeScanner,
             cartRepository = cartRepository,
+            productRepository = fakeProducts,
             currencyFormatter = currencyFormatter,
             scope = testScope
         )

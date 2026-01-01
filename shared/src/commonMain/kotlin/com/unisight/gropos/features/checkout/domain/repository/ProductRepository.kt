@@ -54,7 +54,39 @@ interface ProductRepository {
      * @return List of matching products
      */
     suspend fun searchByName(query: String): List<Product>
+    
+    /**
+     * Searches products by name OR barcode.
+     * 
+     * Per SCREEN_LAYOUTS.md: Product Lookup Dialog supports search by name and barcode.
+     * This is the main search method for the lookup dialog.
+     * 
+     * @param query The search query (can be product name or barcode)
+     * @return List of matching products
+     */
+    suspend fun searchProducts(query: String): List<Product>
+    
+    /**
+     * Gets all available lookup categories.
+     * 
+     * Per DATA_MODELS.md: LookupGroupViewModel used for category navigation.
+     * 
+     * @return List of categories with their products
+     */
+    suspend fun getCategories(): List<LookupCategory>
 }
+
+/**
+ * Lookup category for product navigation grid.
+ * 
+ * Per DATA_MODELS.md: LookupGroupViewModel structure.
+ */
+data class LookupCategory(
+    val id: Int,
+    val name: String,
+    val imageUrl: String? = null,
+    val displayOrder: Int = 0
+)
 
 /**
  * Error thrown when a product cannot be found.

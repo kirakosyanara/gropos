@@ -2,6 +2,7 @@ package com.unisight.gropos.features.checkout.presentation
 
 import com.unisight.gropos.features.checkout.domain.model.Cart
 import com.unisight.gropos.features.checkout.domain.model.CartItem
+import com.unisight.gropos.features.checkout.presentation.components.ProductLookupState
 
 /**
  * UI model for displaying a cart item.
@@ -65,6 +66,7 @@ sealed interface ScanEvent {
  * @property isLoading Whether a scan operation is in progress
  * @property lastScanEvent The last scan event for user feedback
  * @property isEmpty Whether the cart is empty
+ * @property lookupState State for the Product Lookup Dialog
  */
 data class CheckoutUiState(
     val items: List<CheckoutItemUiModel> = emptyList(),
@@ -77,7 +79,8 @@ data class CheckoutUiState(
     ),
     val isLoading: Boolean = false,
     val lastScanEvent: ScanEvent? = null,
-    val isEmpty: Boolean = true
+    val isEmpty: Boolean = true,
+    val lookupState: ProductLookupState = ProductLookupState()
 ) {
     companion object {
         /**

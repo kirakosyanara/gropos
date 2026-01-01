@@ -5,9 +5,13 @@ import cafe.adriel.voyager.core.model.screenModelScope
 import com.unisight.gropos.core.util.CurrencyFormatter
 import com.unisight.gropos.features.checkout.domain.model.Cart
 import com.unisight.gropos.features.checkout.domain.model.CartItem
+import com.unisight.gropos.features.checkout.domain.model.Product
 import com.unisight.gropos.features.checkout.domain.repository.CartRepository
+import com.unisight.gropos.features.checkout.domain.repository.ProductRepository
 import com.unisight.gropos.features.checkout.domain.repository.ScannerRepository
 import com.unisight.gropos.features.checkout.domain.usecase.ScanItemUseCase
+import com.unisight.gropos.features.checkout.presentation.components.ProductLookupState
+import com.unisight.gropos.features.checkout.presentation.components.ProductLookupUiModel
 import com.unisight.gropos.features.checkout.domain.usecase.ScanResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -39,6 +43,7 @@ class CheckoutViewModel(
     private val scanItemUseCase: ScanItemUseCase,
     private val scannerRepository: ScannerRepository,
     private val cartRepository: CartRepository,
+    private val productRepository: ProductRepository,
     private val currencyFormatter: CurrencyFormatter,
     // Inject scope for testability (per testing-strategy.mdc)
     private val scope: CoroutineScope? = null
@@ -169,6 +174,182 @@ class CheckoutViewModel(
      */
     fun onDismissScanEvent() {
         _state.value = _state.value.copy(lastScanEvent = null)
+    }
+    
+    // ========================================================================
+    // Product Lookup Dialog
+    // Per SCREEN_LAYOUTS.md: Product Lookup Dialog for manual product selection
+    // ========================================================================
+    
+    /**
+     * Opens the Product Lookup Dialog.
+     * 
+     * Loads categories and initial product list.
+     */
+    fun onOpenLookup() {
+        effectiveScope.launch {
+            _state.value = _state.value.copy(
+                lookupState = _state.value.lookupState.copy(
+                    isVisible = true,
+                    isLoading = true,
+                    searchQuery = "",
+                    selectedCategoryId = null
+                )
+            )
+            
+            try {
+                val categories = productRepository.getCategories()
+                val products = productRepository.searchProducts("")
+                
+                _state.value = _state.value.copy(
+                    lookupState = _state.value.lookupState.copy(
+                        categories = categories,
+                        products = products.map { mapProductToLookupUiModel(it) },
+                        isLoading = false
+                    )
+                )
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(
+                    lookupState = _state.value.lookupState.copy(
+                        isLoading = false,
+                        error = e.message ?: "Failed to load products"
+                    )
+                )
+            }
+        }
+    }
+    
+    /**
+     * Closes the Product Lookup Dialog.
+     */
+    fun onCloseLookup() {
+        _state.value = _state.value.copy(
+            lookupState = ProductLookupState()
+        )
+    }
+    
+    /**
+     * Handles search query changes in the lookup dialog.
+     * 
+     * @param query The search query (product name or barcode)
+     */
+    fun onLookupSearchChange(query: String) {
+        _state.value = _state.value.copy(
+            lookupState = _state.value.lookupState.copy(
+                searchQuery = query,
+                isLoading = true
+            )
+        )
+        
+        effectiveScope.launch {
+            try {
+                val products = if (query.isBlank() && _state.value.lookupState.selectedCategoryId != null) {
+                    productRepository.getByCategory(_state.value.lookupState.selectedCategoryId!!)
+                } else {
+                    productRepository.searchProducts(query)
+                }
+                
+                _state.value = _state.value.copy(
+                    lookupState = _state.value.lookupState.copy(
+                        products = products.map { mapProductToLookupUiModel(it) },
+                        isLoading = false
+                    )
+                )
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(
+                    lookupState = _state.value.lookupState.copy(
+                        isLoading = false,
+                        error = e.message ?: "Search failed"
+                    )
+                )
+            }
+        }
+    }
+    
+    /**
+     * Handles category selection in the lookup dialog.
+     * 
+     * @param categoryId The selected category ID (null for "All Products")
+     */
+    fun onLookupCategorySelect(categoryId: Int?) {
+        _state.value = _state.value.copy(
+            lookupState = _state.value.lookupState.copy(
+                selectedCategoryId = categoryId,
+                isLoading = true,
+                searchQuery = "" // Clear search when switching categories
+            )
+        )
+        
+        effectiveScope.launch {
+            try {
+                val products = if (categoryId != null) {
+                    productRepository.getByCategory(categoryId)
+                } else {
+                    productRepository.searchProducts("")
+                }
+                
+                _state.value = _state.value.copy(
+                    lookupState = _state.value.lookupState.copy(
+                        products = products.map { mapProductToLookupUiModel(it) },
+                        isLoading = false
+                    )
+                )
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(
+                    lookupState = _state.value.lookupState.copy(
+                        isLoading = false,
+                        error = e.message ?: "Failed to load category"
+                    )
+                )
+            }
+        }
+    }
+    
+    /**
+     * Handles product selection from the lookup dialog.
+     * 
+     * Per requirement: Call cartRepository.addToCart(product) -> Close Dialog.
+     * 
+     * @param productUiModel The selected product
+     */
+    fun onProductSelected(productUiModel: ProductLookupUiModel) {
+        effectiveScope.launch {
+            try {
+                // Get the full product by ID
+                val product = productRepository.getById(productUiModel.branchProductId)
+                if (product != null) {
+                    // Add to cart
+                    cartRepository.addToCart(product)
+                    
+                    // Show success feedback
+                    _state.value = _state.value.copy(
+                        lastScanEvent = ScanEvent.ProductAdded(product.productName)
+                    )
+                }
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(
+                    lastScanEvent = ScanEvent.Error(e.message ?: "Failed to add product")
+                )
+            }
+            
+            // Close the dialog
+            onCloseLookup()
+        }
+    }
+    
+    /**
+     * Maps a Product domain model to ProductLookupUiModel.
+     */
+    private fun mapProductToLookupUiModel(product: Product): ProductLookupUiModel {
+        return ProductLookupUiModel(
+            branchProductId = product.branchProductId,
+            name = product.productName,
+            price = currencyFormatter.format(product.retailPrice),
+            // imageUrl is not in our current Product model, default to null
+            imageUrl = null,
+            isSnapEligible = product.isSnapEligible,
+            barcode = product.itemNumbers.firstOrNull()?.itemNumber
+        )
     }
     
     /**

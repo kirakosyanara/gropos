@@ -1,4 +1,4 @@
-# GroPOS CouchbaseLite Database Schema
+# GrowPOS CouchbaseLite Database Schema
 
 > Complete document structure, collections, indexes, and sync configuration
 
@@ -17,7 +17,7 @@
 
 ## Overview
 
-GroPOS uses **CouchbaseLite** as the embedded NoSQL database for offline-first operation. Documents are stored as JSON with type-safe model mappings.
+GrowPOS uses **CouchbaseLite** as the embedded NoSQL database for offline-first operation. Documents are stored as JSON with type-safe model mappings.
 
 ### Database Configuration
 
@@ -122,7 +122,7 @@ Transactions awaiting sync.
   
   "soldById": "Quantity",
   "soldByName": "Each",
-  "isSnapEligible": true,
+  "isFoodStampEligible": true,
   "isActive": true,
   "isForSale": true,
   "ageRestriction": "NO",
@@ -221,7 +221,7 @@ Transactions awaiting sync.
       "isFloorPriceOverridden": false,
       "soldById": "Quantity",
       "taxIndicator": "F",
-      "isSnapEligible": true,
+      "isFoodStampEligible": true,
       "scanDateTime": "2024-01-15T10:31:00Z"
     }
   ],

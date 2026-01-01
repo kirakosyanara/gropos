@@ -1,4 +1,4 @@
-# GroPOS Localization Strings Reference
+# GrowPOS Localization Strings Reference
 
 > Complete UI text and i18n key reference for all screens
 
@@ -17,7 +17,7 @@
 
 ## Overview
 
-GroPOS uses a properties-based internationalization system.
+GrowPOS uses a properties-based internationalization system.
 
 ### File Location
 
