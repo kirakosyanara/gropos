@@ -49,6 +49,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Checkout feature UI: Preview functions for all screen states (5 previews)
 - Koin dependency injection: `CheckoutModule` providing all checkout feature dependencies
 - Unit tests for `CheckoutViewModel` (14 test cases)
+- Core theme: `GroPOSTheme` Material3 theme with professional POS color palette
+- Navigation: Root `App.kt` with Voyager Navigator and GroPOSTheme wrapper
+- Navigation: `LoginScreen` → `CheckoutScreen` transition on successful login
+- Navigation: TopAppBar with logout button on `CheckoutScreen`
+- Navigation: `CheckoutEvent.Logout` event for logout action
 
 ### Changed
 - Renamed application from "GrowPOS" to "GroPOS" across all documentation files (39 occurrences in 8 files)
