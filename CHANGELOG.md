@@ -21,6 +21,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Auth feature data layer: `FakeAuthRepository` with simulated 500ms network delay
 - Unit tests for `ValidateLoginUseCase` (7 test cases, TDD approach)
 - `gradle.properties` with AndroidX and KMP configuration
+- Auth feature presentation layer: `LoginUiState` sealed interface (Idle, Loading, Success, Error)
+- Auth feature presentation layer: `LoginViewModel` using Voyager ScreenModel
+- Auth feature presentation layer: `LoginScreen` with Voyager navigation
+- Auth feature presentation layer: `LoginContent` composable with hoisted state
+- Auth feature presentation layer: Preview functions for all UI states
+- Koin dependency injection: `AuthModule` providing repository, use case, and viewmodel
+- Koin dependency injection: `AppModule` aggregating all feature modules
+- Integration tests for `LoginViewModel` (6 test cases)
 
 ### Changed
 - Renamed application from "GrowPOS" to "GroPOS" across all documentation files (39 occurrences in 8 files)
