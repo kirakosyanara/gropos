@@ -38,6 +38,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Checkout feature data layer: `FakeProductRepository` with schema-compliant sample data
 - Checkout feature data layer: `FakeScannerRepository` with `emitScan()` for testing
 - Unit tests for `ScanItemUseCase` (12 test cases including schema compliance tests)
+- Core utility: `CurrencyFormatter` interface with `UsdCurrencyFormatter` implementation
+- Checkout feature presentation layer: `CheckoutUiState` with `CheckoutItemUiModel`, `CheckoutTotalsUiModel`
+- Checkout feature presentation layer: `CheckoutViewModel` with reactive scanner flow collection
+- Checkout feature presentation layer: `CheckoutScreen` (Voyager) with standard POS layout
+- Checkout feature presentation layer: `CheckoutContent` composable with LazyColumn and totals panel
+- Checkout feature UI: SNAP eligibility badge displayed for `isSnapEligible` items
+- Checkout feature UI: Scan feedback snackbar for ProductAdded/NotFound events
+- Checkout feature UI: Empty cart state with placeholder
+- Checkout feature UI: Preview functions for all screen states (5 previews)
+- Koin dependency injection: `CheckoutModule` providing all checkout feature dependencies
+- Unit tests for `CheckoutViewModel` (14 test cases)
 
 ### Changed
 - Renamed application from "GrowPOS" to "GroPOS" across all documentation files (39 occurrences in 8 files)
