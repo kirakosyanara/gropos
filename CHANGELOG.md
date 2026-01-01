@@ -7,6 +7,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased] - 2026-01-01
 
 ### Added
+- **Payment Screen**: Full payment flow with split tender support (per SCREEN_LAYOUTS.md)
+  - Created `PayScreen.kt` and `PayContent.kt` with horizontal split layout
+  - Left panel: Transaction summary, SNAP eligible total, payments applied, remaining amount
+  - Right panel: Payment method tabs (Cash, Charge, EBT, Other), TenKey
+  - Created `PaymentViewModel` observing shared `CartRepository` singleton
+  - SNAP eligibility displayed separately from non-SNAP totals (per PAYMENT_PROCESSING.md)
+  - Cash payments: Quick amounts ($1-$100), exact change, entered amount
+  - Split tender: Multiple payments tracked and displayed
+  - Change dialog shown when cash overpaid
+  - Card/EBT payments show placeholder message (terminal not connected)
+  - Navigation from Checkout "Pay" button to Payment screen
+  - Created `PaymentModule.kt` for Koin DI
+  - Domain models: `PaymentType`, `PaymentStatus`, `PaymentResponse`, `AppliedPayment`
 - **Product Lookup Dialog**: Full product search/browse dialog (per SCREEN_LAYOUTS.md)
   - Created `ProductLookupDialog.kt` with categories sidebar and products grid
   - Extended `ProductRepository` with `searchProducts(query)` and `getCategories()` methods
