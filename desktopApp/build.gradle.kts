@@ -23,6 +23,9 @@ kotlin {
                 
                 // Coroutines for Swing event loop
                 implementation(libs.kotlinx.coroutines.swing)
+                
+                // Koin for dependency injection
+                implementation(libs.koin.core)
             }
         }
         

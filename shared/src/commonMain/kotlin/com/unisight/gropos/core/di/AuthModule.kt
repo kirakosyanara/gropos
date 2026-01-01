@@ -4,7 +4,6 @@ import com.unisight.gropos.features.auth.data.FakeAuthRepository
 import com.unisight.gropos.features.auth.domain.repository.AuthRepository
 import com.unisight.gropos.features.auth.domain.usecase.ValidateLoginUseCase
 import com.unisight.gropos.features.auth.presentation.LoginViewModel
-import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.bind
 import org.koin.dsl.module
@@ -26,9 +25,10 @@ val authModule = module {
     singleOf(::FakeAuthRepository) bind AuthRepository::class
     
     // Domain Layer
-    factoryOf(::ValidateLoginUseCase)
+    factory { ValidateLoginUseCase(get()) }
     
     // Presentation Layer
-    factoryOf(::LoginViewModel)
+    // Note: LoginViewModel has optional CoroutineScope for testing, but we don't provide it
+    // at runtime - it will use screenModelScope internally
+    factory { LoginViewModel(get()) }
 }
-
