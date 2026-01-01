@@ -1,5 +1,6 @@
 package com.unisight.gropos.features.checkout.domain.usecase
 
+import com.unisight.gropos.features.checkout.data.CartRepositoryImpl
 import com.unisight.gropos.features.checkout.data.FakeProductRepository
 import com.unisight.gropos.features.checkout.data.FakeScannerRepository
 import com.unisight.gropos.features.checkout.domain.model.ItemNumber
@@ -27,9 +28,24 @@ import kotlin.test.assertTrue
  * - Products identified by branchProductId
  * - Barcodes are in itemNumbers array
  * - Uses getByBarcode for lookup
+ * 
+ * Per ARCHITECTURE_BLUEPRINT.md:
+ * - ScanItemUseCase uses CartRepository for cart state
+ * - CartRepository is singleton in production, fresh instance per test
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ScanItemUseCaseTest {
+    
+    /**
+     * Creates test dependencies with fresh CartRepository.
+     */
+    private fun createUseCase(
+        fakeScanner: FakeScannerRepository = FakeScannerRepository(),
+        fakeProducts: FakeProductRepository = FakeProductRepository()
+    ): ScanItemUseCase {
+        val cartRepository = CartRepositoryImpl()
+        return ScanItemUseCase(fakeScanner, fakeProducts, cartRepository)
+    }
     
     // ========================================================================
     // Test Scenario from Requirements (Using Schema Data)
@@ -38,9 +54,7 @@ class ScanItemUseCaseTest {
     @Test
     fun `scanning Apple barcode should result in cart total of 1_00`() = runTest {
         // Given - Using schema-compliant data
-        val fakeScanner = FakeScannerRepository()
-        val fakeProducts = FakeProductRepository()
-        val useCase = ScanItemUseCase(fakeScanner, fakeProducts)
+        val useCase = createUseCase()
         
         // When - scan Apple (barcode: "111", retailPrice: $1.00)
         val result = useCase.processScan("111")
@@ -57,9 +71,7 @@ class ScanItemUseCaseTest {
     @Test
     fun `scanning Apple barcode twice should result in cart total of 2_00`() = runTest {
         // Given
-        val fakeScanner = FakeScannerRepository()
-        val fakeProducts = FakeProductRepository()
-        val useCase = ScanItemUseCase(fakeScanner, fakeProducts)
+        val useCase = createUseCase()
         
         // When - scan Apple twice (barcode: "111")
         useCase.processScan("111")
@@ -93,9 +105,7 @@ class ScanItemUseCaseTest {
     fun `scanning Milk primary barcode should find product`() = runTest {
         // Given - Per DATABASE_SCHEMA.md: Milk has branchProductId 12345
         // Primary barcode: 070000000121
-        val fakeScanner = FakeScannerRepository()
-        val fakeProducts = FakeProductRepository()
-        val useCase = ScanItemUseCase(fakeScanner, fakeProducts)
+        val useCase = createUseCase()
         
         // When - scan Milk primary barcode
         val result = useCase.processScan("070000000121")
@@ -117,9 +127,7 @@ class ScanItemUseCaseTest {
     @Test
     fun `scanning Milk secondary barcode should also find product`() = runTest {
         // Given - Milk has secondary barcode: 070000000122
-        val fakeScanner = FakeScannerRepository()
-        val fakeProducts = FakeProductRepository()
-        val useCase = ScanItemUseCase(fakeScanner, fakeProducts)
+        val useCase = createUseCase()
         
         // When - scan secondary barcode
         val result = useCase.processScan("070000000122")
@@ -138,7 +146,7 @@ class ScanItemUseCaseTest {
         // Given
         val fakeScanner = FakeScannerRepository()
         val fakeProducts = FakeProductRepository()
-        val useCase = ScanItemUseCase(fakeScanner, fakeProducts)
+        val useCase = createUseCase(fakeScanner, fakeProducts)
         
         // Collect scan results in background
         val results = mutableListOf<ScanResult>()
@@ -173,9 +181,7 @@ class ScanItemUseCaseTest {
     @Test
     fun `scanning Banana should result in correct total`() = runTest {
         // Given
-        val fakeScanner = FakeScannerRepository()
-        val fakeProducts = FakeProductRepository()
-        val useCase = ScanItemUseCase(fakeScanner, fakeProducts)
+        val useCase = createUseCase()
         
         // When - scan Banana (barcode: "222", retailPrice: $0.50)
         val result = useCase.processScan("222")
@@ -191,9 +197,7 @@ class ScanItemUseCaseTest {
     @Test
     fun `scanning unknown barcode should return ProductNotFound`() = runTest {
         // Given
-        val fakeScanner = FakeScannerRepository()
-        val fakeProducts = FakeProductRepository()
-        val useCase = ScanItemUseCase(fakeScanner, fakeProducts)
+        val useCase = createUseCase()
         
         // When - scan unknown barcode
         val result = useCase.processScan("999999999")
@@ -213,9 +217,7 @@ class ScanItemUseCaseTest {
     @Test
     fun `clearCart should reset cart to empty`() = runTest {
         // Given
-        val fakeScanner = FakeScannerRepository()
-        val fakeProducts = FakeProductRepository()
-        val useCase = ScanItemUseCase(fakeScanner, fakeProducts)
+        val useCase = createUseCase()
         
         // Add some items
         useCase.processScan("111")
@@ -233,9 +235,7 @@ class ScanItemUseCaseTest {
     @Test
     fun `removeProduct should remove item by branchProductId`() = runTest {
         // Given
-        val fakeScanner = FakeScannerRepository()
-        val fakeProducts = FakeProductRepository()
-        val useCase = ScanItemUseCase(fakeScanner, fakeProducts)
+        val useCase = createUseCase()
         
         // Add items
         useCase.processScan("111") // Apple branchProductId=12346, $1.00
@@ -257,9 +257,7 @@ class ScanItemUseCaseTest {
     @Test
     fun `scanning multiple different products should calculate correct total`() = runTest {
         // Given
-        val fakeScanner = FakeScannerRepository()
-        val fakeProducts = FakeProductRepository()
-        val useCase = ScanItemUseCase(fakeScanner, fakeProducts)
+        val useCase = createUseCase()
         
         // When - scan various products
         useCase.processScan("111") // Apple $1.00
@@ -282,7 +280,6 @@ class ScanItemUseCaseTest {
     @Test
     fun `BigDecimal calculations should be precise for monetary values`() = runTest {
         // Given - create product with values that would cause floating point errors
-        val fakeScanner = FakeScannerRepository()
         val fakeProducts = FakeProductRepository()
         
         // Add a product with a price that causes floating point issues
@@ -298,7 +295,7 @@ class ScanItemUseCaseTest {
             )
         )
         
-        val useCase = ScanItemUseCase(fakeScanner, fakeProducts)
+        val useCase = createUseCase(fakeProducts = fakeProducts)
         
         // When - scan 3 times (0.10 + 0.10 + 0.10 = 0.30 exactly)
         // Note: 0.1 * 3 = 0.30000000000000004 in floating point
@@ -321,9 +318,7 @@ class ScanItemUseCaseTest {
     @Test
     fun `voidProduct should mark item as removed but keep in history`() = runTest {
         // Given
-        val fakeScanner = FakeScannerRepository()
-        val fakeProducts = FakeProductRepository()
-        val useCase = ScanItemUseCase(fakeScanner, fakeProducts)
+        val useCase = createUseCase()
         
         // Add items
         useCase.processScan("111") // Apple
