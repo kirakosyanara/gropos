@@ -1,0 +1,43 @@
+---
+alwaysApply: true
+---
+
+# Kotlin & Compose Coding Standards
+
+These rules enforce strict technical standards to prevent crashes, memory leaks, and "janky" UI in our mission-critical POS system.
+
+## 1. Safety & Nullability (The "No Crash" Rule)
+
+* **Zero Tolerance for `!!`:** You are strictly forbidden from using the non-null assertion operator (`!!`). Use `?.let`, `?:` (Elvis operator), or standard library functions to handle nulls safely.
+* **Safe Casting:** Always use safe casts (`as?`) combined with the Elvis operator rather than unsafe casts (`as`).
+* **Lateinit:** Avoid `lateinit var` whenever possible. Prefer nullable types or lazy initialization. If you must use it (e.g., Dependency Injection), ensure isInitialized checks are used if there is any doubt of lifecycle ordering.
+
+## 2. Jetpack Compose Stability & Performance
+
+* **State Hoisting:** Always hoist state to the highest common ancestor. Composables should be stateless whenever possible, receiving data via parameters and emitting events via lambdas.
+* **Stability Annotations:** All data classes used in Composable parameters must be marked `@Immutable` or `@Stable`. If a class contains `List` or `Map`, wrap it in an `@Immutable` wrapper or use `kotlinx.collections.immutable`.
+* **Modifier Ordering:** Follow strict ordering for Modifiers to ensure predictable UI rendering:
+    1.  `Size` (width/height)
+    2.  `Layout` (padding, offset)
+    3.  `Drawing` (background, border, clip)
+    4.  `Interaction` (clickable, scrollable)
+* **Keying Lazy Lists:** When using `LazyColumn` or `LazyRow`, you *must* provide a unique, stable `key` parameter for items to prevent performance degradation during updates.
+
+## 3. Error Handling & Result Types
+
+* **Exceptions are for Crashes only:** Do not use `try/catch` for expected business errors (e.g., "Card Declined", "Item Not Found").
+* **Result Pattern:** Return `Result<T>` or a sealed `NetworkResult` class for all Repository and UseCase operations.
+* **UI State Modeling:** UI State must be modeled as a sealed interface/class (e.g., `sealed interface UiState { object Loading, data class Success, data class Error }`). Never expose raw data directly without a state wrapper.
+
+## 4. Coroutines & Concurrency
+
+* **Dispatcher Injection:** Never hardcode `Dispatchers.IO` or `Dispatchers.Default`. All dispatchers must be injected via a `DispatcherProvider` to ensure unit tests can run synchronously.
+* **Structured Concurrency:** Use `viewModelScope` for ViewModel logic.
+* **Flows:**
+    * Expose `StateFlow` (not `LiveData` or `SharedFlow`) to the UI.
+    * Always use `.stateIn()` with `SharingStarted.WhileSubscribed(5000)` to prevent wasting resources when the UI is in the background.
+
+## 5. POS Hardware Interaction (Specific)
+
+* **Resource Cleanup:** Any interaction with hardware (Printer, Scanner, PinPad) must occur within a `use` block or a lifecycle-aware component that guarantees connection closure on degradation.
+* **Main Thread Blocking:** strictly forbid performing any I/O, database access, or heavy calculation on the Main/UI thread. Use `withContext(dispatchers.io)` explicitly.

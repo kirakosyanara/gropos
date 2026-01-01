@@ -1,0 +1,61 @@
+---
+alwaysApply: true
+---
+
+# Project Structure & Clean Architecture Rules
+
+These rules enforce strict Clean Architecture boundaries. This ensures that business logic remains independent of the UI and frameworks, making the system testable and upgradeable.
+
+## 1. Top-Level Organization: Feature-First
+
+Do not group by layer (e.g., `all_viewmodels`, `all_repositories`). Group code by **Feature**.
+
+* **Correct Structure:**
+    ```text
+    com.company.pos
+    ├── core/                # Shared utilities (Result, DispatcherProvider, Theme)
+    ├── features/
+    │   ├── checkout/        # Feature: Checkout
+    │   │   ├── data/
+    │   │   ├── domain/
+    │   │   └── presentation/
+    │   ├── inventory/       # Feature: Inventory Management
+    │   └── payments/        # Feature: Payment Processing
+    └── app/                 # DI Graph, Navigation Root, MainActivity
+    ```
+
+## 2. The Dependency Rule (Strict Import Bans)
+
+* **Domain Layer (`features/*/domain`):**
+    * **Role:** The pure business logic and rules.
+    * **Strict Ban:** MUST NOT import `android.*`, `androidx.*` (except Room entities *if* necessary, but prefer pure models), `retrofit2.*`, or `com.google.gson.*`.
+    * **Contents:** UseCases, Repository Interfaces, Pure Data Models.
+* **Data Layer (`features/*/data`):**
+    * **Role:** Data retrieval and storage.
+    * **Responsibilities:** Implements Repository Interfaces defined in Domain.
+    * **Requirement:** Must map "Data Transfer Objects" (DTOs) from API/DB to "Domain Models" before returning them. Never leak `@SerializedName` or JSON annotations into the Domain.
+* **Presentation Layer (`features/*/presentation`):**
+    * **Role:** UI and State management.
+    * **Dependencies:** Can depend on `Domain`. Must **never** depend on `Data` directly.
+    * **Contents:** ViewModels, Composables, Previews, UI State definitions.
+
+## 3. Naming Conventions
+
+* **Composables:** PascalCase, Noun-based. Must match the filename. (e.g., `ProductCard.kt` -> `@Composable fun ProductCard()`).
+* **ViewModels:** `[Feature]ViewModel` (e.g., `CheckoutViewModel`).
+* **Repositories:**
+    * Interface: `[Model]Repository` (in Domain).
+    * Implementation: `[Source][Model]Repository` (e.g., `OfflineFirstProductRepository` or `NetworkProductRepository` in Data).
+* **UseCases:** Verb-based. `[Verb][Noun]UseCase` (e.g., `CalculateTaxUseCase`, `PrintReceiptUseCase`).
+
+## 4. Module Boundaries & Navigation
+
+* **Navigation:** Features should not directly link to other features' classes. Use a `NavigationRoute` sealed interface or a central `Navigator` in the `core` module to decouple features.
+* **Core Module:** Only put truly universal code here (e.g., `DateUtils`, `CurrencyFormatter`, `BaseViewModel`). Do not dump "misc" business logic here.
+
+## 5. File Template Requirements
+
+When creating a new Feature, you must generate the full triad immediately to prevent shortcuts:
+1.  `Domain`: Define the Interface (`IPrinterRepository`).
+2.  `Data`: Implement the Interface (`ZebraPrinterRepository`).
+3.  `Presentation`: Create the ViewModel (`PrinterViewModel`) that depends on the Interface.

@@ -1,0 +1,58 @@
+---
+alwaysApply: true
+---
+
+# Git Standards & Version Control
+
+You act as the "Git Guardian" for this project. Since the user prefers to delegate Git best practices, you must enforce these rules proactively.
+
+## 1. Branching Strategy (GitFlow-ish)
+
+* **Protection:** Never commit directly to `main` or `master`.
+* **Naming Convention:** You must strictly name branches based on the work type:
+    * `feature/checkout-screen` (New features)
+    * `fix/scanner-crash` (Bug fixes)
+    * `refactor/payment-logic` (Code cleanup, no behavior change)
+    * `docs/update-readme` (Documentation only)
+    * `chore/bump-deps` (Build/Dependency updates)
+
+## 2. Conventional Commits
+
+All commit messages **must** follow the [Conventional Commits](https://www.conventionalcommits.org/) specification.
+
+* **Format:** `<type>(<scope>): <description>`
+* **Allowed Types:**
+    * `feat`: A new feature
+    * `fix`: A bug fix
+    * `docs`: Documentation only changes
+    * `style`: Formatting, missing semi-colons, etc (no code change)
+    * `refactor`: A code change that neither fixes a bug nor adds a feature
+    * `test`: Adding missing tests or correcting existing tests
+    * `chore`: Changes to the build process or auxiliary tools
+* **Example:** `feat(checkout): add tax calculation logic for hot food`
+
+## 3. Atomic Commits
+
+* **The "One Thing" Rule:** Do not bundle a refactor, a new feature, and a bug fix into a single commit.
+* **Agent Responsibility:** When you finish a task, you must suggest: *"I have completed the Tax Logic. Shall I commit this now before we move to the UI?"*
+
+## 4. The "No Broken Builds" Constraint
+
+* **Verification:** You are forbidden from suggesting a `git commit` command unless you are confident the code compiles.
+* **Pre-Check:** If you wrote code, you must assume we need to run `./gradlew testDebugUnitTest` before the commit is finalized.
+
+## 5. Pull Request (PR) Descriptions
+
+When the feature is done and ready to merge, you must generate a PR description in this format:
+
+```markdown
+## Summary
+(Brief explanation of what was changed)
+
+## Type of Change
+- [ ] New Feature
+- [ ] Bug Fix
+
+## Testing
+- [ ] Unit Tests added for `TaxUseCase`
+- [ ] Manual verification via "Scan Item" walkthrough
