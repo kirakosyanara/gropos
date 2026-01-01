@@ -11,36 +11,42 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.unisight.gropos.core.components.BarcodeInputField
+import com.unisight.gropos.core.components.DangerButton
+import com.unisight.gropos.core.components.ExtraLargeButton
+import com.unisight.gropos.core.components.FunctionsGrid
+import com.unisight.gropos.core.components.OutlineButton
+import com.unisight.gropos.core.components.SuccessButton
+import com.unisight.gropos.core.components.TenKey
+import com.unisight.gropos.core.components.TenKeyState
+import com.unisight.gropos.core.components.WhiteBox
+import com.unisight.gropos.core.theme.GroPOSColors
+import com.unisight.gropos.core.theme.GroPOSRadius
+import com.unisight.gropos.core.theme.GroPOSSpacing
 import com.unisight.gropos.features.checkout.presentation.CheckoutItemUiModel
 import com.unisight.gropos.features.checkout.presentation.CheckoutTotalsUiModel
 import com.unisight.gropos.features.checkout.presentation.CheckoutUiState
@@ -51,10 +57,14 @@ import com.unisight.gropos.features.checkout.presentation.ScanEvent
 // ============================================================================
 object CheckoutTestTags {
     const val SCREEN = "checkout_screen"
-    const val TOP_APP_BAR = "checkout_top_app_bar"
-    const val LOGOUT_BUTTON = "checkout_logout_button"
+    const val LEFT_PANEL = "checkout_left_panel"
+    const val RIGHT_PANEL = "checkout_right_panel"
     const val ITEMS_LIST = "checkout_items_list"
-    const val TOTALS_PANEL = "checkout_totals_panel"
+    const val TOTALS_CARD = "checkout_totals_card"
+    const val TEN_KEY = "checkout_ten_key"
+    const val FUNCTIONS_GRID = "checkout_functions_grid"
+    const val BARCODE_INPUT = "checkout_barcode_input"
+    const val PAY_BUTTON = "checkout_pay_button"
     const val EMPTY_STATE = "checkout_empty_state"
     const val LOADING_INDICATOR = "checkout_loading"
     const val SCAN_FEEDBACK = "checkout_scan_feedback"
@@ -63,459 +73,610 @@ object CheckoutTestTags {
     fun snapBadge(branchProductId: Int) = "snap_badge_$branchProductId"
 }
 
-// ============================================================================
-// Colors (POS-specific colors)
-// ============================================================================
-private val SnapGreen = Color(0xFF2E7D32)
-private val SnapBadgeBackground = Color(0xFFE8F5E9)
-private val SavingsColor = Color(0xFFD32F2F)
-
 /**
  * Main content composable for the Checkout screen.
  * 
- * Standard POS layout:
- * - TopAppBar with title and logout action
- * - Left/Top: List of items (LazyColumn)
- * - Right/Bottom: Totals panel
+ * Per SCREEN_LAYOUTS.md (Home Screen): 70/30 horizontal split layout.
+ * - LEFT (70%): Order list with info bar
+ * - RIGHT (30%): Totals, Ten-Key, Actions
  * 
  * Per code-quality.mdc: State hoisting - receives state and emits events.
  * Per Governance: No math here - all values are pre-formatted strings.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CheckoutContent(
     state: CheckoutUiState,
     onEvent: (CheckoutEvent) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Scaffold(
-        modifier = modifier.testTag(CheckoutTestTags.SCREEN),
-        topBar = {
-            TopAppBar(
-                modifier = Modifier.testTag(CheckoutTestTags.TOP_APP_BAR),
-                title = {
-                    Text(
-                        text = "GroPOS",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
-                ),
-                actions = {
-                    // Logout button
-                    IconButton(
-                        onClick = { onEvent(CheckoutEvent.Logout) },
-                        modifier = Modifier.testTag(CheckoutTestTags.LOGOUT_BUTTON)
-                    ) {
-                        // Using text instead of icon for simplicity (no icon imports needed)
-                        Text(
-                            text = "⏻",
-                            style = MaterialTheme.typography.titleLarge,
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
+    // Local state for barcode input
+    var barcodeInput by remember { mutableStateOf("") }
+    var tenKeyInput by remember { mutableStateOf("") }
+    
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .testTag(CheckoutTestTags.SCREEN)
+    ) {
+        Row(modifier = Modifier.fillMaxSize()) {
+            // ================================================================
+            // LEFT SECTION (70%) - Order List
+            // Per UI_DESIGN_SYSTEM.md: LightGray2 background (#E1E3E3)
+            // ================================================================
+            LeftPanel(
+                items = state.items,
+                isEmpty = state.isEmpty,
+                barcodeInput = barcodeInput,
+                onBarcodeChange = { barcodeInput = it },
+                onBarcodeSubmit = {
+                    if (barcodeInput.isNotBlank()) {
+                        onEvent(CheckoutEvent.ManualBarcodeEnter(barcodeInput))
+                        barcodeInput = ""
                     }
-                }
+                },
+                onRemoveItem = { id -> onEvent(CheckoutEvent.RemoveItem(id)) },
+                onLogout = { onEvent(CheckoutEvent.Logout) },
+                modifier = Modifier
+                    .weight(0.7f)
+                    .fillMaxHeight()
+                    .testTag(CheckoutTestTags.LEFT_PANEL)
+            )
+            
+            // ================================================================
+            // RIGHT SECTION (30%) - Totals, Ten-Key, Actions
+            // Per UI_DESIGN_SYSTEM.md: LightGray1 background (#EFF1F1)
+            // ================================================================
+            RightPanel(
+                totals = state.totals,
+                tenKeyInput = tenKeyInput,
+                onTenKeyDigit = { digit -> tenKeyInput += digit },
+                onTenKeyClear = { tenKeyInput = "" },
+                onTenKeyBackspace = { 
+                    if (tenKeyInput.isNotEmpty()) {
+                        tenKeyInput = tenKeyInput.dropLast(1)
+                    }
+                },
+                onTenKeyOk = { value ->
+                    if (value.isNotBlank()) {
+                        onEvent(CheckoutEvent.ManualBarcodeEnter(value))
+                        tenKeyInput = ""
+                    }
+                },
+                onPayClick = { /* TODO: Navigate to payment screen */ },
+                onClearCart = { onEvent(CheckoutEvent.ClearCart) },
+                onLookupClick = { /* TODO: Show lookup dialog */ },
+                onRecallClick = { /* TODO: Show recall dialog */ },
+                onFunctionsClick = { /* TODO: Show functions panel */ },
+                modifier = Modifier
+                    .weight(0.3f)
+                    .fillMaxHeight()
+                    .testTag(CheckoutTestTags.RIGHT_PANEL)
             )
         }
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxSize()
-            ) {
-                // Left Panel: Items List
-                ItemsListPanel(
-                    items = state.items,
-                    isEmpty = state.isEmpty,
-                    onRemoveItem = { id -> onEvent(CheckoutEvent.RemoveItem(id)) },
-                    modifier = Modifier
-                        .weight(0.6f)
-                        .fillMaxHeight()
-                )
-                
-                // Right Panel: Totals
-                TotalsPanel(
-                    totals = state.totals,
-                    onClearCart = { onEvent(CheckoutEvent.ClearCart) },
-                    modifier = Modifier
-                        .weight(0.4f)
-                        .fillMaxHeight()
-                )
-            }
-            
-            // Loading Overlay
-            if (state.isLoading) {
-                LoadingOverlay()
-            }
-            
-            // Scan Feedback Snackbar
-            state.lastScanEvent?.let { event ->
-                ScanFeedbackSnackbar(
-                    event = event,
-                    onDismiss = { onEvent(CheckoutEvent.DismissScanEvent) },
-                    modifier = Modifier.align(Alignment.BottomCenter)
-                )
-            }
+        
+        // Loading Overlay
+        if (state.isLoading) {
+            LoadingOverlay()
+        }
+        
+        // Scan Feedback Snackbar
+        state.lastScanEvent?.let { event ->
+            ScanFeedbackSnackbar(
+                event = event,
+                onDismiss = { onEvent(CheckoutEvent.DismissScanEvent) },
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
         }
     }
 }
 
-/**
- * Left panel containing the list of scanned items.
- */
+// ============================================================================
+// LEFT PANEL - Order List
+// ============================================================================
+
 @Composable
-private fun ItemsListPanel(
+private fun LeftPanel(
     items: List<CheckoutItemUiModel>,
     isEmpty: Boolean,
+    barcodeInput: String,
+    onBarcodeChange: (String) -> Unit,
+    onBarcodeSubmit: () -> Unit,
     onRemoveItem: (Int) -> Unit,
+    onLogout: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Surface(
-        modifier = modifier,
-        color = MaterialTheme.colorScheme.background
+    Column(
+        modifier = modifier
+            .background(GroPOSColors.LightGray2)
+            .padding(GroPOSSpacing.XXL)
     ) {
+        // Header Row with Logo and Logout
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "GroPOS",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = GroPOSColors.PrimaryGreen
+            )
+            
+            DangerButton(onClick = onLogout) {
+                Text("Logout")
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(GroPOSSpacing.M))
+        
+        // Barcode Input Field
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(GroPOSSpacing.S),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            BarcodeInputField(
+                value = barcodeInput,
+                onValueChange = onBarcodeChange,
+                onSubmit = onBarcodeSubmit,
+                modifier = Modifier
+                    .weight(1f)
+                    .testTag(CheckoutTestTags.BARCODE_INPUT)
+            )
+            SuccessButton(onClick = onBarcodeSubmit) {
+                Text("Add")
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(GroPOSSpacing.M))
+        
+        // Order List
         if (isEmpty) {
             EmptyCartState(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .fillMaxWidth()
+                    .weight(1f)
                     .testTag(CheckoutTestTags.EMPTY_STATE)
             )
         } else {
-            LazyColumn(
+            WhiteBox(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp)
-                    .testTag(CheckoutTestTags.ITEMS_LIST),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                    .fillMaxWidth()
+                    .weight(1f)
             ) {
-                items(
-                    items = items,
-                    key = { it.branchProductId }
-                ) { item ->
-                    CartItemRow(
-                        item = item,
-                        onRemove = { onRemoveItem(item.branchProductId) },
-                        modifier = Modifier.testTag(
-                            CheckoutTestTags.itemRow(item.branchProductId)
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .testTag(CheckoutTestTags.ITEMS_LIST),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(
+                        items = items,
+                        key = { it.branchProductId }
+                    ) { item ->
+                        OrderListItem(
+                            item = item,
+                            onRemove = { onRemoveItem(item.branchProductId) },
+                            modifier = Modifier.testTag(
+                                CheckoutTestTags.itemRow(item.branchProductId)
+                            )
                         )
-                    )
+                        HorizontalDivider(color = GroPOSColors.LightGray3)
+                    }
                 }
             }
         }
     }
 }
 
-/**
- * Individual cart item row.
- */
+// ============================================================================
+// RIGHT PANEL - Totals, Ten-Key, Actions
+// ============================================================================
+
 @Composable
-private fun CartItemRow(
-    item: CheckoutItemUiModel,
-    onRemove: () -> Unit,
+private fun RightPanel(
+    totals: CheckoutTotalsUiModel,
+    tenKeyInput: String,
+    onTenKeyDigit: (String) -> Unit,
+    onTenKeyClear: () -> Unit,
+    onTenKeyBackspace: () -> Unit,
+    onTenKeyOk: (String) -> Unit,
+    onPayClick: () -> Unit,
+    onClearCart: () -> Unit,
+    onLookupClick: () -> Unit,
+    onRecallClick: () -> Unit,
+    onFunctionsClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    Column(
+        modifier = modifier
+            .background(GroPOSColors.LightGray1)
+            .padding(horizontal = GroPOSSpacing.XXXL, vertical = GroPOSSpacing.M)
     ) {
+        // Totals Card
+        TotalsCard(
+            totals = totals,
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag(CheckoutTestTags.TOTALS_CARD)
+        )
+        
+        Spacer(modifier = Modifier.height(GroPOSSpacing.M))
+        
+        // Pay Button (Large, prominent)
+        ExtraLargeButton(
+            onClick = onPayClick,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(64.dp)
+                .testTag(CheckoutTestTags.PAY_BUTTON)
+        ) {
+            Text("PAY", fontWeight = FontWeight.Bold)
+        }
+        
+        Spacer(modifier = Modifier.height(GroPOSSpacing.M))
+        
+        // Ten-Key Input Display
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(GroPOSRadius.Small),
+            color = GroPOSColors.White
+        ) {
+            Text(
+                text = tenKeyInput.ifEmpty { "0" },
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.End,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(GroPOSSpacing.M)
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(GroPOSSpacing.S))
+        
+        // Ten-Key Pad
+        TenKey(
+            state = TenKeyState(inputValue = tenKeyInput),
+            onDigitClick = onTenKeyDigit,
+            onOkClick = onTenKeyOk,
+            onClearClick = onTenKeyClear,
+            onBackspaceClick = onTenKeyBackspace,
+            showQtyButton = true,
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag(CheckoutTestTags.TEN_KEY)
+        )
+        
+        Spacer(modifier = Modifier.weight(1f))
+        
+        // Functions Grid
+        FunctionsGrid(
+            onFunctionsClick = onFunctionsClick,
+            onLookupClick = onLookupClick,
+            onRecallClick = onRecallClick,
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag(CheckoutTestTags.FUNCTIONS_GRID)
+        )
+        
+        Spacer(modifier = Modifier.height(GroPOSSpacing.S))
+        
+        // Clear Cart Button
+        OutlineButton(
+            onClick = onClearCart,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Clear Cart")
+        }
+    }
+}
+
+// ============================================================================
+// Totals Card Component
+// ============================================================================
+
+@Composable
+private fun TotalsCard(
+    totals: CheckoutTotalsUiModel,
+    modifier: Modifier = Modifier
+) {
+    WhiteBox(modifier = modifier) {
+        // Item Count
+        Text(
+            text = totals.itemCount,
+            style = MaterialTheme.typography.bodyLarge,
+            color = GroPOSColors.TextSecondary
+        )
+        
+        Spacer(modifier = Modifier.height(GroPOSSpacing.S))
+        
+        // Grand Total (Large, prominent)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .testTag(CheckoutTestTags.GRAND_TOTAL),
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Quantity
             Text(
-                text = item.quantity,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.width(48.dp)
-            )
-            
-            // Product Name + SNAP Badge
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = item.productName,
-                        style = MaterialTheme.typography.bodyLarge,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false)
-                    )
-                    
-                    // SNAP Badge (per requirement: show badge for SNAP eligible items)
-                    if (item.isSnapEligible) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        SnapBadge(
-                            modifier = Modifier.testTag(
-                                CheckoutTestTags.snapBadge(item.branchProductId)
-                            )
-                        )
-                    }
-                }
-                
-                // Savings if any
-                if (item.hasSavings && item.savingsAmount != null) {
-                    Text(
-                        text = "Save ${item.savingsAmount}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = SavingsColor
-                    )
-                }
-            }
-            
-            Spacer(modifier = Modifier.width(8.dp))
-            
-            // Unit Price
-            Text(
-                text = item.unitPrice,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.width(64.dp),
-                textAlign = TextAlign.End
-            )
-            
-            Spacer(modifier = Modifier.width(8.dp))
-            
-            // Line Total
-            Text(
-                text = item.lineTotal,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.width(80.dp),
-                textAlign = TextAlign.End
-            )
-            
-            // Remove Button (simplified, no icon import needed)
-            IconButton(onClick = onRemove) {
-                Text(
-                    text = "×",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
-        }
-    }
-}
-
-/**
- * SNAP eligibility badge.
- * 
- * Per requirement: Display SNAP badge for eligible items.
- */
-@Composable
-private fun SnapBadge(modifier: Modifier = Modifier) {
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(4.dp),
-        color = SnapBadgeBackground
-    ) {
-        Text(
-            text = "SNAP",
-            style = MaterialTheme.typography.labelSmall,
-            color = SnapGreen,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-        )
-    }
-}
-
-/**
- * Right panel showing totals.
- */
-@Composable
-private fun TotalsPanel(
-    totals: CheckoutTotalsUiModel,
-    onClearCart: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        modifier = modifier.testTag(CheckoutTestTags.TOTALS_PANEL),
-        color = MaterialTheme.colorScheme.surfaceVariant
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp),
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            // Item Count Header
-            Text(
-                text = totals.itemCount,
-                style = MaterialTheme.typography.titleLarge,
+                text = "Total",
+                style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold
             )
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            // Totals Breakdown
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.Bottom
-            ) {
-                TotalRow(label = "Subtotal", value = totals.subtotal)
-                
-                // Savings (if any)
-                totals.savingsTotal?.let { savings ->
-                    TotalRow(
-                        label = "Savings",
-                        value = savings,
-                        valueColor = SavingsColor
-                    )
-                }
-                
-                TotalRow(label = "Tax", value = totals.taxTotal)
-                
-                // CRV (only show if non-zero)
-                if (totals.crvTotal != "$0.00") {
-                    TotalRow(label = "CRV", value = totals.crvTotal)
-                }
-                
-                Divider(
-                    modifier = Modifier.padding(vertical = 16.dp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
-                )
-                
-                // Grand Total (prominent)
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag(CheckoutTestTags.GRAND_TOTAL),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "TOTAL",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = totals.grandTotal,
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            // Action Buttons
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                TextButton(
-                    onClick = onClearCart,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Clear")
-                }
-                
-                // Pay button placeholder (for future payment integration)
-                androidx.compose.material3.Button(
-                    onClick = { /* TODO: Navigate to payment */ },
-                    modifier = Modifier.weight(2f)
-                ) {
-                    Text("Pay")
-                }
-            }
+            Text(
+                text = totals.grandTotal,
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.Bold,
+                color = GroPOSColors.PrimaryGreen
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(GroPOSSpacing.S))
+        
+        HorizontalDivider(color = GroPOSColors.LightGray3)
+        
+        Spacer(modifier = Modifier.height(GroPOSSpacing.S))
+        
+        // Breakdown
+        TotalRow(label = "Subtotal", value = totals.subtotal)
+        
+        totals.savingsTotal?.let { savings ->
+            TotalRow(
+                label = "Savings",
+                value = "-$savings",
+                valueColor = GroPOSColors.SavingsRed
+            )
+        }
+        
+        TotalRow(label = "Tax", value = totals.taxTotal)
+        
+        if (totals.crvTotal != "$0.00") {
+            TotalRow(label = "CRV", value = totals.crvTotal)
         }
     }
 }
 
-/**
- * Individual row in the totals panel.
- */
 @Composable
 private fun TotalRow(
     label: String,
     value: String,
-    valueColor: Color = MaterialTheme.colorScheme.onSurface,
+    valueColor: Color = GroPOSColors.TextPrimary,
     modifier: Modifier = Modifier
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
+            .padding(vertical = 2.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            style = MaterialTheme.typography.bodyMedium,
+            color = GroPOSColors.TextSecondary
         )
         Text(
             text = value,
-            style = MaterialTheme.typography.bodyLarge,
+            style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
             color = valueColor
         )
     }
 }
 
+// ============================================================================
+// Order List Item Component (per COMPONENTS.md)
+// ============================================================================
+
 /**
- * Empty cart placeholder.
+ * Order List Item Row
+ * 
+ * Per COMPONENTS.md (Order List Item):
+ * Column weights: 10% | 10% | 60% | 5% | 15%
+ * 
+ * Layout:
+ * [Qty] [Img] Product Name    [%] $Price
+ *             Description         $XX.XX
+ *             Tax+CRV        [Disc]
+ *             "You saved..."
  */
 @Composable
-private fun EmptyCartState(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier,
-        contentAlignment = Alignment.Center
+private fun OrderListItem(
+    item: CheckoutItemUiModel,
+    onRemove: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = GroPOSSpacing.S),
+        verticalAlignment = Alignment.Top
     ) {
+        // Quantity (10%)
         Column(
+            modifier = Modifier.weight(0.1f),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
+                text = item.quantity,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold
+            )
+            // Sale badge placeholder
+        }
+        
+        // Image placeholder (10%)
+        Box(
+            modifier = Modifier
+                .weight(0.1f)
+                .height(60.dp)
+                .background(
+                    color = GroPOSColors.LightGray3,
+                    shape = RoundedCornerShape(8.dp)
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
                 text = "🛒",
-                style = MaterialTheme.typography.displayLarge
+                style = MaterialTheme.typography.titleLarge
             )
-            Spacer(modifier = Modifier.height(16.dp))
+        }
+        
+        Spacer(modifier = Modifier.width(GroPOSSpacing.S))
+        
+        // Product Details (60%)
+        Column(modifier = Modifier.weight(0.6f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = item.productName,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+                
+                // SNAP Badge
+                if (item.isSnapEligible) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    SnapBadge(
+                        modifier = Modifier.testTag(
+                            CheckoutTestTags.snapBadge(item.branchProductId)
+                        )
+                    )
+                }
+            }
+            
             Text(
-                text = "Cart is empty",
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                text = "${item.unitPrice} × ${item.quantity}",
+                style = MaterialTheme.typography.bodySmall,
+                color = GroPOSColors.TextSecondary
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            
+            // Savings
+            if (item.hasSavings && item.savingsAmount != null) {
+                Text(
+                    text = "You saved ${item.savingsAmount}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = GroPOSColors.SavingsRed
+                )
+            }
+        }
+        
+        // Discount indicator (5%)
+        if (item.hasSavings) {
             Text(
-                text = "Scan an item to begin",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                text = "%",
+                style = MaterialTheme.typography.bodySmall,
+                color = GroPOSColors.PrimaryGreen,
+                modifier = Modifier.weight(0.05f),
+                textAlign = TextAlign.Center
             )
+        } else {
+            Spacer(modifier = Modifier.weight(0.05f))
+        }
+        
+        // Price and Remove (15%)
+        Column(
+            modifier = Modifier.weight(0.15f),
+            horizontalAlignment = Alignment.End
+        ) {
+            Text(
+                text = item.lineTotal,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.End
+            )
+            
+            TextButton(onClick = onRemove) {
+                Text(
+                    text = "Remove",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = GroPOSColors.DangerRed
+                )
+            }
         }
     }
 }
 
-/**
- * Loading overlay during scan processing.
- */
+// ============================================================================
+// SNAP Badge Component
+// ============================================================================
+
+@Composable
+private fun SnapBadge(modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(4.dp),
+        color = GroPOSColors.SnapBadgeBackground
+    ) {
+        Text(
+            text = "SNAP",
+            style = MaterialTheme.typography.labelSmall,
+            color = GroPOSColors.SnapGreen,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+        )
+    }
+}
+
+// ============================================================================
+// Empty Cart State
+// ============================================================================
+
+@Composable
+private fun EmptyCartState(modifier: Modifier = Modifier) {
+    WhiteBox(modifier = modifier) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "🛒",
+                    style = MaterialTheme.typography.displayLarge
+                )
+                Spacer(modifier = Modifier.height(GroPOSSpacing.M))
+                Text(
+                    text = "No items in cart",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = GroPOSColors.TextSecondary
+                )
+                Spacer(modifier = Modifier.height(GroPOSSpacing.S))
+                Text(
+                    text = "Scan an item or use the keypad to begin",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = GroPOSColors.TextSecondary.copy(alpha = 0.7f)
+                )
+            }
+        }
+    }
+}
+
+// ============================================================================
+// Loading Overlay
+// ============================================================================
+
 @Composable
 private fun LoadingOverlay(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.1f))
+            .background(GroPOSColors.OverlayBlack)
             .testTag(CheckoutTestTags.LOADING_INDICATOR),
         contentAlignment = Alignment.Center
     ) {
-        CircularProgressIndicator()
+        CircularProgressIndicator(color = GroPOSColors.White)
     }
 }
 
-/**
- * Snackbar for scan feedback.
- */
+// ============================================================================
+// Scan Feedback Snackbar
+// ============================================================================
+
 @Composable
 private fun ScanFeedbackSnackbar(
     event: ScanEvent,
@@ -530,25 +691,16 @@ private fun ScanFeedbackSnackbar(
     
     Snackbar(
         modifier = modifier
-            .padding(16.dp)
+            .padding(GroPOSSpacing.M)
             .testTag(CheckoutTestTags.SCAN_FEEDBACK),
         action = {
             TextButton(onClick = onDismiss) {
-                Text("Dismiss")
+                Text("Dismiss", color = GroPOSColors.White)
             }
         },
-        containerColor = if (isError) {
-            MaterialTheme.colorScheme.errorContainer
-        } else {
-            MaterialTheme.colorScheme.primaryContainer
-        },
-        contentColor = if (isError) {
-            MaterialTheme.colorScheme.onErrorContainer
-        } else {
-            MaterialTheme.colorScheme.onPrimaryContainer
-        }
+        containerColor = if (isError) GroPOSColors.DangerRed else GroPOSColors.PrimaryGreen,
+        contentColor = GroPOSColors.White
     ) {
         Text(message)
     }
 }
-
