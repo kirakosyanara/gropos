@@ -1,0 +1,56 @@
+---
+alwaysApply: true
+---
+
+# Reliability & Stability Rules
+
+These rules ensure the POS survives network failures, bad data, and Android lifecycle events without crashing or losing money.
+
+## 1. Idempotency & Offline Sync
+
+Design all write operations (Sales, Inventory Adjustments) to be **Offline-First** and **Idempotent**.
+
+* **Idempotency Keys:** Every transactional request (POST/PUT) must include a client-generated UUID `Idempotency-Key` header.
+* **Queue-First:** Never call an API directly from the UI.
+    1.  Write the action to the local Room database ("Pending Sync").
+    2.  Trigger the background `SyncWorker`.
+    3.  If the network fails, the worker retries later using the *same* UUID.
+* **Duplicate Detection:** If the server returns "409 Conflict" (Already Processed), treat it as a success, not an error.
+
+## 2. Strict Typing & Null Safety (Kotlin)
+
+Use Kotlin's type system to make invalid states impossible.
+
+* **No `Any`:** The use of `Any` or `*` (star projection) is forbidden unless interacting with a legacy Java library. If used, it must be safely cast (`as?`) immediately.
+* **No `!!` (Non-Null Assertion):** Absolutely forbidden. If a value might be null, you must handle it:
+    * *Good:* `val name = data?.name ?: "Unknown"`
+    * *Bad:* `val name = data!!.name`
+* **Stringly-Typed Ban:** Do not use Strings for status. Use `sealed classes` or `enums`.
+    * *Bad:* `status = "loading"`
+    * *Good:* `status = UiState.Loading`
+
+## 3. Defensive Data Parsing
+
+Assume the Server and Hardware are lying to you.
+
+* **Safe API Mapping:** When mapping DTOs (Data Transfer Objects) to Domain models, handle missing fields gracefully.
+    * If a required field (e.g., `price`) is null from the API, throw a specific `DataIntegrityException` caught by the repository, rather than crashing the UI with a `NullPointerException`.
+* **Boundary Validation:** Validate all inputs from Barcode Scanners and Keypads.
+    * *Example:* A scanned weight must be > 0 and < 100kg.
+    * *Example:* A price override cannot be negative.
+
+## 4. Network Resilience & Retries
+
+* **Exponential Backoff:** All background sync operations must use `WorkManager` with `BackoffPolicy.EXPONENTIAL`.
+* **Jitter:** When retrying failed API calls in a loop (e.g., polling payment terminal status), add random jitter (+/- 500ms) to prevent "thundering herd" issues on the local network.
+* **Timeout Discipline:**
+    * Set strict timeouts on all OkHttp clients.
+    * *Standard:* 30s connect, 30s read.
+    * *Payment Terminal:* 120s (User interaction takes time).
+
+## 5. Process Death & State Restoration
+
+Android will kill the application process to save memory. The app must restore gracefully.
+
+* **SavedStateHandle:** ViewModels must save critical UI state (e.g., `currentOrderId`, `searchQuery`) to `SavedStateHandle`.
+* **Crash Recovery:** If the app crashes during a transaction, the next launch must detect the "Pending" state in the database and offer to "Resume Transaction" or "Void". Never auto-wipe the cart on startup.

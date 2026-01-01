@@ -1,0 +1,27 @@
+---
+alwaysApply: true
+---
+
+# Changelog & Audit Trail
+
+You are responsible for maintaining a living history of changes to this codebase. This allows us to trace regressions back to specific agent actions.
+
+## 1. The "Update on Save" Rule
+* **Mandatory Action:** Every time you modify code (add feature, fix bug, refactor), you must append an entry to `CHANGELOG.md` in the root directory.
+* **Timing:** This update must happen in the *same* step/commit as the code change. Do not "wait until the end" to update the changelog.
+
+## 2. Format Standard (Keep a Changelog)
+Use the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
+
+```markdown
+## [Unreleased] - YYYY-MM-DD
+### Added
+- Feature: Offline support for Cart Repository.
+- UI: "Retry" button on the Payment Error screen.
+
+### Changed
+- Refactored `CheckoutViewModel` to use `viewModelScope` instead of `GlobalScope`.
+- Updated `ScannerInterface` to support new Zebra SDK.
+
+### Fixed
+- Crash when user rotates screen during payment processing.

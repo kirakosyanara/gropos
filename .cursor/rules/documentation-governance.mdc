@@ -1,0 +1,28 @@
+---
+alwaysApply: true
+---
+
+# Documentation Governance & Source of Truth
+
+These rules define the relationship between the written documentation and the code.
+
+## 1. Documentation is the "Source of Truth"
+* **The Law:** The files in `docs/` (Architecture, API Specs, PRD) represent the absolute truth of the system.
+* **Conflict Resolution:** If the code contradicts the documentation, **the code is wrong**, not the documentation. You must fix the code to align with the docs.
+* **Prohibition:** You are forbidden from "updating the docs to match the code" just to make a test pass or a linter happy.
+
+## 2. Read-Only Policy (Default)
+* **Reference First:** Before implementing any feature, you must read the relevant markdown file in `docs/` or `features/*/README.md`.
+* **Immutability:** You must **not** modify any file in the `docs/` directory during a standard coding task. Treat these files as Read-Only.
+
+## 3. The "Amendment" Exception (Explicit Permission)
+* **Trigger:** If you discover that the application *cannot* or *should not* be built as documented (due to technical limitations or a better architectural discovery), you must **STOP**.
+* **Protocol:**
+    1.  Explain the discrepancy to the user.
+    2.  Ask: *"The documentation requires X, but Y is technically superior/necessary. Do I have permission to update the documentation?"*
+    3.  **Only** upon explicit "Yes" may you modify the documentation.
+* **Atomic Commits:** If you update documentation, it must be done in a separate commit/step from the code changes to ensure the "Amendment" is clearly tracked.
+
+## 4. Self-Correction Mechanism
+* **Verification:** After writing code, check it against the `docs/` definitions one last time.
+* **Drift Check:** If your code introduces a new public function, class, or API route that is *not* in the documentation, you must flag this as "Documentation Drift" to the user and ask if it should be documented or removed.

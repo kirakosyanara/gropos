@@ -1,0 +1,32 @@
+---
+alwaysApply: true
+---
+
+# Agent Behavior Rules
+
+These rules guide how the AI acts within this Kotlin/Compose codebase to ensure stability for a mission-critical POS system.
+
+## 1. Context & Architecture First
+Before generating code, you must:
+* **Read the Map:** Analyze `docs/architecture.md` and the module's specific `README.md`.
+* **Respect MVI/UDF:** This project strictly follows Unidirectional Data Flow (UDF). Never place business logic inside Composables. Logic belongs in ViewModels/UseCases; Composables only render state and emit events.
+* **Check Hardware Constraints:** If touching hardware interfaces (Printer, Scanner, Payment Terminal), verify the existing abstraction layers. Do not bypass established hardware wrappers.
+
+## 2. Test-Driven & Preview-Driven
+* **Logic Tests:** Write failing unit tests (JUnit/Mockk) *before* implementing ViewModel or UseCase logic.
+* **UI Isolation:** When creating new Composables, you must generate a `@Preview` provider covering distinct states (Loading, Success, Error).
+* **Semantics:** Ensure all interactable elements have `testTag` or semantic descriptions to support automated UI testing.
+
+## 3. Strict Concurrency Safety (Kotlin Coroutines)
+* **No GlobalScope:** Never use `GlobalScope`. Always use structured concurrency (`viewModelScope`, `lifecycleScope`).
+* **Dispatcher Discipline:** adhere to strict Dispatcher injection. Never hardcode `Dispatchers.IO`. Use the injected `DispatcherProvider` interface to ensure testability.
+* **Side-Effect Safety:** In Compose, use `LaunchedEffect` and `DisposableEffect` with extreme caution. Ensure keys are correct to prevent infinite loops or memory leaks.
+
+## 4. No "YOLO" Refactoring
+* **Scope Containment:** Do not refactor working legacy code unless explicitly asked. Focus only on the requested feature to minimize regression risk.
+* **Style Consistency:** If you must modify existing code, mimic the surrounding style (naming conventions, file structure) exactly. Do not introduce new patterns (e.g., converting a Flow to LiveData) just because it is easier.
+
+## 5. Documentation & Sync
+* **KDoc:** Public functions and classes must have KDoc comments explaining *why* something is done, not just *what* it does.
+* **Api Sync:** If you change data models, immediately update the corresponding Swagger/OpenAPI spec or local Room database schemas.
+* **Explain Yourself:** When making architectural decisions (e.g., introducing a new dependency), you must generate a brief summary for the Pull Request description explaining the trade-offs.

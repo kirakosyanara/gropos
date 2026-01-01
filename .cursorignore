@@ -1,0 +1,32 @@
+# Android & Kotlin Build Artifacts
+build/
+app/build/
+.gradle/
+**/build/
+
+# Local Configuration & Secrets (Safety)
+local.properties
+*.jks
+*.keystore
+google-services.json
+
+# IDE Settings
+.idea/
+.vscode/
+*.iml
+
+# Version Control
+.git/
+
+# Assets that confuse the LLM (Binary or large text)
+*.png
+*.jpg
+*.svg
+*.pdf
+*.mov
+*.mp4
+docs/assets/  # Ignore images in docs, but read the markdown
+
+# Lockfiles (Too much noise)
+# Keep libs.versions.toml, but ignore strict lockfiles if they exist
+gradle.lockfile

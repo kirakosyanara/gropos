@@ -1,0 +1,41 @@
+---
+alwaysApply: true
+---
+
+# Code Quality & Style Standards
+
+For enterprise POS apps, stability and readability outweigh cleverness. Code must be "boring" and immediately understandable by a junior engineer.
+
+## 1. Function Purity & State
+* **Pure Functions:** Prefer pure functions. Logic should take input and return output without mutating external state.
+* **Unidirectional Flow:** Data flows **down** (params), events flow **up** (callbacks/lambdas). Never pass a mutable `ViewModel` or `Repository` into a pure logic class or Composable.
+
+## 2. Kotlin "Magic" Restrictions (Readability)
+* **Scope Function Discipline:**
+    * Avoid nesting scope functions (`.let`, `.apply`, `.run`, `.also`) more than 1 level deep.
+    * **Forbidden:** `object.let { it.run { it.apply { ... } } }`. This is unreadable.
+    * If a block has more than 3 lines, do not use `it`. Explicitly name the variable (e.g., `.let { product -> ... }`).
+* **No Operator Overloading:** Do not use operator overloading (e.g., `+` for adding items to a cart) unless it is a standard mathematical vector operation. Use named functions like `cart.addItem(product)`.
+
+## 3. Control Flow & Complexity
+* **Early Returns:** Use guard clauses to flatten logic.
+    * *Bad:* `if (isValid) { if (isAvailable) { ... } }`
+    * *Good:* `if (!isValid) return; if (!isAvailable) return; ...`
+* **Cyclomatic Complexity:** If a function has more than 3 distinct branches (`if/when`), break it down into smaller helper functions.
+
+## 4. Error Handling Standards
+* **Backend Error Parsing:** The backend returns errors in this standard format. You must parse this JSON into a Domain Exception, never pass the raw JSON to the UI.
+    ```json
+    {
+      "code": "ERROR_CODE",
+      "message": "Human-readable error message",
+      "requestId": "unique-request-id",
+      "timestamp": "ISO-8601 timestamp"
+    }
+    ```
+* **Map to Domain:**
+    * `code: "ITEM_NOT_FOUND"` -> `throw ProductNotFoundException(msg)`
+    * `code: "INSUFFICIENT_FUNDS"` -> `throw PaymentDeclinedException(msg)`
+
+## 5. Commenting Strategy
+* **"Why" not "What":** Do not write comments that repeat the code (e.g., `// Adds item to list`). Write comments that explain business context (e.g., `// Must validate age restriction before adding alcohol to cart`).

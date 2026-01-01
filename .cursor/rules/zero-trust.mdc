@@ -1,0 +1,51 @@
+---
+alwaysApply: true
+---
+
+# Zero-Trust & Security Rules
+
+These rules are **non-negotiable constraints** to prevent vulnerabilities and ensure PCI-DSS compliance in a generic POS environment.
+
+## 1. Secrets Management (Android/Kotlin)
+
+You are strictly forbidden from writing API keys, passwords, or tokens into the code.
+
+* **BuildConfig:** Use `local.properties` (which is git-ignored) to inject secrets into `BuildConfig` via Gradle.
+* **Keystore:** For on-device encryption keys, strictly use the Android Keystore System. Never hardcode encryption keys or salts.
+* **Git Check:** Never commit `local.properties`, `keystore.jks`, or `google-services.json` (unless the latter is public).
+
+## 2. PCI & PII Compliance (CRITICAL)
+
+**ABSOLUTE RULE:** You must **NEVER** log, print, or store unencrypted:
+1.  **PAN** (Primary Account Number / Credit Card Number).
+2.  **CVV/CVC** codes.
+3.  **PIN** blocks.
+4.  **Personally Identifiable Information (PII)** (Customer names/emails) in debug logs.
+
+* **Log Sanitization:** When logging request/response bodies, you must redact these fields.
+    * *Bad:* `Log.d("API", "Response: $userObject")`
+    * *Good:* `Log.d("API", "Response: ${userObject.redacted()}")`
+
+## 3. Input Sanitization & Type Safety
+
+Do not trust data from the network OR hardware peripherals (Scanners/Scales).
+
+* **Domain Validation:** Validate data in the Domain Layer (UseCase). Throw specific exceptions (`InvalidPriceException`) rather than generic errors.
+* **SQL Injection:** While Room uses pre-compiled statements, strictly avoid `RawQuery` unless absolutely necessary. If used, never interpolate strings directly into the query.
+* **Scanner Input:** Barcode scanners act as keyboards. You must sanitize input to strip non-printable characters or control codes that could crash the UI or trigger unexpected shortcuts.
+
+## 4. Dependency Locking (Gradle)
+
+Do not introduce new external libraries without explicit permission.
+
+* **Version Catalogs:** All dependencies must be defined in `libs.versions.toml`. Do not hardcode versions in `build.gradle.kts`.
+* **Review Process:** Before adding a library, verify it is actively maintained and Kotlin-first.
+* **Banned Libraries:** Do not use `Serializable` (standard Java). Use `kotlinx-serialization` or `Parcelable` for Android safety.
+
+## 5. No Silent Failures (Crash Reporting)
+
+* **Crashlytics/Sentry:** All non-fatal errors in production logic must be logged to the remote crash reporter.
+* **Context:** Logs must include the `RequestId` and `DeviceState` (e.g., "Offline", "Battery Low"), but **exclude** PII.
+* **Empty Catch Ban:**
+    * *Forbidden:* `catch (e: Exception) { }`
+    * *Required:* `catch (e: Exception) { Timber.e(e, "Failed to parse receipt"); throw e }`

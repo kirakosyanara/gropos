@@ -1,0 +1,43 @@
+---
+alwaysApply: true
+---
+
+# Testing Strategy & Hardware Mocking
+
+These rules define how to test a mission-critical POS system where physical hardware (Printers, Scanners, Payment Terminals) is not available in the CI environment.
+
+## 1. The "Fake over Mock" Rule (Hardware Abstraction)
+
+* **Strict Interfaces:** All hardware interactions must be hidden behind interfaces (e.g., `PrinterService`, `ScannerRepository`, `PaymentTerminal`).
+* **Use Fakes for State:** Do not use simple Mocks (e.g., Mockito/Mockk) for hardware that maintains state. You must implement "Fake" classes for tests.
+    * *Example:* `FakePrinterService` should maintain an internal list of `printedJobs` that tests can inspect to verify receipts were generated correctly.
+    * *Example:* `FakePaymentTerminal` should allow tests to simulate `onCardInsert`, `onPinEntry`, and `onNetworkFailure` events programmatically.
+* **No IO in Tests:** Unit tests must never attempt to open real ports (USB/Bluetooth/Network) or connect to real devices.
+
+## 2. Unit Testing Business Logic (The Money Rule)
+
+* **Currency Precision:** Any test involving price calculation, tax, or discounts must assert exact matching using `BigDecimal` or Integer-based cents. Never use `Float` or `Double` for comparisons.
+* **Cart Calculation:** Tests for the "Shopping Cart" logic must cover:
+    * Adding/Removing items.
+    * Applying mixed tax rates (e.g., hot food vs. grocery).
+    * Rounding logic (e.g., bankers rounding vs. floor).
+* **Coroutine Testing:** Use `runTest` from `kotlinx-coroutines-test`. Always inject `StandardTestDispatcher` via the `DispatcherProvider` to control time skipping (e.g., fast-forwarding a 5-second timeout in 0 milliseconds).
+
+## 3. UI & Integration Testing (Compose)
+
+* **Semantic Tags:** Do not find UI elements by text alone (text changes with localization). Use `Modifier.testTag("checkout_button")` for all critical interactive elements.
+* **State Verification:** UI tests should assert the *State*, not the visual pixels.
+    * *Bad:* "Screenshot matches goldmaster.png" (Brittle).
+    * *Good:* "Assert 'Pay' button is disabled when cart is empty."
+* **Robot Pattern:** Use the "Robot Pattern" for Compose tests to separate the "what" (business goal) from the "how" (finding nodes and clicking).
+    * *Example:* `CheckoutRobot(composeTestRule).addItem("Apple").verifyTotal("$1.50")`.
+
+## 4. Error & Edge Case Coverage
+
+* **The "Bad Network" Standard:** Every remote UseCase must have a test for:
+    1.  Successful 200 OK.
+    2.  Client Error (4xx).
+    3.  Server Error (500).
+    4.  **Slow/Timeout Exception** (Critical for POS).
+    5.  **Malformed JSON** (Data corruption).
+* **Offline Mode:** Tests must verify that the app switches to local Room database storage when the mocked network is unreachable.
