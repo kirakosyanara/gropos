@@ -8,6 +8,9 @@ import com.unisight.gropos.features.checkout.data.FakeScannerRepository
 import com.unisight.gropos.features.checkout.domain.repository.CartRepository
 import com.unisight.gropos.features.checkout.domain.repository.ProductRepository
 import com.unisight.gropos.features.checkout.domain.repository.ScannerRepository
+import com.unisight.gropos.features.checkout.domain.service.CRVCalculator
+import com.unisight.gropos.features.checkout.domain.service.DiscountCalculator
+import com.unisight.gropos.features.checkout.domain.service.TaxCalculator
 import com.unisight.gropos.features.checkout.domain.usecase.ScanItemUseCase
 import com.unisight.gropos.features.checkout.presentation.CheckoutViewModel
 import com.unisight.gropos.features.customer.presentation.CustomerDisplayViewModel
@@ -69,7 +72,30 @@ val checkoutModule: Module = module {
     single<CartRepository> { CartRepositoryImpl() }
     
     // ========================================================================
-    // Domain Layer
+    // Domain Layer - Calculation Services
+    // Per SERVICES.md: All calculators are singletons with pure functions
+    // ========================================================================
+    
+    /**
+     * Tax calculator service.
+     * Per TAX_CALCULATIONS.md: Handles SNAP exemption and CRV in taxable base.
+     */
+    single { TaxCalculator() }
+    
+    /**
+     * CRV calculator service.
+     * Per DEPOSITS_FEES.md: California Redemption Value calculations.
+     */
+    single { CRVCalculator() }
+    
+    /**
+     * Discount calculator service.
+     * Per SERVICES.md: Handles percentage/fixed discounts and floor price.
+     */
+    single { DiscountCalculator() }
+    
+    // ========================================================================
+    // Domain Layer - Use Cases
     // ========================================================================
     
     /**

@@ -119,6 +119,177 @@ class FakeProductRepository : ProductRepository {
                 ItemNumber("444", isPrimary = true)
             ),
             taxes = emptyList()
+        ),
+        
+        // =====================================================================
+        // TAXABLE ITEMS WITH CRV (for testing calculation engine)
+        // Per TAX_CALCULATIONS.md: CRV is ALWAYS taxable in California
+        // Per DEPOSITS_FEES.md: CRV rates are $0.05 (<24oz) or $0.10 (>=24oz)
+        // =====================================================================
+        
+        // Soda 2-Liter: Taxable beverage with CRV
+        // Per TAX_CALCULATIONS.md example:
+        //   Price: $2.99
+        //   CRV (24oz+): $0.10
+        //   Taxable Amount: $3.09
+        //   Tax Rate: 9.5%
+        //   Tax: $3.09 × 9.5% = $0.29
+        //   Total: $3.38
+        12350 to Product(
+            branchProductId = 12350,
+            productId = 105,
+            productName = "Cola 2-Liter",
+            description = "Classic cola soda 2-liter bottle",
+            category = 6,
+            categoryName = "Beverages",
+            departmentId = 3,
+            departmentName = "Grocery",
+            retailPrice = BigDecimal("2.99"),
+            floorPrice = BigDecimal("1.50"),
+            cost = BigDecimal("1.25"),
+            soldById = "Quantity",
+            soldByName = "Each",
+            isSnapEligible = false,  // Soda is NOT SNAP eligible
+            isActive = true,
+            isForSale = true,
+            ageRestriction = "NO",
+            order = 20,
+            itemNumbers = listOf(
+                ItemNumber("555", isPrimary = true),
+                ItemNumber("5551234567890", isPrimary = false)
+            ),
+            taxes = listOf(
+                ProductTax(taxId = 1, tax = "CA State Tax", percent = BigDecimal("7.25")),
+                ProductTax(taxId = 2, tax = "County Tax", percent = BigDecimal("1.00")),
+                ProductTax(taxId = 3, tax = "City Tax", percent = BigDecimal("1.25"))
+            ),
+            crvRatePerUnit = BigDecimal("0.10"),  // 24oz+ rate
+            crvId = 1
+        ),
+        
+        // Soda Can (12oz): Smaller CRV rate
+        12351 to Product(
+            branchProductId = 12351,
+            productId = 106,
+            productName = "Cola Can 12oz",
+            description = "Classic cola soda can",
+            category = 6,
+            categoryName = "Beverages",
+            departmentId = 3,
+            departmentName = "Grocery",
+            retailPrice = BigDecimal("1.29"),
+            floorPrice = BigDecimal("0.75"),
+            cost = BigDecimal("0.50"),
+            soldById = "Quantity",
+            soldByName = "Each",
+            isSnapEligible = false,
+            isActive = true,
+            isForSale = true,
+            ageRestriction = "NO",
+            order = 21,
+            itemNumbers = listOf(
+                ItemNumber("556", isPrimary = true)
+            ),
+            taxes = listOf(
+                ProductTax(taxId = 1, tax = "CA State Tax", percent = BigDecimal("7.25")),
+                ProductTax(taxId = 2, tax = "County Tax", percent = BigDecimal("1.00")),
+                ProductTax(taxId = 3, tax = "City Tax", percent = BigDecimal("1.25"))
+            ),
+            crvRatePerUnit = BigDecimal("0.05"),  // <24oz rate
+            crvId = 2
+        ),
+        
+        // Water bottle (SNAP eligible but still has CRV)
+        12352 to Product(
+            branchProductId = 12352,
+            productId = 107,
+            productName = "Bottled Water 16oz",
+            description = "Spring water bottle",
+            category = 6,
+            categoryName = "Beverages",
+            departmentId = 3,
+            departmentName = "Grocery",
+            retailPrice = BigDecimal("1.49"),
+            soldById = "Quantity",
+            soldByName = "Each",
+            isSnapEligible = true,  // Water IS SNAP eligible (no tax)
+            isActive = true,
+            isForSale = true,
+            ageRestriction = "NO",
+            order = 22,
+            itemNumbers = listOf(
+                ItemNumber("557", isPrimary = true)
+            ),
+            taxes = listOf(
+                // These taxes exist but WON'T apply since SNAP-eligible
+                ProductTax(taxId = 1, tax = "CA State Tax", percent = BigDecimal("7.25")),
+                ProductTax(taxId = 2, tax = "County Tax", percent = BigDecimal("1.00")),
+                ProductTax(taxId = 3, tax = "City Tax", percent = BigDecimal("1.25"))
+            ),
+            crvRatePerUnit = BigDecimal("0.05"),  // <24oz rate
+            crvId = 2
+        ),
+        
+        // Non-CRV taxable item (Chips)
+        12353 to Product(
+            branchProductId = 12353,
+            productId = 108,
+            productName = "Potato Chips",
+            description = "Classic salted potato chips",
+            category = 7,
+            categoryName = "Snacks",
+            departmentId = 3,
+            departmentName = "Grocery",
+            retailPrice = BigDecimal("4.99"),
+            floorPrice = BigDecimal("3.00"),
+            soldById = "Quantity",
+            soldByName = "Each",
+            isSnapEligible = true,  // Chips ARE SNAP eligible (no tax)
+            isActive = true,
+            isForSale = true,
+            ageRestriction = "NO",
+            order = 30,
+            itemNumbers = listOf(
+                ItemNumber("558", isPrimary = true)
+            ),
+            taxes = listOf(
+                // These taxes exist but WON'T apply since SNAP-eligible
+                ProductTax(taxId = 1, tax = "CA State Tax", percent = BigDecimal("7.25")),
+                ProductTax(taxId = 2, tax = "County Tax", percent = BigDecimal("1.00")),
+                ProductTax(taxId = 3, tax = "City Tax", percent = BigDecimal("1.25"))
+            ),
+            crvRatePerUnit = BigDecimal.ZERO,  // No CRV (not a beverage)
+            crvId = null
+        ),
+        
+        // Hot Prepared Food (Taxable, NOT SNAP eligible)
+        12354 to Product(
+            branchProductId = 12354,
+            productId = 109,
+            productName = "Hot Dog",
+            description = "Prepared hot dog from deli",
+            category = 8,
+            categoryName = "Deli",
+            departmentId = 4,
+            departmentName = "Prepared Foods",
+            retailPrice = BigDecimal("3.49"),
+            soldById = "Quantity",
+            soldByName = "Each",
+            isSnapEligible = false,  // Hot prepared food is NOT SNAP eligible
+            isActive = true,
+            isForSale = true,
+            ageRestriction = "NO",
+            order = 40,
+            itemNumbers = listOf(
+                ItemNumber("559", isPrimary = true)
+            ),
+            taxes = listOf(
+                ProductTax(taxId = 1, tax = "CA State Tax", percent = BigDecimal("7.25")),
+                ProductTax(taxId = 2, tax = "County Tax", percent = BigDecimal("1.00")),
+                ProductTax(taxId = 3, tax = "City Tax", percent = BigDecimal("1.25"))
+            ),
+            crvRatePerUnit = BigDecimal.ZERO,
+            crvId = null
         )
     )
     

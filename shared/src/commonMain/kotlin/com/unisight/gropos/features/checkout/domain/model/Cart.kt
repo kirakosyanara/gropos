@@ -47,6 +47,18 @@ data class Cart(
             .fold(BigDecimal.ZERO) { acc, item -> acc.add(item.crvTotal) }
     
     /**
+     * Total amount eligible for SNAP payment.
+     * 
+     * Per PAYMENT_PROCESSING.md: SNAP can only be used for SNAP-eligible items.
+     * This is the subtotal of SNAP-eligible items (no tax since SNAP = tax-exempt).
+     */
+    val snapEligibleTotal: BigDecimal
+        get() = items
+            .filterNot { it.isRemoved }
+            .filter { it.isSnapEligible }
+            .fold(BigDecimal.ZERO) { acc, item -> acc.add(item.subTotal).add(item.crvTotal) }
+    
+    /**
      * Grand total (subtotal + tax + CRV).
      * 
      * Per DATABASE_SCHEMA.md: grandTotal field in Transaction.
