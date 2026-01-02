@@ -23,6 +23,50 @@ This release marks the feature-complete alpha milestone for GroPOS. All core POS
 ## [Unreleased]
 
 ### Added
+- **Device Registration Flow (P2 #2)**: Station Claiming / Out-of-Box Experience (OOBE)
+  - **Domain Layer (`features/device/`):**
+    - `DeviceInfo` model: stationId, apiKey, branchName, branchId, environment
+    - `RegistrationState` enum: UNREGISTERED, PENDING, IN_PROGRESS, REGISTERED, ERROR
+    - `QrRegistrationResponse` and `DeviceStatusResponse` API models
+    - `DeviceRepository` interface:
+      - `isRegistered()`: Check if stationId and apiKey exist
+      - `registerDevice(deviceInfo)`: Save registration data locally
+      - `clearRegistration()`: Clear for environment change
+      - `generatePairingCode()`: Random 8-char code (XXXX-XXXX format)
+      - `requestQrCode()` and `checkRegistrationStatus()`: API methods (mock for P2)
+    - `FakeDeviceRepository`: In-memory implementation for development
+      - `simulateActivation()`: Dev tool to bypass cloud check
+  - **Presentation Layer (`features/device/presentation/`):**
+    - `RegistrationUiState`: State for pairing code, QR image, registration status
+    - `RegistrationEvent`: Events for refresh, simulate, admin settings
+    - `RegistrationViewModel`: Manages registration flow and clock updates
+    - `RegistrationScreen`: Voyager Screen with admin settings access
+    - `RegistrationContent`: 50/50 split layout matching LoginScreen style
+      - Header: "Welcome to GroPOS"
+      - QR Code placeholder (200x200dp with QrCode2 icon)
+      - Pairing Code display (large monospace typography)
+      - Instructions: "Go to admin.gropos.com to activate"
+      - "Generate New Code" refresh button
+      - **Dev Tool**: "Simulate Activation" button (orange, visible in dev mode)
+  - **Reusable Component (`core/components/SecretTriggerFooter.kt`):**
+    - Extracted from LoginContent for reuse across screens
+    - 5-click trigger within 2 seconds opens admin settings
+    - Used by LoginScreen and RegistrationScreen
+  - **App.kt Navigation Logic:**
+    - App Launch → Check `deviceRepository.isRegistered()`
+    - If `true` → Start with `LoginScreen`
+    - If `false` → Start with `RegistrationScreen`
+    - Registration success → Navigate to `LoginScreen`
+  - **DI Module (`core/di/DeviceModule.kt`):**
+    - `DeviceRepository` as singleton (FakeDeviceRepository)
+    - `RegistrationViewModel` as factory
+    - Integrated into appModule
+  - **Governance Compliance:**
+    - Hidden Settings accessible from RegistrationScreen (to set Environment before registering)
+    - Persistence: Uses FakeDeviceRepository (in-memory for P2, TODO: persist)
+    - Dev-only "Simulate Activation" button clearly labeled
+    - Registration check on app launch (per DEVICE_REGISTRATION.md flow)
+
 - **Hidden Settings Menu (P2 #1)**: Technician/Admin Dashboard accessible from Login Screen
   - **Secret Trigger (`LoginContent.kt`):**
     - Click copyright text 5 times rapidly (within 2 seconds) to open Admin Settings

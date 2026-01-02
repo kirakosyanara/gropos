@@ -15,6 +15,7 @@ val appModule = module {
     includes(transactionModule)
     includes(returnsModule)
     includes(settingsModule)
+    includes(deviceModule)
     
     // Future feature modules will be added here:
     // includes(reportsModule)
