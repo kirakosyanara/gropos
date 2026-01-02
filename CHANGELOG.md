@@ -7,6 +7,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased] - 2026-01-01
 
 ### Added
+- **Returns Processing (P0 #5)**: Return Item Screen and refund logic
+  - **Domain Models (`features/returns/domain/model/ReturnModels.kt`):**
+    - `ReturnReason` enum: DEFECTIVE, WRONG_ITEM, CHANGED_MIND, QUALITY, OTHER
+    - `ReturnableItem`: Original transaction items with remaining quantity
+    - `ReturnItem`: Items selected for return with quantity and reason
+    - `ReturnCart`: Collection of return items with refund totals
+  - **Domain Service (`features/returns/domain/service/ReturnService.kt`):**
+    - `getReturnableItems(transactionId)`: Fetches returnable items from transaction
+    - `validateReturnQuantity()`: Ensures return qty <= remaining qty
+    - `createReturnItem()` and `createReturnCart()`: Factory methods
+    - `validateReturnCart()`: Cart validation before processing
+  - **Presentation (`features/returns/presentation/`):**
+    - `ReturnUiState`: State for returnable items, return cart, dialogs
+    - `ReturnViewModel`: Manages return flow, quantity dialog, manager approval
+    - `ReturnScreen`: Voyager Screen with transactionId parameter
+    - `ReturnContent`: 70/30 split layout per SCREEN_LAYOUTS.md
+      - Left panel: Returnable items grid with "Add to Return" buttons
+      - Right panel: Return cart, refund totals, "Process Return" button
+    - Quantity dialog with TenKey for selecting return quantity
+    - Simple manager approval dialog (P0 stub)
+  - **Navigation Wiring:**
+    - Added "Return Items" button to TransactionHistoryScreen detail view
+    - Button navigates to ReturnScreen with selected transaction ID
+  - **DI (`core/di/ReturnsModule.kt`):**
+    - ReturnService as singleton
+    - ReturnViewModel as factory
 - **Employee List + Till Assignment (P0 #4)**: Login V2 with state machine flow
   - **Domain Models (`features/cashier/domain/model/`):**
     - `Till`: Cash drawer model with availability tracking

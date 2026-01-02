@@ -13,6 +13,7 @@ val appModule = module {
     includes(checkoutModule)
     includes(paymentModule)
     includes(transactionModule)
+    includes(returnsModule)
     
     // Future feature modules will be added here:
     // includes(reportsModule)
