@@ -46,17 +46,60 @@ data class TenKeyState(
     val isFocused: Boolean = false
 )
 
-sealed class TenKeyMode {
-    object Digit : TenKeyMode()
-    object Login : TenKeyMode()
-    object Qty : TenKeyMode()
-    object Refund : TenKeyMode()
-    object Prompt : TenKeyMode()
-    object Discount : TenKeyMode()
-    object CashPickup : TenKeyMode()
-    object Vendor : TenKeyMode()
-    object Bag : TenKeyMode()
+enum class TenKeyMode(
+    val cssClass: String,
+    val hasQuantityButtons: Boolean,
+    val hasDecimalPoint: Boolean,
+    val hasOptionButtons: Boolean
+) {
+    /** Standard numeric input with OK button */
+    DEFAULT("default", false, false, false),
+    
+    /** Quantity input with +/- controls and discount/price options */
+    QUANTITY("qty", true, true, true),
+    
+    /** PIN entry for authentication (masks input) */
+    LOGIN("login", false, false, false),
+    
+    /** Refund-specific input (allows negative values) */
+    REFUND("refund", true, false, false),
+    
+    /** Cash pickup/drop operations */
+    CASH_PICKUP("pickup", false, false, false),
+    
+    /** Manager approval authorization entry */
+    APPROVE("approve", false, false, false),
+    
+    /** Vendor payout amount entry */
+    VENDOR("vendor", false, true, false),
+    
+    /** Percentage or fixed discount entry */
+    DISCOUNT("discount", false, true, true),
+    
+    /** Generic prompt input */
+    PROMPT("prompt", false, false, false),
+    
+    /** Bag quantity/fee entry */
+    BAG("bag", false, false, false)
 }
+```
+
+### TenKey Mode Usage Matrix
+
+| Mode | Use Case | QTY Buttons | Decimal | Options |
+|------|----------|-------------|---------|---------|
+| `DEFAULT` | Barcode entry, PLU input | ✗ | ✗ | ✗ |
+| `QUANTITY` | Item quantity with discount | ✓ | ✓ | ✓ |
+| `LOGIN` | PIN entry (Login/Lock/Manager) | ✗ | ✗ | ✗ |
+| `REFUND` | Return quantity entry | ✓ | ✗ | ✗ |
+| `CASH_PICKUP` | Cash pickup amount | ✗ | ✗ | ✗ |
+| `APPROVE` | Manager PIN entry | ✗ | ✗ | ✗ |
+| `VENDOR` | Vendor payout amount | ✗ | ✓ | ✗ |
+| `DISCOUNT` | Discount % or $ | ✗ | ✓ | ✓ |
+| `PROMPT` | Prompted price entry | ✗ | ✗ | ✗ |
+| `BAG` | Bag quantity | ✗ | ✗ | ✗ |
+
+```kotlin
 ```
 
 ### Callbacks

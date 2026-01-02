@@ -21,6 +21,9 @@ This folder contains all feature documentation required to implement the complet
 | [PAYMENT_PROCESSING.md](./PAYMENT_PROCESSING.md) | Payment flows, split tender, EBT processing | P1 |
 | [RETURNS.md](./RETURNS.md) | Return processing, refund calculations | P1 |
 | [AUTHENTICATION.md](./AUTHENTICATION.md) | Login, lock, session management | P1 |
+| [DEVICE_REGISTRATION.md](./DEVICE_REGISTRATION.md) | QR code registration, API key provisioning | P0 |
+| [ROLES_AND_PERMISSIONS.md](./ROLES_AND_PERMISSIONS.md) | RBAC, manager approvals, permission strings | P1 |
+| [CASHIER_OPERATIONS.md](./CASHIER_OPERATIONS.md) | Cashier session lifecycle, login/logout, breaks | P1 |
 | [CASH_MANAGEMENT.md](./CASH_MANAGEMENT.md) | Cash drawer, pickups, payouts | P2 |
 | [PRODUCT_LOOKUP.md](./PRODUCT_LOOKUP.md) | Barcode scanning, product search | P2 |
 | [CUSTOMER_SCREEN.md](./CUSTOMER_SCREEN.md) | Dual-screen customer display | P2 |
@@ -98,6 +101,9 @@ State lottery functionality is in the [lottery/](./lottery/) subfolder:
 | Handle SNAP/EBT payments | [GOVERNMENT_BENEFITS.md](./advanced-calculations/GOVERNMENT_BENEFITS.md) |
 | Process returns | [RETURNS.md](./RETURNS.md) |
 | Build lottery features | [lottery/INDEX.md](./lottery/INDEX.md) |
+| Implement login/logout flows | [CASHIER_OPERATIONS.md](./CASHIER_OPERATIONS.md) |
+| Implement manager approvals | [ROLES_AND_PERMISSIONS.md](./ROLES_AND_PERMISSIONS.md) |
+| Build cashier screens | [CASHIER_OPERATIONS.md](./CASHIER_OPERATIONS.md) + [ui-ux/SCREEN_LAYOUTS.md](../ui-ux/SCREEN_LAYOUTS.md) |
 
 ---
 

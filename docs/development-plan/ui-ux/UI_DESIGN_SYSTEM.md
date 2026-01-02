@@ -793,3 +793,169 @@ val price by animateFloatAsState(
     animationSpec = tween(durationMillis = 300)
 )
 ```
+
+---
+
+## CSS to Compose Mapping Reference
+
+This section provides a comprehensive mapping from JavaFX CSS classes to Compose Multiplatform equivalents.
+
+### Layout Classes
+
+| JavaFX CSS Class | CSS Properties | Compose Equivalent |
+|------------------|----------------|-------------------|
+| `.left-block` | `background: #E1E3E3; padding: 38px` | `Modifier.background(LightGray2).padding(38.dp)` |
+| `.right-block` | `background: #EFF1F1; padding: 0 48 8 48` | `Modifier.background(LightGray1).padding(start=48.dp, end=48.dp, bottom=8.dp)` |
+| `.hover-block` | `background: #000000B2; padding: 38px` | `Modifier.background(OverlayBlack).padding(38.dp)` |
+| `.list-view` | `background: white; border-radius: 16px` | `Modifier.background(White, RoundedCornerShape(16.dp))` |
+| `.whiteBox` | `background: white; border-radius: 8px` | `Surface(color = White, shape = RoundedCornerShape(8.dp))` |
+| `.greenBox` | `background: #04571B` | `Surface(color = PrimaryGreen)` |
+
+### Button Classes
+
+| JavaFX CSS Class | Compose Component |
+|------------------|-------------------|
+| `.btn-success` | `SuccessButton()` |
+| `.btn-primary` | `PrimaryButton()` |
+| `.delete-cancel` | `DangerButton()` |
+| `.secondary` | `OutlineButton()` |
+| `.back-button` | `BackButton()` |
+| `.tab-buttons-bg` | `TabButton()` |
+| `.btn-xl` | `Modifier.padding(18.dp, 24.dp)` |
+| `.btn-lg` | `Modifier.padding(14.dp, 20.dp)` |
+
+### Text Classes
+
+| JavaFX CSS Class | Compose TextStyle |
+|------------------|-------------------|
+| `.pay-value-field` | `titleLarge` (24sp) |
+| `.b, .h3` | `titleMedium` + `FontWeight.Bold` |
+| `.white-box-label` | `bodyLarge` (16sp) |
+| `.product-name` | `titleSmall` + `FontWeight.Bold` |
+| `.info-details-text` | `bodyMedium` (14sp) |
+| `.subtotal_text` | `bodyLarge` (16sp) |
+| `.subtotal_value` | `titleMedium` + `FontWeight.Bold` |
+| `.station-text` | `headlineSmall` (20sp) |
+| `.header-text` | `headlineMedium` (22sp) |
+| `.dialog-header-text` | `titleMedium` (18sp) |
+| `.discount-info-text` | `headlineMedium` + White |
+| `.error-message` | `bodyMedium` + `DangerRed` |
+
+### Form Element Classes
+
+| JavaFX CSS Class | Compose Component |
+|------------------|-------------------|
+| `.input-field` | `OutlinedTextField()` |
+| `.search-field` | `SearchTextField()` |
+| `.quantity-field` | `OutlinedTextField(textAlign = Center)` |
+| `.password-input` | `OutlinedTextField(visualTransformation = PasswordVisualTransformation())` |
+
+### Dialog Classes
+
+| JavaFX CSS Class | Compose Equivalent |
+|------------------|-------------------|
+| `.recall-dialog-header-background` | `Modifier.background(PrimaryGreen).padding(16.dp, 20.dp)` |
+| `.details-dialog-header-background` | `Modifier.background(PrimaryGreen).padding(16.dp, 20.dp)` |
+| `.lookup-dialog-header-background` | `Modifier.background(PrimaryGreen).padding(16.dp, 20.dp)` |
+| `.close-button` | `IconButton` with close icon |
+| `.buttonBox` | `Row(horizontalArrangement = spacedBy(15.dp))` |
+
+### Payment Classes
+
+| JavaFX CSS Class | Compose Equivalent |
+|------------------|-------------------|
+| `.pay-info-item` | `Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween)` |
+| `.credit-section` | Payment type section container |
+| `.ebt-section` | EBT payment section container |
+| `.cash-section` | Cash payment section container |
+| `.cash-item-section` | Cash quick-amount grid |
+| `.food-stamp-button` | EBT Food Stamp button styling |
+| `.ebt-cash-button` | EBT Cash button styling |
+| `.balance-check-button` | Balance check button styling |
+
+### Customer Screen Classes
+
+| JavaFX CSS Class | Compose Equivalent |
+|------------------|-------------------|
+| `.customer-screen-view` | Root Column with `fillMaxSize()` |
+| `.header` | Header Row with green background |
+| `.total-box` | Summary card with white background |
+| `.ad-box` | Advertisement container |
+| `.saving_value` | Savings amount text (bold, 18sp) |
+| `.name-label` | Store name text |
+
+### Common Patterns
+
+**JavaFX Separator → Compose Spacer/Divider:**
+```kotlin
+// JavaFX: <Separator opacity="0.0" HBox.hgrow="ALWAYS"/>
+// Compose:
+Spacer(modifier = Modifier.weight(1f))
+
+// JavaFX: <Separator prefHeight="1"/>
+// Compose:
+Divider(modifier = Modifier.height(1.dp))
+```
+
+**JavaFX Region → Compose Spacer:**
+```kotlin
+// JavaFX: <Region VBox.vgrow="ALWAYS"/>
+// Compose:
+Spacer(modifier = Modifier.weight(1f))
+```
+
+**JavaFX GridPane → Compose Row/Column with weights:**
+```kotlin
+// JavaFX GridPane with percentWidth
+// <ColumnConstraints percentWidth="70"/>
+// <ColumnConstraints percentWidth="30"/>
+
+// Compose:
+Row(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = Modifier.weight(0.7f)) { /* 70% */ }
+    Column(modifier = Modifier.weight(0.3f)) { /* 30% */ }
+}
+```
+
+**JavaFX HBox/VBox → Compose Row/Column:**
+```kotlin
+// JavaFX: <HBox alignment="CENTER" spacing="10">
+// Compose:
+Row(
+    horizontalArrangement = Arrangement.spacedBy(10.dp),
+    verticalAlignment = Alignment.CenterVertically
+)
+
+// JavaFX: <VBox spacing="20" alignment="TOP_CENTER">
+// Compose:
+Column(
+    verticalArrangement = Arrangement.spacedBy(20.dp),
+    horizontalAlignment = Alignment.CenterHorizontally
+)
+```
+
+**JavaFX fx:id → Compose state:**
+```kotlin
+// JavaFX: <Text fx:id="grandTotal" text="$0.00"/>
+// Compose:
+val state by viewModel.state.collectAsState()
+Text(text = state.grandTotal.formatCurrency())
+```
+
+**JavaFX onAction → Compose onClick:**
+```kotlin
+// JavaFX: <Button onAction="#onPayAction" text="Pay"/>
+// Compose:
+Button(onClick = viewModel::onPayAction) {
+    Text("Pay")
+}
+```
+
+---
+
+## Related Documentation
+
+- [INDEX.md](./INDEX.md) - Complete component inventory
+- [SCREEN_LAYOUTS.md](./SCREEN_LAYOUTS.md) - Screen wireframes
+- [DIALOGS.md](./DIALOGS.md) - Dialog specifications
+- [COMPONENTS.md](./COMPONENTS.md) - Component details
