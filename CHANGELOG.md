@@ -7,6 +7,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased] - 2026-01-01
 
 ### Added
+- **Lock Screen & Inactivity Timer (P0 #1)**: Security feature for automatic session lock
+  - Created `LockScreen.kt` (Voyager Screen) with dark gradient theme per SCREEN_LAYOUTS.md
+    - Left panel: Station name, large real-time clock, date, lock status, version footer
+    - Right panel: Employee info card, PIN entry display, TenKey pad, Verify/Sign Out buttons
+  - Created `LockContent.kt` composable with visual specs per CASHIER_OPERATIONS.md
+    - Lock status indicator (LOCKED text with lock icon)
+    - Lock type display: "Session timed out" / "Manually locked" / "Locked by manager"
+    - PIN dot display (8 dots max, filled based on input)
+    - Error message display for invalid PIN
+  - Created `LockViewModel.kt` with session logic
+    - Real-time clock using `kotlinx-datetime` (updates every second)
+    - PIN input management (max 8 digits)
+    - Walking skeleton: Accepts "1234" as valid PIN (TODO: API verification)
+    - `UnlockResult` and `SignOutResult` sealed interfaces for navigation
+  - Created `LockUiState.kt` data class with state properties
+    - `LockType` enum: AutoLocked, Locked, ManagerLocked
+    - Station name, employee info, PIN input, verification status
+  - Created `InactivityManager` singleton in `core/session/`
+    - Tracks last user interaction time
+    - Configurable timeout (default: 5 minutes per CASHIER_OPERATIONS.md)
+    - Emits `LockEvent` via SharedFlow when timeout triggers
+    - `recordActivity()` called on any user interaction to reset timer
+    - `manualLock()` for F4 key shortcut
+    - Screen exemption list (LockScreen, LoginScreen, CustomerDisplay)
+  - Updated `App.kt` with inactivity detection
+    - Box wrapper with `pointerInput` to detect taps/clicks
+    - `onPreviewKeyEvent` to detect keyboard input
+    - F4 key triggers manual lock per CASHIER_OPERATIONS.md
+    - Listens to `InactivityManager.lockEvent` and navigates to LockScreen
+  - Updated `LoginScreen.kt` to start InactivityManager after successful login
+  - Updated `AuthModule.kt` to provide `LockViewModel`
+  - Lock types map to `DeviceEventType` per spec (AutoLocked, Locked, ManagerLocked)
 - **Checkout Modification Mode**: Line item modification panel (per SCREEN_LAYOUTS.md)
   - Clicking a line item enters modification mode (right panel transforms)
   - Selected item highlighted with green border and background
