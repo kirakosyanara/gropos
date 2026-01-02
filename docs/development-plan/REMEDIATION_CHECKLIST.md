@@ -54,14 +54,14 @@
 | User Role Model | ⚠️ Partial | Current: Basic `UserRole` enum. Need: Full role hierarchy (Cashier, Shift Lead, Supervisor, Manager, Admin) |
 | Permission Strings | ❌ Missing | Implement permission string format: `{App}.{Category}.{Action}` |
 | User Profile with Permissions | ❌ Missing | Extend `AuthUser` with `permissions: List<String>` from API |
-| Permission Check Function | ❌ Missing | Implement `checkPermission()` returning GRANTED/REQUIRES_APPROVAL/SELF_APPROVAL_ALLOWED/DENIED |
-| Manager Approval Service | ❌ Missing | Create `ManagerApprovalService` with `getApprovers()` and `validateApproval()` |
-| Manager Approval Dialog | ❌ Missing | Create `ManagerApprovalDialog` composable with manager list and PIN entry |
+| Permission Check Function | ✅ Match | `PermissionManager.checkPermission()` returning GRANTED/REQUIRES_APPROVAL/SELF_APPROVAL_ALLOWED/DENIED (Jan 2026) |
+| Manager Approval Service | ✅ Match | `ManagerApprovalService` with `getApprovers()` and `validateApproval()` (Jan 2026) |
+| Manager Approval Dialog | ✅ Match | `ManagerApprovalDialog` composable with manager list and PIN entry (Jan 2026) |
 | Self-Approval Logic | ❌ Missing | Implement `canSelfApprove()` check for managers |
 | Request Actions Enum | ❌ Missing | Create `RequestAction` enum (CASH_PICKUP, VENDOR_PAYOUT, LINE_DISCOUNT, etc.) |
 | Approval Audit Trail | ❌ Missing | Create `ApprovalAuditEntry` and logging mechanism |
 | Permission Thresholds | ❌ Missing | Implement `PermissionThresholds` (discount limits, return limits) |
-| Void Transaction Permission Check | ❌ Missing | Add permission check before allowing void |
+| Void Transaction Permission Check | ✅ Match | Permission check added to `onVoidSelectedLineItem()` (Jan 2026) |
 | Price Override Permission Check | ❌ Missing | Add permission check for floor price override |
 | Discount Permission Check | ❌ Missing | Add permission check for line/transaction discounts |
 
@@ -247,7 +247,7 @@
 ### P0 - Critical (Required for MVP)
 
 1. ✅ Lock Screen + Inactivity Timer (Jan 2026)
-2. ❌ Manager Approval Flow (for discounts, returns)
+2. ✅ Manager Approval Flow (for discounts, returns) - Infrastructure complete, wired for Void (Jan 2026)
 3. ⚠️ Modification Mode (change qty ✅, discount ⚠️, void line ⚠️)
 4. ❌ Employee List + Till Assignment
 5. ❌ Return Item Screen
