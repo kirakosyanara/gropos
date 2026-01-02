@@ -23,6 +23,29 @@ This release marks the feature-complete alpha milestone for GroPOS. All core POS
 ## [Unreleased]
 
 ### Added
+- **Void Transaction (P1 #3)**: Full transaction void functionality
+  - **UI Component (`VoidConfirmationDialog.kt`):**
+    - Confirmation dialog with warning icon
+    - "No, Keep It" (cancel) and "Yes, Void It" (danger/red) buttons
+    - Prevents accidental transaction voids
+  - **State Management:**
+    - Added `showVoidConfirmationDialog` to `CheckoutUiState`
+    - Added `VoidTransactionRequest`, `ConfirmVoidTransaction`, `CancelVoidTransaction` events
+  - **Logic (`CheckoutViewModel`):**
+    - `onVoidTransactionRequest()`: Checks permission before showing dialog
+    - Permission check: GRANTED/SELF_APPROVAL -> show confirmation
+    - REQUIRES_APPROVAL -> show manager approval first
+    - DENIED -> show error message
+    - Audit logging to console on void completion
+    - State reset: clears modification mode if active
+  - **Functions Grid:**
+    - Added "Void" button (Danger style) to FunctionsGrid
+    - Quick access alongside Lookup, Recall, Functions buttons
+  - **Governance:**
+    - Double confirmation flow (permission check + dialog)
+    - Audit trail logged to console
+    - Cart cleared only after confirmation
+
 - **Returns Processing (P0 #5)**: Return Item Screen and refund logic
   - **Domain Models (`features/returns/domain/model/ReturnModels.kt`):**
     - `ReturnReason` enum: DEFECTIVE, WRONG_ITEM, CHANGED_MIND, QUALITY, OTHER

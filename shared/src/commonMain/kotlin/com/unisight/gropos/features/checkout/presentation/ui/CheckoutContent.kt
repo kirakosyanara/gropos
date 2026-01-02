@@ -50,6 +50,7 @@ import com.unisight.gropos.core.theme.GroPOSColors
 import com.unisight.gropos.core.theme.GroPOSRadius
 import com.unisight.gropos.core.theme.GroPOSSpacing
 import com.unisight.gropos.core.components.dialogs.ManagerApprovalDialog
+import com.unisight.gropos.features.checkout.presentation.components.dialogs.VoidConfirmationDialog
 import com.unisight.gropos.features.checkout.presentation.CheckoutItemUiModel
 import com.unisight.gropos.features.checkout.presentation.CheckoutTotalsUiModel
 import com.unisight.gropos.features.checkout.presentation.CheckoutUiState
@@ -180,6 +181,7 @@ fun CheckoutContent(
                     onLookupClick = { onEvent(CheckoutEvent.OpenLookup) },
                     onRecallClick = { onEvent(CheckoutEvent.NavigateToRecall) },
                     onFunctionsClick = { /* TODO: Show functions panel */ },
+                    onVoidTransactionClick = { onEvent(CheckoutEvent.VoidTransactionRequest) },
                     modifier = Modifier
                         .weight(0.3f)
                         .fillMaxHeight()
@@ -227,6 +229,15 @@ fun CheckoutContent(
                 onPinSubmit = { managerId, pin ->
                     onEvent(CheckoutEvent.SubmitManagerApproval(managerId, pin))
                 }
+            )
+        }
+        
+        // Void Transaction Confirmation Dialog
+        // Per FUNCTIONS_MENU.md: Confirmation before voiding entire transaction
+        if (state.showVoidConfirmationDialog) {
+            VoidConfirmationDialog(
+                onConfirm = { onEvent(CheckoutEvent.ConfirmVoidTransaction) },
+                onCancel = { onEvent(CheckoutEvent.CancelVoidTransaction) }
             )
         }
     }
@@ -354,6 +365,7 @@ private fun RightPanel(
     onLookupClick: () -> Unit,
     onRecallClick: () -> Unit,
     onFunctionsClick: () -> Unit,
+    onVoidTransactionClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -423,6 +435,7 @@ private fun RightPanel(
             onFunctionsClick = onFunctionsClick,
             onLookupClick = onLookupClick,
             onRecallClick = onRecallClick,
+            onVoidTransactionClick = onVoidTransactionClick,
             modifier = Modifier
                 .fillMaxWidth()
                 .testTag(CheckoutTestTags.FUNCTIONS_GRID)

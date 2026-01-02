@@ -114,6 +114,17 @@ class CheckoutScreen : Screen {
                     is CheckoutEvent.SubmitManagerApproval -> {
                         viewModel.onSubmitManagerApproval(event.managerId, event.pin)
                     }
+                    
+                    // Void Transaction Events
+                    CheckoutEvent.VoidTransactionRequest -> {
+                        viewModel.onVoidTransactionRequest()
+                    }
+                    CheckoutEvent.ConfirmVoidTransaction -> {
+                        viewModel.onConfirmVoidTransaction()
+                    }
+                    CheckoutEvent.CancelVoidTransaction -> {
+                        viewModel.onCancelVoidTransaction()
+                    }
                 }
             }
         )
@@ -183,4 +194,18 @@ sealed interface CheckoutEvent {
     
     /** Submit manager PIN for approval */
     data class SubmitManagerApproval(val managerId: Int, val pin: String) : CheckoutEvent
+    
+    // ========================================================================
+    // Void Transaction Events
+    // Per FUNCTIONS_MENU.md: Void Transaction cancels entire transaction
+    // ========================================================================
+    
+    /** Request to void the entire transaction */
+    data object VoidTransactionRequest : CheckoutEvent
+    
+    /** Confirm void transaction after dialog */
+    data object ConfirmVoidTransaction : CheckoutEvent
+    
+    /** Cancel the void transaction dialog */
+    data object CancelVoidTransaction : CheckoutEvent
 }

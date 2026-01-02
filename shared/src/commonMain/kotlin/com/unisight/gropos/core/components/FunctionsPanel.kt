@@ -72,12 +72,15 @@ enum class FunctionAction {
  * Per SCREEN_LAYOUTS.md (Home Screen):
  * - Actions panel at bottom of right section
  * - Includes: [Lookup][Recall] and [Functions]
+ * 
+ * Per FUNCTIONS_MENU.md: Void Transaction is a key action
  */
 @Composable
 fun FunctionsGrid(
     onFunctionsClick: () -> Unit,
     onLookupClick: () -> Unit,
     onRecallClick: () -> Unit,
+    onVoidTransactionClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -103,12 +106,24 @@ fun FunctionsGrid(
             }
         }
         
-        // Row 2: Functions (full width)
-        OutlineButton(
-            onClick = onFunctionsClick,
-            modifier = Modifier.fillMaxWidth()
+        // Row 2: Void and Functions
+        // Per FUNCTIONS_MENU.md: Void Transaction is frequently used
+        androidx.compose.foundation.layout.Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(GroPOSSpacing.S)
         ) {
-            Text("Functions")
+            DangerButton(
+                onClick = onVoidTransactionClick,
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Void")
+            }
+            OutlineButton(
+                onClick = onFunctionsClick,
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Functions")
+            }
         }
     }
 }

@@ -499,10 +499,14 @@ class CheckoutViewModel(
     private suspend fun executeApprovedAction(approvalState: ManagerApprovalDialogState) {
         when (approvalState.action) {
             RequestAction.VOID_TRANSACTION -> {
-                approvalState.pendingItemId?.let { itemId ->
-                    cartRepository.voidItem(itemId)
+                if (approvalState.pendingItemId != null) {
+                    // Line item void
+                    cartRepository.voidItem(approvalState.pendingItemId)
+                    onDeselectLineItem()
+                } else {
+                    // Full transaction void - show confirmation dialog
+                    showVoidConfirmationDialog()
                 }
-                onDeselectLineItem()
             }
             RequestAction.LINE_DISCOUNT -> {
                 // TODO: Apply discount once discount flow is implemented
@@ -514,6 +518,118 @@ class CheckoutViewModel(
                 // Other actions to be implemented
             }
         }
+    }
+    
+    // ========================================================================
+    // Void Transaction
+    // Per FUNCTIONS_MENU.md: Void Transaction cancels entire transaction
+    // ========================================================================
+    
+    /**
+     * Handles the "Void Transaction" button press from the Functions Panel.
+     * 
+     * Per FUNCTIONS_MENU.md:
+     * - Only available when cart has items
+     * - Not available when payment already applied
+     * 
+     * Per ROLES_AND_PERMISSIONS.md:
+     * - Requires `GroPOS.Transactions.Void` permission
+     * - Cashiers need manager approval, managers can self-approve
+     */
+    fun onVoidTransactionRequest() {
+        // Check if cart is empty - can't void empty transaction
+        if (_state.value.isEmpty) {
+            _state.value = _state.value.copy(
+                lastScanEvent = ScanEvent.Error("No transaction to void.")
+            )
+            return
+        }
+        
+        // Cancel modification mode if active
+        if (_state.value.isModificationMode) {
+            onDeselectLineItem()
+        }
+        
+        val user = currentUser
+        if (user == null) {
+            _state.value = _state.value.copy(
+                lastScanEvent = ScanEvent.Error("User session not found.")
+            )
+            return
+        }
+        
+        // Check permission
+        val permissionResult = PermissionManager.checkPermission(user, RequestAction.VOID_TRANSACTION)
+        
+        when (permissionResult) {
+            PermissionCheckResult.GRANTED,
+            PermissionCheckResult.SELF_APPROVAL_ALLOWED -> {
+                // Can void directly - show confirmation dialog
+                showVoidConfirmationDialog()
+            }
+            PermissionCheckResult.REQUIRES_APPROVAL -> {
+                // Show manager approval dialog (no pending item ID for full transaction)
+                showManagerApprovalDialog(
+                    action = RequestAction.VOID_TRANSACTION,
+                    pendingItemId = null
+                )
+            }
+            PermissionCheckResult.DENIED -> {
+                _state.value = _state.value.copy(
+                    lastScanEvent = ScanEvent.Error("You do not have permission to void transactions.")
+                )
+            }
+        }
+    }
+    
+    /**
+     * Shows the void confirmation dialog.
+     */
+    private fun showVoidConfirmationDialog() {
+        _state.value = _state.value.copy(
+            showVoidConfirmationDialog = true
+        )
+    }
+    
+    /**
+     * Confirms and executes the void transaction.
+     * 
+     * Called when user clicks "Yes, Void It" in the confirmation dialog.
+     */
+    fun onConfirmVoidTransaction() {
+        effectiveScope.launch {
+            // Log the void (audit trail)
+            val cart = cartRepository.getCurrentCart()
+            val user = currentUser
+            println("================================================================================")
+            println("[AUDIT] VOID TRANSACTION")
+            println("================================================================================")
+            println("Timestamp: ${java.time.LocalDateTime.now()}")
+            println("Operator: ${user?.username ?: "Unknown"} (ID: ${user?.id ?: "?"})")
+            println("Items Voided: ${cart.itemCount}")
+            println("Total Voided: ${currencyFormatter.format(cart.grandTotal)}")
+            println("================================================================================")
+            
+            // Clear the cart
+            cartRepository.clearCart()
+            
+            // Close dialog and reset state
+            _state.value = _state.value.copy(
+                showVoidConfirmationDialog = false,
+                lastScanEvent = ScanEvent.Error("Transaction voided.") // Use Error type for visibility
+            )
+        }
+    }
+    
+    /**
+     * Cancels the void transaction dialog.
+     * 
+     * Called when user clicks "No, Keep It" in the confirmation dialog.
+     */
+    fun onCancelVoidTransaction() {
+        _state.value = _state.value.copy(
+            showVoidConfirmationDialog = false
+        )
     }
     
     // ========================================================================

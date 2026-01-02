@@ -137,7 +137,8 @@ data class CheckoutUiState(
     val selectedItem: SelectedItemUiModel? = null,
     val modificationTenKeyMode: ModificationTenKeyMode = ModificationTenKeyMode.QUANTITY,
     val modificationInputValue: String = "",
-    val managerApprovalState: ManagerApprovalDialogState = ManagerApprovalDialogState()
+    val managerApprovalState: ManagerApprovalDialogState = ManagerApprovalDialogState(),
+    val showVoidConfirmationDialog: Boolean = false
 ) {
     /**
      * Whether the screen is in modification mode.
