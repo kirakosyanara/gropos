@@ -8,6 +8,7 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.koin.koinScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import com.unisight.gropos.core.session.InactivityManager
 import com.unisight.gropos.features.auth.presentation.LoginUiState
 import com.unisight.gropos.features.auth.presentation.LoginViewModel
 import com.unisight.gropos.features.checkout.presentation.ui.CheckoutScreen
@@ -34,9 +35,18 @@ class LoginScreen : Screen {
         // Using LaunchedEffect with state as key ensures this only fires once per Success state
         LaunchedEffect(state) {
             if (state is LoginUiState.Success) {
+                // Start inactivity monitoring
+                // Per CASHIER_OPERATIONS.md: Timer starts after successful login
+                InactivityManager.start()
+                
                 // Replace entire navigation stack to prevent back navigation to login
                 navigator.replaceAll(CheckoutScreen())
             }
+        }
+        
+        // Set current screen for InactivityManager (helps with exemption logic)
+        LaunchedEffect(Unit) {
+            InactivityManager.currentScreen = "LoginScreen"
         }
         
         LoginContent(

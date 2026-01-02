@@ -3,6 +3,7 @@ package com.unisight.gropos.core.di
 import com.unisight.gropos.features.auth.data.FakeAuthRepository
 import com.unisight.gropos.features.auth.domain.repository.AuthRepository
 import com.unisight.gropos.features.auth.domain.usecase.ValidateLoginUseCase
+import com.unisight.gropos.features.auth.presentation.LockViewModel
 import com.unisight.gropos.features.auth.presentation.LoginViewModel
 import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.bind
@@ -28,7 +29,11 @@ val authModule = module {
     factory { ValidateLoginUseCase(get()) }
     
     // Presentation Layer
-    // Note: LoginViewModel has optional CoroutineScope for testing, but we don't provide it
-    // at runtime - it will use screenModelScope internally
+    // Note: ViewModels have optional CoroutineScope for testing, but we don't provide it
+    // at runtime - they will use screenModelScope internally
     factory { LoginViewModel(get()) }
+    
+    // Lock Screen ViewModel
+    // Per SCREEN_LAYOUTS.md: Displays when session is locked
+    factory { LockViewModel() }
 }
