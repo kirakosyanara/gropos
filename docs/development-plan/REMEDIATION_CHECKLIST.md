@@ -33,11 +33,11 @@
 | NFC Token Authentication | ❌ Missing | Add NFC toggle and hardware token login mode |
 | API Authentication | ❌ Missing | Implement `employeeGroPOSLogin()` with bearer token storage |
 | Token Refresh | ❌ Missing | Implement refresh token logic and `Manager.setBearerToken()` |
-| Lock Screen | ❌ Missing | Create `LockScreen.kt` and `LockViewModel.kt` |
-| Inactivity Timer (5 min) | ❌ Missing | Implement `InactivityManager` with 5-minute auto-lock |
-| Manual Lock (F4 Key) | ❌ Missing | Add F4 keyboard shortcut for manual lock |
-| Lock Types (AutoLocked, Locked, Unlocked) | ❌ Missing | Implement `DeviceEventType` enum and lock event reporting |
-| Unlock Flow - PIN Verification | ❌ Missing | Implement `employeeVerifyPassword()` API call |
+| Lock Screen | ✅ Match | `LockScreen.kt`, `LockContent.kt`, `LockViewModel.kt` created (Jan 2026) |
+| Inactivity Timer (5 min) | ✅ Match | `InactivityManager` singleton with 5-min timeout (Jan 2026) |
+| Manual Lock (F4 Key) | ✅ Match | F4 key detected in `App.kt` `onPreviewKeyEvent` (Jan 2026) |
+| Lock Types (AutoLocked, Locked, Unlocked) | ✅ Match | `LockType` enum, `LockEventType` enum implemented (Jan 2026) |
+| Unlock Flow - PIN Verification | ⚠️ Partial | Local PIN check ("1234"), need API `employeeVerifyPassword()` |
 | Logout Dialog | ❌ Missing | Create `LogoutDialog` with "Release Till" and "End of Shift" options |
 | Logout - Release Till | ⚠️ Partial | Current: Simple cart clear. Need: API logout, till release |
 | Logout - End of Shift | ❌ Missing | Implement shift report generation, cash drawer open, print receipt |
@@ -246,7 +246,7 @@
 
 ### P0 - Critical (Required for MVP)
 
-1. ❌ Lock Screen + Inactivity Timer
+1. ✅ Lock Screen + Inactivity Timer (Jan 2026)
 2. ❌ Manager Approval Flow (for discounts, returns)
 3. ⚠️ Modification Mode (change qty ✅, discount ⚠️, void line ⚠️)
 4. ❌ Employee List + Till Assignment
@@ -281,7 +281,7 @@
 
 | Category | ✅ Match | ⚠️ Partial | ❌ Missing |
 |----------|----------|------------|------------|
-| Auth & Session | 0 | 3 | 18 |
+| Auth & Session | 4 | 4 | 13 |
 | Roles & Permissions | 0 | 1 | 12 |
 | Payment Processing | 2 | 7 | 8 |
 | Checkout & Transaction | 9 | 7 | 9 |
@@ -291,7 +291,7 @@
 | Device Registration | 0 | 0 | 10 |
 | UI/UX Components | 7 | 2 | 5 |
 | Data Layer | 2 | 1 | 7 |
-| **TOTAL** | **22** | **25** | **96** |
+| **TOTAL** | **26** | **26** | **91** |
 
 ---
 
