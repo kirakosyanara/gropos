@@ -23,6 +23,50 @@ This release marks the feature-complete alpha milestone for GroPOS. All core POS
 ## [Unreleased]
 
 ### Added
+- **Real-time Clock Display (P3 #3)**: Live Time in Status Bar
+  - **Component (`core/components/RealTimeClock.kt`):**
+    - Per SCREEN_LAYOUTS.md: "Show current time (hh:mm a) in the top right or center"
+    - Uses `LaunchedEffect(Unit)` with `while(true)` loop for continuous updates
+    - Updates every second via `delay(1000L)`
+    - State: `mutableStateOf` for `currentTime` string
+    - Format: 12-hour with AM/PM (e.g., "2:30 PM") using `kotlinx-datetime`
+    - Automatic cleanup: Compose's lifecycle cancels coroutine on composable exit
+    - Test tag: `realtime_clock` for UI automation
+  - **UI Integration (`CheckoutContent.kt`):**
+    - Clock positioned in header row between GroPOS logo and Logout button
+    - Uses `GroPOSColors.TextSecondary` for subtle appearance
+    - Typography: `MaterialTheme.typography.bodyLarge` with `FontWeight.SemiBold`
+  - **Theme Consistency:**
+    - Accepts optional `color` parameter for dark/light theme support
+    - Defaults to `GroPOSColors.TextPrimary` (theme-aware)
+  - **Performance:**
+    - Single coroutine per clock instance (no memory leaks)
+    - Only re-composes when time string changes (once per second max)
+    - LaunchedEffect cleanup automatic on screen exit
+
+- **Customer Display Ordering Fix (P2 #3)**: UX Polish for Transaction Feed
+  - **Visual Sorting (`CheckoutContent.kt`):**
+    - Per SCREEN_LAYOUTS.md: "Newest items should appear at the top of the list"
+    - Cart items now displayed in REVERSED order (newest first) on Cashier Screen
+    - Implementation uses `asReversed()` for efficient view without copying
+    - Uses `derivedStateOf` for performance (no new list on every frame)
+    - Underlying `Cart` data structure UNCHANGED - only visual presentation affected
+  - **Newest Item Highlighting:**
+    - Per SCREEN_LAYOUTS.md: "The most recently scanned item should be highlighted"
+    - Index 0 (most recent item) receives subtle `ContainerHigh` background
+    - Selection highlight (green border) takes priority over newest highlight
+    - New `isNewest` parameter added to `OrderListItem` composable
+  - **Animation:**
+    - Added `animateItem()` modifier to list items for smooth placement transitions
+    - Items animate into position when added/removed
+  - **Theme Updates (`Color.kt`):**
+    - Added `ContainerHigh` color (#E8F5E9) for surface highlighting
+  - **Governance Compliance:**
+    - Cart data structure remains unchanged (append-only)
+    - Only visual presentation is reversed (UI layer responsibility)
+    - Performance: Uses `derivedStateOf` instead of creating new list copies
+    - Customer Screen unchanged (still uses natural FIFO order per spec)
+
 - **Vendor Payout Screen (P2 #5)**: Cash Drawer Expense Management for paying vendors from till
   - **Domain Layer (`features/cashier/domain/`):**
     - `Vendor` model: id, name for vendor identification

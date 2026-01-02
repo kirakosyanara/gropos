@@ -15,8 +15,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -42,6 +44,7 @@ import com.unisight.gropos.core.components.DangerButton
 import com.unisight.gropos.core.components.ExtraLargeButton
 import com.unisight.gropos.core.components.FunctionsGrid
 import com.unisight.gropos.core.components.OutlineButton
+import com.unisight.gropos.core.components.RealTimeClock
 import com.unisight.gropos.core.components.SuccessButton
 import com.unisight.gropos.core.components.TenKey
 import com.unisight.gropos.core.components.TenKeyState
@@ -398,7 +401,8 @@ private fun LeftPanel(
             .background(GroPOSColors.LightGray2)
             .padding(GroPOSSpacing.XXL)
     ) {
-        // Header Row with Logo and Logout
+        // Header Row with Logo, Clock, and Logout
+        // Per SCREEN_LAYOUTS.md: Show current time (hh:mm a) in top bar
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -410,6 +414,9 @@ private fun LeftPanel(
                 fontWeight = FontWeight.Bold,
                 color = GroPOSColors.PrimaryGreen
             )
+            
+            // Real-time clock display (center position)
+            RealTimeClock(color = GroPOSColors.TextSecondary)
             
             DangerButton(onClick = onLogout) {
                 Text("Logout")
@@ -448,30 +455,44 @@ private fun LeftPanel(
                     .testTag(CheckoutTestTags.EMPTY_STATE)
             )
         } else {
+            // Per SCREEN_LAYOUTS.md: Cashier Screen shows newest items at TOP (scanDate DESCENDING)
+            // The Cart stores items in append order (oldest first).
+            // We reverse only for VISUAL presentation - Cart data structure remains unchanged.
+            val displayItems by remember(items) {
+                derivedStateOf { items.asReversed() }
+            }
+            val listState = rememberLazyListState()
+            
             WhiteBox(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
             ) {
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier
                         .fillMaxSize()
                         .testTag(CheckoutTestTags.ITEMS_LIST),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(
-                        items = items,
-                        key = { it.branchProductId }
-                    ) { item ->
+                    itemsIndexed(
+                        items = displayItems,
+                        key = { _, item -> item.branchProductId }
+                    ) { index, item ->
                         val isSelected = item.branchProductId == selectedItemId
+                        // Per SCREEN_LAYOUTS.md: "Most recently scanned item should be highlighted"
+                        // After reversing, index 0 is the most recently added item
+                        val isNewest = index == 0
+                        
                         OrderListItem(
                             item = item,
                             isSelected = isSelected,
+                            isNewest = isNewest,
                             onClick = { onItemClick(item.branchProductId) },
                             onRemove = { onRemoveItem(item.branchProductId) },
-                            modifier = Modifier.testTag(
-                                CheckoutTestTags.itemRow(item.branchProductId)
-                            )
+                            modifier = Modifier
+                                .animateItem()
+                                .testTag(CheckoutTestTags.itemRow(item.branchProductId))
                         )
                         HorizontalDivider(color = GroPOSColors.LightGray3)
                     }
@@ -700,21 +721,26 @@ private fun TotalRow(
  *             Tax+CRV        [Disc]
  *             "You saved..."
  * 
- * Per SCREEN_LAYOUTS.md: Clicking a row enters modification mode.
+ * Per SCREEN_LAYOUTS.md: 
+ * - Clicking a row enters modification mode.
+ * - "Most recently scanned item should be highlighted"
+ * - "Newest items should appear at the top of the list for immediate visibility"
  */
 @Composable
 private fun OrderListItem(
     item: CheckoutItemUiModel,
     isSelected: Boolean,
+    isNewest: Boolean,
     onClick: () -> Unit,
     onRemove: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Selection highlight color
-    val backgroundColor = if (isSelected) {
-        GroPOSColors.PrimaryGreen.copy(alpha = 0.15f)
-    } else {
-        Color.Transparent
+    // Per SCREEN_LAYOUTS.md: Highlight the most recently scanned item
+    // Priority: Selected (green border) > Newest (subtle ContainerHigh background) > Normal
+    val backgroundColor = when {
+        isSelected -> GroPOSColors.PrimaryGreen.copy(alpha = 0.15f)
+        isNewest -> GroPOSColors.ContainerHigh
+        else -> Color.Transparent
     }
     
     val borderModifier = if (isSelected) {
