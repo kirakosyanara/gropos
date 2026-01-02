@@ -4,7 +4,23 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [Unreleased] - 2026-01-01
+## [0.9.0] - 2026-01-01 - Feature Complete Alpha
+
+**🎉 All P0 Critical Features Complete!**
+
+This release marks the feature-complete alpha milestone for GroPOS. All core POS functionality is implemented and ready for testing.
+
+### P0 Critical Features Summary
+
+1. **Lock Screen & Inactivity Timer (P0 #1)** - Session security with auto-lock after 5 minutes of inactivity
+2. **Manager Approval Flow (P0 #2)** - RBAC infrastructure with permission checking and approval dialogs
+3. **Checkout Modification Mode (P0 #3)** - Line item editing, quantity changes, and void operations
+4. **Employee List + Till Assignment (P0 #4)** - Complete login flow with state machine, employee grid, and till selection
+5. **Returns Processing (P0 #5)** - Return item screen with refund calculations and manager approval
+
+---
+
+## [Unreleased]
 
 ### Added
 - **Returns Processing (P0 #5)**: Return Item Screen and refund logic
