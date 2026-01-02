@@ -62,7 +62,9 @@ class LoginScreen : Screen {
             onBackPressed = viewModel::onBackPressed,
             onErrorDismissed = viewModel::onErrorDismissed,
             onRefresh = viewModel::onRefresh,
-            onAdminSettingsClick = viewModel::showAdminSettings
+            onAdminSettingsClick = viewModel::showAdminSettings,
+            onBadgeLoginClick = viewModel::onBadgeLoginClick,
+            onCancelNfcScan = viewModel::onCancelNfcScan
         )
         
         // Admin Settings Dialog (Hidden Menu)

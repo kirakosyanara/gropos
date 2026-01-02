@@ -1,6 +1,8 @@
 package com.unisight.gropos.core.di
 
 import com.unisight.gropos.features.auth.data.FakeAuthRepository
+import com.unisight.gropos.features.auth.data.SimulatedNfcScanner
+import com.unisight.gropos.features.auth.domain.hardware.NfcScanner
 import com.unisight.gropos.features.auth.domain.repository.AuthRepository
 import com.unisight.gropos.features.auth.domain.usecase.ValidateLoginUseCase
 import com.unisight.gropos.features.auth.presentation.LockViewModel
@@ -43,6 +45,12 @@ val authModule = module {
     // TODO: Replace with Couchbase-backed implementation
     singleOf(::FakeTillRepository) bind TillRepository::class
     
+    // Hardware Layer - NFC Scanner
+    // Per ANDROID_HARDWARE_GUIDE.md: Hardware abstraction for badge authentication
+    // TODO: Replace SimulatedNfcScanner with platform-specific implementation
+    //       (SunmiNfcScanner, AndroidNfcScanner, DesktopNfcScanner)
+    singleOf(::SimulatedNfcScanner) bind NfcScanner::class
+    
     // Domain Layer - Session Manager
     // Per CASHIER_OPERATIONS.md: Tracks active session, handles logout
     single { CashierSessionManager(get()) }
@@ -51,9 +59,9 @@ val authModule = module {
     factory { ValidateLoginUseCase(get()) }
     
     // Presentation Layer
-    // LoginViewModel now uses EmployeeRepository and TillRepository
-    // per CASHIER_OPERATIONS.md state machine flow
-    factory { LoginViewModel(get(), get()) }
+    // LoginViewModel now uses EmployeeRepository, TillRepository, and NfcScanner
+    // per CASHIER_OPERATIONS.md state machine flow and ANDROID_HARDWARE_GUIDE.md NFC support
+    factory { LoginViewModel(get(), get(), get()) }
     
     // Lock Screen ViewModel
     // Per SCREEN_LAYOUTS.md: Displays when session is locked

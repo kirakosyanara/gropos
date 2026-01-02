@@ -2,6 +2,8 @@ package com.unisight.gropos.features.auth.presentation
 
 import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
+import com.unisight.gropos.features.auth.domain.hardware.NfcResult
+import com.unisight.gropos.features.auth.domain.hardware.NfcScanner
 import com.unisight.gropos.features.auth.domain.model.AuthUser
 import com.unisight.gropos.features.auth.domain.model.UserRole
 import com.unisight.gropos.features.cashier.domain.repository.EmployeeRepository
@@ -23,13 +25,18 @@ import kotlinx.datetime.toLocalDateTime
  * Implements the login state machine:
  * LOADING -> EMPLOYEE_SELECT -> PIN_ENTRY -> TILL_ASSIGNMENT -> SUCCESS
  * 
+ * Per ANDROID_HARDWARE_GUIDE.md:
+ * Supports NFC badge login as alternative to PIN entry.
+ * 
  * @param employeeRepository Repository for fetching employees
  * @param tillRepository Repository for till management
+ * @param nfcScanner Hardware abstraction for NFC badge readers
  * @param coroutineScope Scope for launching coroutines (injectable for tests)
  */
 class LoginViewModel(
     private val employeeRepository: EmployeeRepository,
     private val tillRepository: TillRepository,
+    private val nfcScanner: NfcScanner,
     private val coroutineScope: CoroutineScope? = null
 ) : ScreenModel {
     
@@ -290,6 +297,95 @@ class LoginViewModel(
      */
     fun onRefresh() {
         loadEmployees()
+    }
+    
+    // ========================================================================
+    // NFC Badge Login
+    // ========================================================================
+    
+    /**
+     * Initiates NFC badge scan for login.
+     *
+     * Per ANDROID_HARDWARE_GUIDE.md:
+     * - Opens ScanBadgeDialog
+     * - Starts NFC scanner and waits for badge tap
+     * - On success, uses badge token as PIN
+     *
+     * Governance:
+     * - Non-Blocking: UI remains responsive during scan
+     * - Fallback: User can Cancel and return to PIN entry
+     */
+    fun onBadgeLoginClick() {
+        val employee = _state.value.selectedEmployee ?: return
+        
+        // Show the scan dialog
+        _state.update { it.copy(isNfcScanActive = true, errorMessage = null) }
+        
+        // Start the scan in background
+        scope.launch {
+            val result = nfcScanner.startScan()
+            
+            // Hide the dialog first
+            _state.update { it.copy(isNfcScanActive = false) }
+            
+            when (result) {
+                is NfcResult.Success -> {
+                    // Badge token is used as PIN
+                    // Per spec: Badge "9999" -> PIN "9999"
+                    handleNfcLoginSuccess(employee, result.token)
+                }
+                is NfcResult.Error -> {
+                    _state.update { 
+                        it.copy(errorMessage = "Badge scan failed. Please try again or use PIN.")
+                    }
+                }
+                is NfcResult.Cancelled -> {
+                    // User cancelled, just close dialog (already done above)
+                }
+            }
+        }
+    }
+    
+    /**
+     * Cancels an ongoing NFC scan.
+     *
+     * Called when user presses Cancel button on ScanBadgeDialog.
+     */
+    fun onCancelNfcScan() {
+        nfcScanner.cancelScan()
+        _state.update { it.copy(isNfcScanActive = false) }
+    }
+    
+    /**
+     * Handles successful NFC badge read.
+     *
+     * Uses the badge token as PIN for authentication.
+     */
+    private fun handleNfcLoginSuccess(employee: EmployeeUiModel, token: String) {
+        scope.launch {
+            _state.update { it.copy(isLoading = true, errorMessage = null) }
+            
+            // Verify the token as PIN
+            employeeRepository.verifyPin(employee.id, token)
+                .onSuccess { _ ->
+                    // Check if employee has assigned till
+                    if (employee.assignedTillId != null && employee.assignedTillId > 0) {
+                        // Already has till, complete login
+                        completeLogin(employee, employee.assignedTillId)
+                    } else {
+                        // Need till assignment
+                        loadTillsForAssignment()
+                    }
+                }
+                .onFailure { _ ->
+                    _state.update { 
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = "Badge not recognized. Please try again or use PIN."
+                        )
+                    }
+                }
+        }
     }
     
     // ========================================================================

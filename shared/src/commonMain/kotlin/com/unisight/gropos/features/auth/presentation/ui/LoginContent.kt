@@ -21,6 +21,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -52,6 +55,7 @@ import com.unisight.gropos.core.theme.GroPOSSpacing
 import com.unisight.gropos.features.auth.presentation.EmployeeUiModel
 import com.unisight.gropos.features.auth.presentation.LoginStage
 import com.unisight.gropos.features.auth.presentation.LoginUiState
+import com.unisight.gropos.features.auth.presentation.components.ScanBadgeDialog
 
 /**
  * Login screen content with hoisted state.
@@ -75,40 +79,52 @@ fun LoginContent(
     onErrorDismissed: () -> Unit,
     onRefresh: () -> Unit,
     onAdminSettingsClick: () -> Unit,
+    onBadgeLoginClick: () -> Unit,
+    onCancelNfcScan: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Row(
-        modifier = modifier.fillMaxSize()
-    ) {
-        // LEFT SECTION (50%) - Branding
-        LeftBrandingSection(
-            stationName = state.stationName,
-            currentTime = state.currentTime,
-            version = state.version,
-            showBackButton = state.stage == LoginStage.PIN_ENTRY || state.stage == LoginStage.TILL_ASSIGNMENT,
-            onBackPressed = onBackPressed,
-            onAdminSettingsClick = onAdminSettingsClick,
-            modifier = Modifier
-                .weight(0.5f)
-                .fillMaxHeight()
-        )
+    Box(modifier = modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            // LEFT SECTION (50%) - Branding
+            LeftBrandingSection(
+                stationName = state.stationName,
+                currentTime = state.currentTime,
+                version = state.version,
+                showBackButton = state.stage == LoginStage.PIN_ENTRY || state.stage == LoginStage.TILL_ASSIGNMENT,
+                onBackPressed = onBackPressed,
+                onAdminSettingsClick = onAdminSettingsClick,
+                modifier = Modifier
+                    .weight(0.5f)
+                    .fillMaxHeight()
+            )
+            
+            // RIGHT SECTION (50%) - Authentication
+            RightAuthSection(
+                state = state,
+                onEmployeeSelected = onEmployeeSelected,
+                onPinDigit = onPinDigit,
+                onPinClear = onPinClear,
+                onPinBackspace = onPinBackspace,
+                onPinSubmit = onPinSubmit,
+                onTillSelected = onTillSelected,
+                onBackPressed = onBackPressed,
+                onErrorDismissed = onErrorDismissed,
+                onRefresh = onRefresh,
+                onBadgeLoginClick = onBadgeLoginClick,
+                modifier = Modifier
+                    .weight(0.5f)
+                    .fillMaxHeight()
+            )
+        }
         
-        // RIGHT SECTION (50%) - Authentication
-        RightAuthSection(
-            state = state,
-            onEmployeeSelected = onEmployeeSelected,
-            onPinDigit = onPinDigit,
-            onPinClear = onPinClear,
-            onPinBackspace = onPinBackspace,
-            onPinSubmit = onPinSubmit,
-            onTillSelected = onTillSelected,
-            onBackPressed = onBackPressed,
-            onErrorDismissed = onErrorDismissed,
-            onRefresh = onRefresh,
-            modifier = Modifier
-                .weight(0.5f)
-                .fillMaxHeight()
-        )
+        // NFC Badge Scan Dialog (overlay)
+        if (state.isNfcScanActive) {
+            ScanBadgeDialog(
+                onCancel = onCancelNfcScan
+            )
+        }
     }
 }
 
@@ -232,6 +248,7 @@ private fun RightAuthSection(
     onBackPressed: () -> Unit,
     onErrorDismissed: () -> Unit,
     onRefresh: () -> Unit,
+    onBadgeLoginClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -259,7 +276,8 @@ private fun RightAuthSection(
                 onPinClear = onPinClear,
                 onPinBackspace = onPinBackspace,
                 onPinSubmit = onPinSubmit,
-                onErrorDismissed = onErrorDismissed
+                onErrorDismissed = onErrorDismissed,
+                onBadgeLoginClick = onBadgeLoginClick
             )
             LoginStage.TILL_ASSIGNMENT -> {
                 // Show PIN entry in background with Till dialog overlay
@@ -273,7 +291,8 @@ private fun RightAuthSection(
                     onPinClear = {},
                     onPinBackspace = {},
                     onPinSubmit = {},
-                    onErrorDismissed = {}
+                    onErrorDismissed = {},
+                    onBadgeLoginClick = {}
                 )
                 
                 TillSelectionDialog(
@@ -482,7 +501,8 @@ private fun PinEntryContent(
     onPinClear: () -> Unit,
     onPinBackspace: () -> Unit,
     onPinSubmit: () -> Unit,
-    onErrorDismissed: () -> Unit
+    onErrorDismissed: () -> Unit,
+    onBadgeLoginClick: () -> Unit
 ) {
     Column(
         modifier = Modifier.fillMaxSize(),
@@ -578,6 +598,34 @@ private fun PinEntryContent(
                     fontWeight = FontWeight.Bold
                 )
             }
+        }
+        
+        Spacer(modifier = Modifier.height(GroPOSSpacing.M))
+        
+        // Badge Login Button
+        Button(
+            onClick = onBadgeLoginClick,
+            enabled = !isLoading,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = GroPOSColors.PrimaryBlue,
+                contentColor = GroPOSColors.White
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .testTag("badge_login_button")
+        ) {
+            Icon(
+                imageVector = Icons.Default.Person,
+                contentDescription = null,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(GroPOSSpacing.S))
+            Text(
+                text = "🪪 Badge Login",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
         }
         
         Spacer(modifier = Modifier.weight(1f))

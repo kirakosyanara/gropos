@@ -44,7 +44,10 @@ data class LoginUiState(
     val authenticatedUser: AuthUser? = null,
     
     // Admin Settings Dialog (Hidden Menu)
-    val showAdminSettings: Boolean = false
+    val showAdminSettings: Boolean = false,
+    
+    // NFC Badge Scanning State
+    val isNfcScanActive: Boolean = false
 ) {
     /**
      * Computed: PIN as dots for display

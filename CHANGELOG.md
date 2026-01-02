@@ -23,6 +23,50 @@ This release marks the feature-complete alpha milestone for GroPOS. All core POS
 ## [Unreleased]
 
 ### Added
+- **NFC Token Login (P3 #2)**: Hardware Abstraction for Badge Authentication
+  - **Domain Layer (`features/auth/domain/hardware/`):**
+    - `NfcScanner` interface: Hardware abstraction for NFC/RFID badge readers
+      - `suspend fun startScan(): NfcResult`: Blocking scan operation
+      - `fun cancelScan()`: Cancels in-progress scan
+    - `NfcResult` sealed class:
+      - `Success(token: String)`: Badge successfully read
+      - `Error(message: String)`: Scan failed
+      - `Cancelled`: User cancelled scan
+  - **Infrastructure Layer (`features/auth/data/`):**
+    - `SimulatedNfcScanner`: Development/testing implementation
+      - 2-second delay simulating "bringing card to reader"
+      - Returns `Success("9999")` (Manager's badge token maps to PIN 9999)
+      - Thread-safe with Mutex, supports cancellation
+  - **UI Component (`features/auth/presentation/components/ScanBadgeDialog.kt`):**
+    - Modal overlay shown during NFC badge scan
+    - Animated badge/NFC icon with pulse effect:
+      - Dual ring pulse animation (breathing effect)
+      - Scale animation for "tap" visual feedback
+    - Icon: Badge + Sensors icons combined
+    - Text: "Please Tap Employee Badge" / "Hold your badge near the reader"
+    - Progress indicator and Cancel button
+    - Fallback hint: "or use PIN to sign in"
+    - Test tags: `scan_badge_dialog`, `scan_badge_title`, `scan_badge_cancel_button`
+  - **LoginContent Updates:**
+    - Added "Badge Login" button (Blue, with Badge icon) below Sign In button
+    - Button disabled during loading state
+    - Test tag: `badge_login_button`
+  - **LoginUiState Updates:**
+    - Added `isNfcScanActive: Boolean` for dialog visibility state
+  - **LoginViewModel Updates:**
+    - `onBadgeLoginClick()`: Opens ScanBadgeDialog, starts NFC scan
+    - `onCancelNfcScan()`: Cancels scan, closes dialog
+    - `handleNfcLoginSuccess()`: Uses badge token as PIN for authentication
+    - Non-blocking: Scan runs in coroutine, UI stays responsive
+  - **DI Updates (`AuthModule`):**
+    - `NfcScanner` interface bound to `SimulatedNfcScanner` (singleton)
+    - TODO comment for platform-specific implementations (Sunmi, Android, Desktop)
+    - `LoginViewModel` factory updated with `NfcScanner` dependency
+  - **Governance Compliance:**
+    - **Non-Blocking:** UI remains responsive during scan (coroutines)
+    - **Fallback:** Users can always Cancel and use PIN pad
+    - Per ANDROID_HARDWARE_GUIDE.md: NFC reader emits token for authentication
+
 - **Advertisement Overlay / Screensaver (P3 #1)**: Idle Screen Digital Signage
   - **UI Component (`features/ad/presentation/AdOverlay.kt`):**
     - Per SCREEN_LAYOUTS.md: "Full-screen ad display when transaction is idle"
