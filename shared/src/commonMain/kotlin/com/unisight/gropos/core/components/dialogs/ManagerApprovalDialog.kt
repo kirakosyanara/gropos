@@ -20,7 +20,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -43,7 +42,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.unisight.gropos.core.components.OutlineButton
-import com.unisight.gropos.core.components.PrimaryButton
 import com.unisight.gropos.core.components.SuccessButton
 import com.unisight.gropos.core.components.TenKey
 import com.unisight.gropos.core.components.TenKeyMode
