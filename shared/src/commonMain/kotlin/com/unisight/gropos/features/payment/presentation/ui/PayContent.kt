@@ -1,7 +1,6 @@
 package com.unisight.gropos.features.payment.presentation.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,7 +25,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -34,7 +32,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.unisight.gropos.core.components.DangerButton
-import com.unisight.gropos.core.components.ExtraLargeButton
 import com.unisight.gropos.core.components.OutlineButton
 import com.unisight.gropos.core.components.PrimaryButton
 import com.unisight.gropos.core.components.SuccessButton
@@ -49,6 +46,7 @@ import com.unisight.gropos.features.payment.presentation.AppliedPaymentUiModel
 import com.unisight.gropos.features.payment.presentation.PaymentSummaryUiModel
 import com.unisight.gropos.features.payment.presentation.PaymentTab
 import com.unisight.gropos.features.payment.presentation.PaymentUiState
+import com.unisight.gropos.features.payment.presentation.components.PaymentTerminalDialog
 import java.math.BigDecimal
 
 /**
@@ -122,6 +120,15 @@ fun PayContent(
         // Processing Overlay
         if (state.isProcessing) {
             ProcessingOverlay()
+        }
+        
+        // Payment Terminal Dialog
+        // Per DESKTOP_HARDWARE.md: Modal overlay while waiting for card input
+        if (state.showTerminalDialog) {
+            PaymentTerminalDialog(
+                amount = state.terminalDialogAmount,
+                onCancel = { onEvent(PaymentEvent.CancelTerminalTransaction) }
+            )
         }
         
         // Change Dialog

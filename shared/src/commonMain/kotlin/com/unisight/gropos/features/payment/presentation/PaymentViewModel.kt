@@ -7,10 +7,13 @@ import com.unisight.gropos.features.checkout.domain.model.Cart
 import com.unisight.gropos.features.checkout.domain.repository.CartRepository
 import com.unisight.gropos.features.payment.domain.model.AppliedPayment
 import com.unisight.gropos.features.payment.domain.model.PaymentType
+import com.unisight.gropos.features.payment.domain.terminal.PaymentResult
+import com.unisight.gropos.features.payment.domain.terminal.PaymentTerminal
 import com.unisight.gropos.features.transaction.domain.mapper.toTransaction
 import com.unisight.gropos.features.transaction.domain.model.Transaction
 import com.unisight.gropos.features.transaction.domain.repository.TransactionRepository
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -33,6 +36,10 @@ import java.util.UUID
  * - Handles split tender (multiple payment types)
  * - Tracks SNAP eligible vs non-SNAP totals
  * 
+ * Per DESKTOP_HARDWARE.md:
+ * - Uses PaymentTerminal abstraction for card payments
+ * - Non-blocking UI during terminal operations
+ * 
  * Per DATABASE_SCHEMA.md:
  * - Saves completed transactions to LocalTransaction collection
  */
@@ -40,6 +47,7 @@ class PaymentViewModel(
     private val cartRepository: CartRepository,
     private val currencyFormatter: CurrencyFormatter,
     private val transactionRepository: TransactionRepository,
+    private val paymentTerminal: PaymentTerminal,
     private val scope: CoroutineScope? = null
 ) : ScreenModel {
     
@@ -52,6 +60,12 @@ class PaymentViewModel(
     
     // Store cart snapshot for transaction creation
     private var cartSnapshot: Cart? = null
+    
+    // Track current terminal payment job for cancellation
+    private var terminalPaymentJob: Job? = null
+    
+    // Track payment type for current terminal transaction
+    private var currentPaymentType: PaymentType? = null
     
     private val effectiveScope: CoroutineScope
         get() = scope ?: screenModelScope
@@ -360,38 +374,197 @@ class PaymentViewModel(
     }
     
     // ========================================================================
-    // Card Payments (Placeholder for Walking Skeleton)
+    // Card Payments via Payment Terminal
+    // Per DESKTOP_HARDWARE.md: Uses PaymentTerminal abstraction
     // ========================================================================
     
+    /**
+     * Initiates a credit card payment via the payment terminal.
+     * 
+     * Per PAYMENT_PROCESSING.md: 
+     * - Shows terminal dialog
+     * - Waits for card input
+     * - Processes authorization
+     */
     fun onCreditPayment() {
-        // For Walking Skeleton: Show message that terminal is not connected
-        _state.value = _state.value.copy(
-            errorMessage = "Payment terminal not connected. Use Cash for this demo."
-        )
+        processCardPayment(PaymentType.Credit, "Credit")
     }
     
+    /**
+     * Initiates a debit card payment via the payment terminal.
+     */
     fun onDebitPayment() {
-        _state.value = _state.value.copy(
-            errorMessage = "Payment terminal not connected. Use Cash for this demo."
-        )
+        processCardPayment(PaymentType.Debit, "Debit")
     }
     
+    /**
+     * Initiates an EBT SNAP payment via the payment terminal.
+     */
     fun onEbtSnapPayment() {
-        _state.value = _state.value.copy(
-            errorMessage = "Payment terminal not connected. Use Cash for this demo."
-        )
+        processCardPayment(PaymentType.EbtSnap, "EBT SNAP")
     }
     
+    /**
+     * Initiates an EBT Cash payment via the payment terminal.
+     */
     fun onEbtCashPayment() {
-        _state.value = _state.value.copy(
-            errorMessage = "Payment terminal not connected. Use Cash for this demo."
-        )
+        processCardPayment(PaymentType.EbtCash, "EBT Cash")
     }
     
+    /**
+     * Balance check for EBT cards.
+     * 
+     * Not yet implemented - placeholder for future functionality.
+     */
     fun onBalanceCheck() {
         _state.value = _state.value.copy(
-            errorMessage = "Payment terminal not connected."
+            errorMessage = "Balance check not yet implemented."
         )
+    }
+    
+    /**
+     * Processes a card payment using the PaymentTerminal.
+     * 
+     * Per DESKTOP_HARDWARE.md:
+     * - Non-blocking operation using coroutines
+     * - UI shows terminal dialog while waiting
+     * - ViewModel does NOT know if terminal is simulated or real
+     * 
+     * @param paymentType The type of card payment
+     * @param displayName Display name for the payment type
+     */
+    private fun processCardPayment(paymentType: PaymentType, displayName: String) {
+        val remaining = _state.value.remainingAmountRaw
+        if (remaining <= BigDecimal.ZERO) {
+            _state.value = _state.value.copy(errorMessage = "No amount due")
+            return
+        }
+        
+        // Determine amount to charge
+        val amount = getPaymentAmount()
+        currentPaymentType = paymentType
+        
+        // Show terminal dialog
+        _state.value = _state.value.copy(
+            showTerminalDialog = true,
+            terminalDialogAmount = currencyFormatter.format(amount)
+        )
+        
+        // Start terminal processing
+        terminalPaymentJob = effectiveScope.launch {
+            val result = paymentTerminal.processPayment(amount)
+            handleTerminalResult(result, amount, paymentType, displayName)
+        }
+    }
+    
+    /**
+     * Handles the result from the payment terminal.
+     * 
+     * Per PAYMENT_PROCESSING.md:
+     * - Approved: Add payment -> Close Dialog -> Finish Sale (if paid in full)
+     * - Declined: Show Error Toast -> Close Dialog -> Stay on Pay Screen
+     * - Cancelled: Close Dialog -> Stay on Pay Screen
+     */
+    private suspend fun handleTerminalResult(
+        result: PaymentResult,
+        amount: BigDecimal,
+        paymentType: PaymentType,
+        displayName: String
+    ) {
+        // Always hide the terminal dialog
+        _state.value = _state.value.copy(showTerminalDialog = false)
+        
+        when (result) {
+            is PaymentResult.Approved -> {
+                // Create payment record with card details
+                val payment = AppliedPayment(
+                    id = UUID.randomUUID().toString(),
+                    type = paymentType,
+                    amount = amount,
+                    displayName = "$displayName (${result.cardType})",
+                    authCode = result.authCode,
+                    lastFour = result.lastFour
+                )
+                
+                appliedPayments.add(payment)
+                totalPaid += amount
+                
+                // Update state
+                val newRemainingRaw = _state.value.remainingAmountRaw - amount
+                val isComplete = newRemainingRaw <= BigDecimal.ZERO
+                
+                _state.value = _state.value.copy(
+                    appliedPayments = appliedPayments.map { mapPaymentToUiModel(it) },
+                    remainingAmount = currencyFormatter.format(newRemainingRaw.coerceAtLeast(BigDecimal.ZERO)),
+                    remainingAmountRaw = newRemainingRaw.coerceAtLeast(BigDecimal.ZERO),
+                    enteredAmount = ""
+                )
+                
+                println("PaymentViewModel: Card payment approved - ${result.cardType} ****${result.lastFour}, Auth: ${result.authCode}")
+                
+                // Complete transaction if fully paid
+                if (isComplete) {
+                    completeTransaction()
+                }
+            }
+            
+            is PaymentResult.Declined -> {
+                // Show error message, stay on pay screen
+                _state.value = _state.value.copy(
+                    errorMessage = "Card Declined: ${result.reason}"
+                )
+                println("PaymentViewModel: Card payment declined - ${result.reason}")
+            }
+            
+            is PaymentResult.Error -> {
+                // Show error message, stay on pay screen
+                _state.value = _state.value.copy(
+                    errorMessage = "Terminal Error: ${result.message}"
+                )
+                println("PaymentViewModel: Terminal error - ${result.message}")
+            }
+            
+            is PaymentResult.Cancelled -> {
+                // User cancelled, just close dialog (no error message)
+                println("PaymentViewModel: Card payment cancelled by user")
+            }
+        }
+        
+        terminalPaymentJob = null
+        currentPaymentType = null
+    }
+    
+    /**
+     * Cancel the current terminal transaction.
+     * 
+     * Called when user presses "Cancel" on the terminal dialog.
+     */
+    fun onCancelTerminalTransaction() {
+        effectiveScope.launch {
+            paymentTerminal.cancelTransaction()
+            terminalPaymentJob?.cancel()
+            terminalPaymentJob = null
+            
+            _state.value = _state.value.copy(showTerminalDialog = false)
+        }
+    }
+    
+    /**
+     * Gets the payment amount based on entered amount or remaining amount.
+     */
+    private fun getPaymentAmount(): BigDecimal {
+        val enteredString = _state.value.enteredAmount
+        if (enteredString.isNotBlank()) {
+            try {
+                val entered = BigDecimal(enteredString).setScale(2, RoundingMode.HALF_UP)
+                if (entered > BigDecimal.ZERO) {
+                    return minOf(entered, _state.value.remainingAmountRaw)
+                }
+            } catch (e: Exception) {
+                // Fall through to use remaining amount
+            }
+        }
+        return _state.value.remainingAmountRaw
     }
     
     // ========================================================================

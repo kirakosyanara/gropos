@@ -84,6 +84,7 @@ fun FunctionsGrid(
     onHoldClick: () -> Unit = {},
     onVoidTransactionClick: () -> Unit = {},
     onSignOutClick: () -> Unit = {},
+    onCashPickupClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -130,24 +131,33 @@ fun FunctionsGrid(
             }
         }
         
-        // Row 3: Functions and Sign Out
+        // Row 3: Cash Pickup and Functions
+        // Per FUNCTIONS_MENU.md: Cash Pickup is a common payment tab function
         androidx.compose.foundation.layout.Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(GroPOSSpacing.S)
         ) {
+            WarningButton(
+                onClick = onCashPickupClick,
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Pickup")
+            }
             OutlineButton(
                 onClick = onFunctionsClick,
                 modifier = Modifier.weight(1f)
             ) {
                 Text("Functions")
             }
-            // Per CASHIER_OPERATIONS.md: Sign Out shows logout options dialog
-            DangerButton(
-                onClick = onSignOutClick,
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Sign Out")
-            }
+        }
+        
+        // Row 4: Sign Out (full width)
+        // Per CASHIER_OPERATIONS.md: Sign Out shows logout options dialog
+        DangerButton(
+            onClick = onSignOutClick,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Sign Out")
         }
     }
 }

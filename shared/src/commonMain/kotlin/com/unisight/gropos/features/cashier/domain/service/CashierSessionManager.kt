@@ -115,6 +115,69 @@ class CashierSessionManager(
     }
     
     /**
+     * Records a cash pickup (safe drop) from the drawer.
+     * 
+     * Per CASHIER_OPERATIONS.md: Safe Drops / Pickups
+     * - Decreases the drawer's expected cash balance
+     * - Requires manager approval (handled by caller)
+     * - Audit logged for accountability
+     * 
+     * @param amount The amount being picked up
+     * @param managerId The ID of the manager who approved the pickup
+     * @return Result indicating success or failure with validation error
+     */
+    suspend fun cashPickup(amount: BigDecimal, managerId: String): Result<Unit> {
+        val current = _activeSession.value
+            ?: return Result.failure(IllegalStateException("No active session"))
+        
+        // Validation: Cannot pick up more than current drawer balance
+        if (amount > current.expectedCash) {
+            return Result.failure(
+                IllegalArgumentException("Cannot pickup more than drawer balance. " +
+                    "Current balance: \$${current.expectedCash}, Requested: \$${amount}")
+            )
+        }
+        
+        // Validation: Amount must be positive
+        if (amount <= BigDecimal.ZERO) {
+            return Result.failure(
+                IllegalArgumentException("Pickup amount must be greater than zero")
+            )
+        }
+        
+        // Update session with pickup
+        _activeSession.value = current.copy(
+            expectedCash = current.expectedCash - amount,
+            totalCashPickups = current.totalCashPickups + amount,
+            cashPickupCount = current.cashPickupCount + 1
+        )
+        
+        // Audit log (per governance: log all cash drawer operations)
+        println("================================================================================")
+        println("[AUDIT] CASH PICKUP")
+        println("================================================================================")
+        println("Timestamp: ${kotlinx.datetime.Clock.System.now()}")
+        println("Employee: ${current.employeeName} (ID: ${current.employeeId})")
+        println("Manager Approval: $managerId")
+        println("Pickup Amount: \$$amount")
+        println("Previous Balance: \$${current.expectedCash}")
+        println("New Balance: \$${current.expectedCash - amount}")
+        println("Till ID: ${current.tillId}")
+        println("================================================================================")
+        
+        return Result.success(Unit)
+    }
+    
+    /**
+     * Gets the current drawer balance (expected cash in drawer).
+     * 
+     * @return Current drawer balance, or ZERO if no session
+     */
+    fun getCurrentDrawerBalance(): BigDecimal {
+        return _activeSession.value?.expectedCash ?: BigDecimal.ZERO
+    }
+    
+    /**
      * Releases the till and ends the session (quick logout).
      * 
      * Per CASHIER_OPERATIONS.md: "Release Till - Simple logout"
@@ -181,7 +244,9 @@ class CashierSessionManager(
             openingFloat = session.openingFloat,
             cashIn = session.cashSales,
             cashOut = BigDecimal.ZERO, // Would track refunds
-            expectedCash = session.openingFloat + session.cashSales,
+            cashPickups = session.totalCashPickups,
+            cashPickupCount = session.cashPickupCount,
+            expectedCash = session.expectedCash, // Use session's tracked balance (includes pickups)
             status = ShiftReportStatus.PENDING
         )
         

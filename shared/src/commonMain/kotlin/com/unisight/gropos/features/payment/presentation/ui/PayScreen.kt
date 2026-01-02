@@ -82,7 +82,7 @@ class PayScreen : Screen {
                         viewModel.onCashEnteredAmount()
                     }
                     
-                    // Card payments (placeholders)
+                    // Card payments via terminal
                     PaymentEvent.CreditPayment -> {
                         viewModel.onCreditPayment()
                     }
@@ -97,6 +97,11 @@ class PayScreen : Screen {
                     }
                     PaymentEvent.BalanceCheck -> {
                         viewModel.onBalanceCheck()
+                    }
+                    
+                    // Terminal dialog
+                    PaymentEvent.CancelTerminalTransaction -> {
+                        viewModel.onCancelTerminalTransaction()
                     }
                     
                     // Dialogs
@@ -141,6 +146,10 @@ sealed interface PaymentEvent {
     data object EbtSnapPayment : PaymentEvent
     data object EbtCashPayment : PaymentEvent
     data object BalanceCheck : PaymentEvent
+    
+    // Terminal Dialog
+    // Per DESKTOP_HARDWARE.md: Cancel button in terminal dialog
+    data object CancelTerminalTransaction : PaymentEvent
     
     // Dialogs
     data object DismissChangeDialog : PaymentEvent

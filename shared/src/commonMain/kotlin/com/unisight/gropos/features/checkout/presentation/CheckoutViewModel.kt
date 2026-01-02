@@ -519,6 +519,17 @@ class CheckoutViewModel(
                     showVoidConfirmationDialog()
                 }
             }
+            RequestAction.CASH_PICKUP -> {
+                // Cash pickup was approved - execute with pending amount
+                val inputValue = _state.value.cashPickupDialogState.inputValue
+                val amountCents = inputValue.toLongOrNull() ?: 0
+                val amount = BigDecimal(amountCents).divide(BigDecimal(100))
+                
+                // Get the approving manager ID
+                val approverId = approvalState.managers.firstOrNull()?.id?.toString() ?: "Unknown"
+                
+                executeCashPickup(amount, approverId)
+            }
             RequestAction.LINE_DISCOUNT -> {
                 // TODO: Apply discount once discount flow is implemented
             }
@@ -1191,6 +1202,272 @@ class CheckoutViewModel(
             imageUrl = null,
             isSnapEligible = product.isSnapEligible,
             barcode = product.itemNumbers.firstOrNull()?.itemNumber
+        )
+    }
+    
+    // ========================================================================
+    // Cash Pickup
+    // Per FUNCTIONS_MENU.md: Cash Pickup removes cash from drawer for safe
+    // ========================================================================
+    
+    /**
+     * Opens the Cash Pickup dialog.
+     * 
+     * Per FUNCTIONS_MENU.md:
+     * - Prerequisites: No active payments in current transaction
+     * - Requires Manager approval
+     */
+    fun onOpenCashPickupDialog() {
+        // Validation: Cannot do cash pickup with items in cart
+        if (!_state.value.isEmpty) {
+            _state.value = _state.value.copy(
+                lastScanEvent = ScanEvent.Error("Complete or void the current transaction before cash pickup.")
+            )
+            return
+        }
+        
+        // Get current drawer balance
+        val currentBalance = cashierSessionManager.getCurrentDrawerBalance()
+        
+        _state.value = _state.value.copy(
+            cashPickupDialogState = CashPickupDialogState(
+                isVisible = true,
+                inputValue = "",
+                currentBalance = currencyFormatter.format(currentBalance),
+                errorMessage = null
+            )
+        )
+    }
+    
+    /**
+     * Handles digit press in Cash Pickup dialog.
+     */
+    fun onCashPickupDigitPress(digit: String) {
+        val currentInput = _state.value.cashPickupDialogState.inputValue
+        val newInput = currentInput + digit
+        
+        // Limit to reasonable input length
+        if (newInput.length <= 10) {
+            _state.value = _state.value.copy(
+                cashPickupDialogState = _state.value.cashPickupDialogState.copy(
+                    inputValue = newInput,
+                    errorMessage = null
+                )
+            )
+        }
+    }
+    
+    /**
+     * Clears the Cash Pickup input.
+     */
+    fun onCashPickupClear() {
+        _state.value = _state.value.copy(
+            cashPickupDialogState = _state.value.cashPickupDialogState.copy(
+                inputValue = "",
+                errorMessage = null
+            )
+        )
+    }
+    
+    /**
+     * Handles backspace in Cash Pickup dialog.
+     */
+    fun onCashPickupBackspace() {
+        val currentInput = _state.value.cashPickupDialogState.inputValue
+        if (currentInput.isNotEmpty()) {
+            _state.value = _state.value.copy(
+                cashPickupDialogState = _state.value.cashPickupDialogState.copy(
+                    inputValue = currentInput.dropLast(1),
+                    errorMessage = null
+                )
+            )
+        }
+    }
+    
+    /**
+     * Initiates the cash pickup with permission check.
+     * 
+     * Per FUNCTIONS_MENU.md: Manager approval required.
+     * Per Governance: Cannot pickup more than drawer balance.
+     */
+    fun onCashPickupConfirm() {
+        val inputValue = _state.value.cashPickupDialogState.inputValue
+        if (inputValue.isBlank()) {
+            _state.value = _state.value.copy(
+                cashPickupDialogState = _state.value.cashPickupDialogState.copy(
+                    errorMessage = "Please enter an amount"
+                )
+            )
+            return
+        }
+        
+        // Parse the amount (input is in cents, e.g., "5000" = $50.00)
+        val amountCents = inputValue.toLongOrNull() ?: 0
+        val amount = BigDecimal(amountCents).divide(BigDecimal(100))
+        
+        if (amount <= BigDecimal.ZERO) {
+            _state.value = _state.value.copy(
+                cashPickupDialogState = _state.value.cashPickupDialogState.copy(
+                    errorMessage = "Amount must be greater than zero"
+                )
+            )
+            return
+        }
+        
+        // Validate against drawer balance
+        val currentBalance = cashierSessionManager.getCurrentDrawerBalance()
+        if (amount > currentBalance) {
+            _state.value = _state.value.copy(
+                cashPickupDialogState = _state.value.cashPickupDialogState.copy(
+                    errorMessage = "Cannot pickup more than drawer balance (${currencyFormatter.format(currentBalance)})"
+                )
+            )
+            return
+        }
+        
+        val user = currentUser
+        if (user == null) {
+            _state.value = _state.value.copy(
+                cashPickupDialogState = _state.value.cashPickupDialogState.copy(
+                    errorMessage = "User session not found"
+                )
+            )
+            return
+        }
+        
+        // Check permission - Cash Pickup ALWAYS requires manager approval for cashiers
+        val permissionResult = PermissionManager.checkPermission(user, RequestAction.CASH_PICKUP)
+        
+        when (permissionResult) {
+            PermissionCheckResult.GRANTED,
+            PermissionCheckResult.SELF_APPROVAL_ALLOWED -> {
+                // Manager can self-approve - proceed directly
+                executeCashPickup(amount, user.id)
+            }
+            PermissionCheckResult.REQUIRES_APPROVAL -> {
+                // Close pickup dialog and show manager approval
+                _state.value = _state.value.copy(
+                    cashPickupDialogState = _state.value.cashPickupDialogState.copy(
+                        isVisible = false,
+                        approvalPending = true
+                    )
+                )
+                showManagerApprovalDialogForCashPickup(amount)
+            }
+            PermissionCheckResult.DENIED -> {
+                _state.value = _state.value.copy(
+                    cashPickupDialogState = _state.value.cashPickupDialogState.copy(
+                        errorMessage = "You do not have permission for cash pickup"
+                    )
+                )
+            }
+        }
+    }
+    
+    /**
+     * Shows manager approval dialog for cash pickup.
+     */
+    private fun showManagerApprovalDialogForCashPickup(amount: BigDecimal) {
+        val user = currentUser ?: return
+        
+        effectiveScope.launch {
+            val managers = managerApprovalService.getApprovers(RequestAction.CASH_PICKUP, user)
+            
+            _state.value = _state.value.copy(
+                managerApprovalState = ManagerApprovalDialogState(
+                    isVisible = true,
+                    action = RequestAction.CASH_PICKUP,
+                    managers = managers,
+                    isProcessing = false,
+                    errorMessage = null
+                )
+            )
+        }
+    }
+    
+    /**
+     * Executes the cash pickup after approval.
+     * 
+     * @param amount The amount to pick up
+     * @param approverId The ID of the approving manager (or self for managers)
+     */
+    private fun executeCashPickup(amount: BigDecimal, approverId: String) {
+        effectiveScope.launch {
+            _state.value = _state.value.copy(
+                cashPickupDialogState = _state.value.cashPickupDialogState.copy(
+                    isProcessing = true
+                )
+            )
+            
+            val result = cashierSessionManager.cashPickup(amount, approverId)
+            
+            result.onSuccess {
+                // Print virtual receipt
+                printCashPickupReceipt(amount, approverId)
+                
+                // Close dialog and show success feedback
+                _state.value = _state.value.copy(
+                    cashPickupDialogState = CashPickupDialogState(),
+                    managerApprovalState = ManagerApprovalDialogState(),
+                    cashPickupFeedback = "Pickup Recorded: ${currencyFormatter.format(amount)}"
+                )
+            }.onFailure { error ->
+                _state.value = _state.value.copy(
+                    cashPickupDialogState = _state.value.cashPickupDialogState.copy(
+                        isVisible = true,
+                        isProcessing = false,
+                        errorMessage = error.message ?: "Failed to record pickup"
+                    )
+                )
+            }
+        }
+    }
+    
+    /**
+     * Prints a virtual receipt for the cash pickup.
+     */
+    private fun printCashPickupReceipt(amount: BigDecimal, approverId: String) {
+        val session = cashierSessionManager.getCurrentSession()
+        
+        println("================================================================================")
+        println("                           CASH PICKUP RECEIPT")
+        println("================================================================================")
+        println()
+        println("Date/Time:      ${java.time.LocalDateTime.now()}")
+        println("Employee:       ${session?.employeeName ?: "Unknown"}")
+        println("Till:           Till ${session?.tillId ?: "?"}")
+        println("Manager Approval: $approverId")
+        println()
+        println("--------------------------------------------------------------------------------")
+        println("PICKUP AMOUNT:  ${currencyFormatter.format(amount)}")
+        println("--------------------------------------------------------------------------------")
+        println()
+        println("New Drawer Balance: ${currencyFormatter.format(cashierSessionManager.getCurrentDrawerBalance())}")
+        println()
+        println("________________________________________________________________________________")
+        println("Cashier Signature")
+        println()
+        println("________________________________________________________________________________")
+        println("Manager Signature")
+        println()
+        println("================================================================================")
+    }
+    
+    /**
+     * Dismisses the Cash Pickup dialog.
+     */
+    fun onDismissCashPickupDialog() {
+        _state.value = _state.value.copy(
+            cashPickupDialogState = CashPickupDialogState()
+        )
+    }
+    
+    /**
+     * Dismisses the cash pickup feedback message.
+     */
+    fun onDismissCashPickupFeedback() {
+        _state.value = _state.value.copy(
+            cashPickupFeedback = null
         )
     }
     

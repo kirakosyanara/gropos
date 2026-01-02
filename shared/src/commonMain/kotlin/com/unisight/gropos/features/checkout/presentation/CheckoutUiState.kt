@@ -124,6 +124,23 @@ data class RecallDialogState(
 )
 
 /**
+ * State for the Cash Pickup Dialog.
+ * 
+ * Per FUNCTIONS_MENU.md:
+ * - Cash Pickup removes cash from drawer for safe deposit
+ * - Requires Manager approval
+ * - Cannot pickup more than current drawer balance
+ */
+data class CashPickupDialogState(
+    val isVisible: Boolean = false,
+    val inputValue: String = "",
+    val currentBalance: String = "$0.00",
+    val errorMessage: String? = null,
+    val isProcessing: Boolean = false,
+    val approvalPending: Boolean = false
+)
+
+/**
  * UI State for the Checkout screen.
  * 
  * Per kotlin-standards.mdc: Use sealed interface for strict typing.
@@ -165,7 +182,11 @@ data class CheckoutUiState(
     // Hold/Recall state (per TRANSACTION_FLOW.md)
     val holdDialogState: HoldDialogState = HoldDialogState(),
     val recallDialogState: RecallDialogState = RecallDialogState(),
-    val holdRecallFeedback: String? = null
+    val holdRecallFeedback: String? = null,
+    
+    // Cash Pickup state (per FUNCTIONS_MENU.md: Cash Pickup)
+    val cashPickupDialogState: CashPickupDialogState = CashPickupDialogState(),
+    val cashPickupFeedback: String? = null
 ) {
     /**
      * Whether the screen is in modification mode.

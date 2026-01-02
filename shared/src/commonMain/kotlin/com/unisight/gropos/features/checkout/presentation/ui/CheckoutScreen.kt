@@ -171,6 +171,29 @@ class CheckoutScreen : Screen {
                     CheckoutEvent.DismissHoldRecallFeedback -> {
                         viewModel.onDismissHoldRecallFeedback()
                     }
+                    
+                    // Cash Pickup Events
+                    CheckoutEvent.OpenCashPickupDialog -> {
+                        viewModel.onOpenCashPickupDialog()
+                    }
+                    CheckoutEvent.DismissCashPickupDialog -> {
+                        viewModel.onDismissCashPickupDialog()
+                    }
+                    is CheckoutEvent.CashPickupDigitPress -> {
+                        viewModel.onCashPickupDigitPress(event.digit)
+                    }
+                    CheckoutEvent.CashPickupClear -> {
+                        viewModel.onCashPickupClear()
+                    }
+                    CheckoutEvent.CashPickupBackspace -> {
+                        viewModel.onCashPickupBackspace()
+                    }
+                    CheckoutEvent.CashPickupConfirm -> {
+                        viewModel.onCashPickupConfirm()
+                    }
+                    CheckoutEvent.DismissCashPickupFeedback -> {
+                        viewModel.onDismissCashPickupFeedback()
+                    }
                 }
             }
         )
@@ -306,4 +329,30 @@ sealed interface CheckoutEvent {
     
     /** Dismiss hold/recall feedback */
     data object DismissHoldRecallFeedback : CheckoutEvent
+    
+    // ========================================================================
+    // Cash Pickup Events
+    // Per FUNCTIONS_MENU.md: Cash Pickup removes cash from drawer for safe
+    // ========================================================================
+    
+    /** Open the cash pickup dialog */
+    data object OpenCashPickupDialog : CheckoutEvent
+    
+    /** Dismiss the cash pickup dialog */
+    data object DismissCashPickupDialog : CheckoutEvent
+    
+    /** Digit pressed in cash pickup dialog */
+    data class CashPickupDigitPress(val digit: String) : CheckoutEvent
+    
+    /** Clear pressed in cash pickup dialog */
+    data object CashPickupClear : CheckoutEvent
+    
+    /** Backspace pressed in cash pickup dialog */
+    data object CashPickupBackspace : CheckoutEvent
+    
+    /** Confirm the cash pickup */
+    data object CashPickupConfirm : CheckoutEvent
+    
+    /** Dismiss cash pickup feedback */
+    data object DismissCashPickupFeedback : CheckoutEvent
 }

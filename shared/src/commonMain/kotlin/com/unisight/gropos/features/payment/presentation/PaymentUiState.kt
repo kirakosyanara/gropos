@@ -52,6 +52,9 @@ enum class PaymentTab {
  * Per PAYMENT_PROCESSING.md:
  * - Split tender support
  * - SNAP eligibility tracking
+ * 
+ * Per DESKTOP_HARDWARE.md:
+ * - Payment terminal dialog state for card payments
  */
 data class PaymentUiState(
     // Summary data
@@ -83,6 +86,11 @@ data class PaymentUiState(
     val isComplete: Boolean = false,
     val showChangeDialog: Boolean = false,
     val changeAmount: String = "$0.00",
+    
+    // Payment Terminal Dialog state
+    // Per DESKTOP_HARDWARE.md: Modal overlay while waiting for card input
+    val showTerminalDialog: Boolean = false,
+    val terminalDialogAmount: String = "$0.00",
     
     // Error handling
     val errorMessage: String? = null,

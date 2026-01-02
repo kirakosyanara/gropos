@@ -23,6 +23,93 @@ This release marks the feature-complete alpha milestone for GroPOS. All core POS
 ## [Unreleased]
 
 ### Added
+- **Cash Pickup Screen (P1 #4)**: Cash drawer management for safe deposits
+  - **Domain Layer (`features/cashier/domain/`):**
+    - Updated `CashierSession` model with cash pickup tracking:
+      - `totalCashPickups`: Running total of cash pickups during session
+      - `cashPickupCount`: Number of pickups performed
+    - Updated `CashierSessionManager`:
+      - `cashPickup(amount, managerId)`: Records pickup, decreases drawer balance
+      - `getCurrentDrawerBalance()`: Returns current expected cash in drawer
+      - Validation: Cannot pickup more than current balance
+      - Audit logging to console with manager approval info
+    - Updated `ShiftReport` model with cash pickup summary in Z-Report
+  - **UI Component (`CashPickupDialog.kt`):**
+    - Modal dialog per DIALOGS.md pattern
+    - Green header with "Cash Pickup" title
+    - Display of current drawer balance
+    - Amount input with TenKey (cents-based entry)
+    - Input validation with error messages
+    - Cancel and Pickup action buttons
+    - Test tags for UI automation
+  - **State Management:**
+    - `CashPickupDialogState` in `CheckoutUiState`:
+      - `isVisible`, `inputValue`, `currentBalance`, `errorMessage`
+    - `CheckoutEvent` extensions for cash pickup flow:
+      - `OpenCashPickupDialog`, `DismissCashPickupDialog`
+      - `CashPickupDigitPress`, `CashPickupClear`, `CashPickupBackspace`
+      - `CashPickupConfirm`, `DismissCashPickupFeedback`
+  - **ViewModel Logic (`CheckoutViewModel`):**
+    - `onOpenCashPickupDialog()`: Opens dialog with current balance
+    - Permission check via `PermissionManager.checkPermission(RequestAction.CASH_PICKUP)`
+    - Manager approval flow for cashiers (managers can self-approve)
+    - `executeCashPickup()`: Calls `CashierSessionManager.cashPickup()`
+    - Virtual receipt printing to console
+    - Success feedback via Snackbar
+  - **UI Integration:**
+    - "Pickup" button added to `FunctionsGrid` (orange/warning style)
+    - Cash Pickup in `FunctionsPanel` Payments tab (already existed)
+    - Dialog wired in `CheckoutContent` with all event handlers
+    - Feedback Snackbar for successful pickups
+  - **Governance:**
+    - Validation: Cannot pickup more than drawer balance
+    - Validation: Cart must be empty before pickup
+    - Security: Always requires Manager approval (unless user is Manager)
+    - Audit trail: Console output with timestamp, employee, manager, amounts
+
+- **Payment Terminal Integration (P1 #1)**: Hardware abstraction for card payments
+  - **Domain Layer (`features/payment/domain/terminal/`):**
+    - `PaymentTerminal`: Interface for payment terminal hardware abstraction
+      - `processPayment(amount)`: Suspending function for card payment processing
+      - `cancelTransaction()`: Cancels pending terminal operation
+    - `PaymentResult`: Sealed class representing terminal transaction outcomes
+      - `Approved`: Success with transactionId, cardType, lastFour, authCode
+      - `Declined`: Issuer decline with reason
+      - `Error`: Technical failure (timeout, disconnection)
+      - `Cancelled`: User cancelled via POS
+  - **Data Layer (`features/payment/data/`):**
+    - `SimulatedPaymentTerminal`: Development implementation of `PaymentTerminal`
+      - Simulates 2-second "Insert Card" delay
+      - Returns Approved with mock VISA **** 1234, Auth: AUTH001
+      - Supports cancellation during processing
+      - Thread-safe with Mutex
+  - **DI Integration (`PaymentModule`):**
+    - Binds `PaymentTerminal` to `SimulatedPaymentTerminal` (singleton)
+    - Production: Swap to real implementation (PAX/Sunmi/JavaPOS)
+  - **UI Components (`PaymentTerminalDialog.kt`):**
+    - Modal overlay shown during card payment processing
+    - Animated card icon with pulsing effect
+    - "Please Insert Card on Terminal" instruction text
+    - Amount display
+    - Spinner/progress indicator
+    - Cancel button to abort transaction
+    - Test tags for UI testing
+  - **ViewModel Integration (`PaymentViewModel`):**
+    - `onCreditPayment()`: Initiates credit card payment via terminal
+    - `onDebitPayment()`: Initiates debit card payment via terminal
+    - `onEbtSnapPayment()`: Initiates EBT SNAP payment via terminal
+    - `onEbtCashPayment()`: Initiates EBT Cash payment via terminal
+    - `onCancelTerminalTransaction()`: Cancels pending terminal operation
+    - Non-blocking: Uses coroutines, UI never freezes
+    - Result handling: Approved adds payment, Declined/Error shows toast
+  - **State Management (`PaymentUiState`):**
+    - `showTerminalDialog`: Controls terminal dialog visibility
+    - `terminalDialogAmount`: Formatted amount for dialog display
+  - **Governance:**
+    - ViewModel is terminal-agnostic (doesn't know if simulated or real)
+    - Hardware abstraction enables testing without physical terminal
+    - Ready for PAX, Sunmi, JavaPOS implementations
+
 - **Hold & Recall Transactions (P1 #2)**: Suspend and resume transactions
   - **Domain Models (`features/transaction/domain/model/HeldTransaction.kt`):**
     - `HeldTransaction`: Represents a suspended transaction with all cart data

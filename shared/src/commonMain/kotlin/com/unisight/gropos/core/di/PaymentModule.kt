@@ -1,5 +1,7 @@
 package com.unisight.gropos.core.di
 
+import com.unisight.gropos.features.payment.data.SimulatedPaymentTerminal
+import com.unisight.gropos.features.payment.domain.terminal.PaymentTerminal
 import com.unisight.gropos.features.payment.presentation.PaymentViewModel
 import org.koin.core.module.Module
 import org.koin.dsl.module
@@ -13,8 +15,26 @@ import org.koin.dsl.module
  * 
  * Per DATABASE_SCHEMA.md:
  * - TransactionRepository for persisting completed transactions
+ * 
+ * Per DESKTOP_HARDWARE.md:
+ * - PaymentTerminal abstraction for hardware integration
  */
 val paymentModule: Module = module {
+
+    /**
+     * Payment Terminal hardware abstraction.
+     * 
+     * Singleton scope - one terminal instance shared across the app.
+     * 
+     * Per DESKTOP_HARDWARE.md: This binds to SimulatedPaymentTerminal
+     * for development. In production, this would bind to a real terminal
+     * implementation (e.g., PaxPaymentTerminal, SunmiPaymentTerminal).
+     * 
+     * Why Singleton:
+     * - Physical terminal hardware is a single resource
+     * - Prevents concurrent access issues
+     */
+    single<PaymentTerminal> { SimulatedPaymentTerminal() }
 
     /**
      * Payment ViewModel/ScreenModel.
@@ -26,7 +46,8 @@ val paymentModule: Module = module {
      * - CartRepository: Shared cart state (singleton)
      * - CurrencyFormatter: For price formatting
      * - TransactionRepository: For persisting completed transactions
+     * - PaymentTerminal: Hardware abstraction for card payments
      */
-    factory { PaymentViewModel(get(), get(), get()) }
+    factory { PaymentViewModel(get(), get(), get(), get()) }
 }
 

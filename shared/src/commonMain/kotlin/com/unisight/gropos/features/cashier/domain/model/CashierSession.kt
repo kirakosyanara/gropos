@@ -41,7 +41,11 @@ data class CashierSession(
     val openingFloat: BigDecimal = BigDecimal.ZERO,
     val expectedCash: BigDecimal = BigDecimal.ZERO,
     val actualCash: BigDecimal? = null,
-    val variance: BigDecimal? = null
+    val variance: BigDecimal? = null,
+    
+    // Cash pickup tracking (per CASHIER_OPERATIONS.md: Safe Drops / Pickups)
+    val totalCashPickups: BigDecimal = BigDecimal.ZERO,
+    val cashPickupCount: Int = 0
 )
 
 /**

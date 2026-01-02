@@ -53,6 +53,7 @@ import com.unisight.gropos.core.components.dialogs.ManagerApprovalDialog
 import com.unisight.gropos.features.checkout.presentation.components.dialogs.VoidConfirmationDialog
 import com.unisight.gropos.features.checkout.presentation.components.dialogs.HoldTransactionDialog
 import com.unisight.gropos.features.checkout.presentation.components.dialogs.RecallTransactionsDialog
+import com.unisight.gropos.features.checkout.presentation.components.dialogs.CashPickupDialog
 import com.unisight.gropos.features.auth.presentation.components.dialogs.LogoutDialog
 import com.unisight.gropos.features.auth.presentation.components.dialogs.LogoutOption
 import com.unisight.gropos.features.checkout.presentation.CheckoutItemUiModel
@@ -188,6 +189,7 @@ fun CheckoutContent(
                     onFunctionsClick = { /* TODO: Show functions panel */ },
                     onVoidTransactionClick = { onEvent(CheckoutEvent.VoidTransactionRequest) },
                     onSignOutClick = { onEvent(CheckoutEvent.OpenLogoutDialog) },
+                    onCashPickupClick = { onEvent(CheckoutEvent.OpenCashPickupDialog) },
                     modifier = Modifier
                         .weight(0.3f)
                         .fillMaxHeight()
@@ -311,6 +313,40 @@ fun CheckoutContent(
                     .testTag("hold_recall_feedback"),
                 action = {
                     TextButton(onClick = { onEvent(CheckoutEvent.DismissHoldRecallFeedback) }) {
+                        Text("OK", color = GroPOSColors.White)
+                    }
+                },
+                containerColor = GroPOSColors.PrimaryGreen,
+                contentColor = GroPOSColors.White
+            ) {
+                Text(message)
+            }
+        }
+        
+        // Cash Pickup Dialog
+        // Per FUNCTIONS_MENU.md: Cash Pickup removes cash from drawer for safe deposit
+        if (state.cashPickupDialogState.isVisible) {
+            CashPickupDialog(
+                currentBalance = state.cashPickupDialogState.currentBalance,
+                inputValue = state.cashPickupDialogState.inputValue,
+                errorMessage = state.cashPickupDialogState.errorMessage,
+                onDigitClick = { digit -> onEvent(CheckoutEvent.CashPickupDigitPress(digit)) },
+                onClearClick = { onEvent(CheckoutEvent.CashPickupClear) },
+                onBackspaceClick = { onEvent(CheckoutEvent.CashPickupBackspace) },
+                onPickupClick = { onEvent(CheckoutEvent.CashPickupConfirm) },
+                onDismiss = { onEvent(CheckoutEvent.DismissCashPickupDialog) }
+            )
+        }
+        
+        // Cash Pickup Feedback Snackbar
+        state.cashPickupFeedback?.let { message ->
+            Snackbar(
+                modifier = Modifier
+                    .padding(GroPOSSpacing.M)
+                    .align(Alignment.TopCenter)
+                    .testTag("cash_pickup_feedback"),
+                action = {
+                    TextButton(onClick = { onEvent(CheckoutEvent.DismissCashPickupFeedback) }) {
                         Text("OK", color = GroPOSColors.White)
                     }
                 },
@@ -448,6 +484,7 @@ private fun RightPanel(
     onFunctionsClick: () -> Unit,
     onVoidTransactionClick: () -> Unit,
     onSignOutClick: () -> Unit,
+    onCashPickupClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -520,6 +557,7 @@ private fun RightPanel(
             onHoldClick = onHoldClick,
             onVoidTransactionClick = onVoidTransactionClick,
             onSignOutClick = onSignOutClick,
+            onCashPickupClick = onCashPickupClick,
             modifier = Modifier
                 .fillMaxWidth()
                 .testTag(CheckoutTestTags.FUNCTIONS_GRID)

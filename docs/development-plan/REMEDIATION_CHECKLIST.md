@@ -75,17 +75,17 @@
 |-------------------|--------|-------------------|
 | Cash Payment | ✅ Match | Implemented with exact change and quick amounts |
 | Cash Change Calculation | ✅ Match | Change dialog shows correct amount |
-| Credit Card Payment | ⚠️ Partial | Current: Placeholder message. Need: `PaymentController.doSale()` integration |
-| Debit Card Payment | ⚠️ Partial | Current: Placeholder message. Need: Terminal integration |
-| EBT Food Stamp Payment | ⚠️ Partial | Current: Placeholder message. Need: `doEbtSale()` integration |
-| EBT Cash Payment | ⚠️ Partial | Current: Placeholder message. Need: EBT Cash benefit support |
+| Credit Card Payment | ✅ Match | `PaymentTerminal.processPayment()` with `SimulatedPaymentTerminal` (Jan 2026) |
+| Debit Card Payment | ✅ Match | `PaymentTerminal.processPayment()` via terminal abstraction (Jan 2026) |
+| EBT Food Stamp Payment | ✅ Match | `PaymentTerminal.processPayment()` via terminal abstraction (Jan 2026) |
+| EBT Cash Payment | ✅ Match | `PaymentTerminal.processPayment()` via terminal abstraction (Jan 2026) |
 | EBT Balance Check | ⚠️ Partial | Current: Placeholder. Need: Terminal balance inquiry |
 | Split Tender | ⚠️ Partial | Current: Supports multiple payments. Need: Full split tender logic with remaining balance |
 | SNAP Eligibility Display | ✅ Match | Shows "SNAP Eligible" amount in PayScreen summary |
-| Payment Terminal Integration | ❌ Missing | Implement `PaymentController` class with hardware abstraction |
-| Payment Response Mapping | ❌ Missing | Create `mapTerminalResponse()` for APPROVED/DECLINED/PARTIAL/ERROR |
+| Payment Terminal Integration | ✅ Match | `PaymentTerminal` interface + `SimulatedPaymentTerminal` (Jan 2026) |
+| Payment Response Mapping | ✅ Match | `PaymentResult` sealed class: Approved/Declined/Error/Cancelled (Jan 2026) |
 | Void Payment | ❌ Missing | Implement `processVoid()` for reversing payments |
-| Payment Progress Overlay | ❌ Missing | Create terminal status overlay (Pinpad Request Sent, Waiting, Approved) |
+| Payment Progress Overlay | ✅ Match | `PaymentTerminalDialog` with spinner, amount, cancel button (Jan 2026) |
 | Check Payment | ❌ Missing | Implement check tender type |
 | On Account Payment | ❌ Missing | Implement customer account charging |
 | PaymentService Singleton | ❌ Missing | Create `@Singleton class PaymentService` with hardware integration |
@@ -254,7 +254,7 @@
 
 ### P1 - High Priority (Core Functionality)
 
-1. ❌ Payment Terminal Integration
+1. ✅ Payment Terminal Integration (Jan 2026)
 2. ✅ Hold/Recall Transactions (Jan 2026)
 3. ✅ Void Transaction (Jan 2026)
 4. ❌ Cash Pickup Screen
@@ -283,7 +283,7 @@
 |----------|----------|------------|------------|
 | Auth & Session | 8 | 2 | 11 |
 | Roles & Permissions | 0 | 1 | 12 |
-| Payment Processing | 2 | 7 | 8 |
+| Payment Processing | 9 | 2 | 6 |
 | Checkout & Transaction | 11 | 7 | 7 |
 | Customer Display | 2 | 3 | 5 |
 | Returns Processing | 8 | 2 | 3 |
@@ -291,7 +291,7 @@
 | Device Registration | 0 | 0 | 10 |
 | UI/UX Components | 7 | 2 | 5 |
 | Data Layer | 3 | 1 | 6 |
-| **TOTAL** | **33** | **24** | **86** |
+| **TOTAL** | **40** | **19** | **84** |
 
 ---
 
