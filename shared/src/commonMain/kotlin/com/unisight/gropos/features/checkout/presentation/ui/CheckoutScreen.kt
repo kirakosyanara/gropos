@@ -11,6 +11,7 @@ import com.unisight.gropos.features.auth.presentation.ui.LoginScreen
 import com.unisight.gropos.features.checkout.presentation.CheckoutViewModel
 import com.unisight.gropos.features.checkout.presentation.components.ProductLookupUiModel
 import com.unisight.gropos.features.payment.presentation.ui.PayScreen
+import com.unisight.gropos.features.transaction.presentation.ui.TransactionHistoryScreen
 
 /**
  * Voyager Screen for the Checkout feature.
@@ -75,6 +76,10 @@ class CheckoutScreen : Screen {
                         // PayScreen observes the same CartRepository singleton
                         navigator.push(PayScreen())
                     }
+                    CheckoutEvent.NavigateToRecall -> {
+                        // Navigate to Transaction History (Recall) screen
+                        navigator.push(TransactionHistoryScreen())
+                    }
                 }
             }
         )
@@ -103,4 +108,5 @@ sealed interface CheckoutEvent {
     
     // Navigation Events
     data object NavigateToPay : CheckoutEvent
+    data object NavigateToRecall : CheckoutEvent
 }
