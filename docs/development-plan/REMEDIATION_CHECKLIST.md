@@ -24,12 +24,12 @@
 |-------------------|--------|-------------------|
 | Login Screen - Basic PIN Entry | ✅ Match | Multi-digit PIN (up to 8) supported in new state machine flow (Jan 2026) |
 | Login Screen - Employee List | ✅ Match | Implemented via `EmployeeRepository.getEmployees()` with employee grid UI (Jan 2026) |
-| Login Screen - Employee Selection | ❌ Missing | Create scrollable employee list with avatar, name, role display |
+| Login Screen - Employee Selection | ✅ Match | `EmployeeCard` with avatar initials, name, role in `LoginContent.kt` (Jan 2026) |
 | Station Claiming Flow | ❌ Missing | Implement `DeviceInfoViewModel`, `BranchDto`, station-employee association |
 | Till Assignment Dialog | ✅ Match | Created `TillSelectionDialog` with table layout per DIALOGS.md (Jan 2026) |
 | Till Selection/Scan | ⚠️ Partial | Till selection via list implemented; barcode scan pending |
 | Pre-Assigned Employee Detection | ❌ Missing | Check `deviceInfo.employeeId` and auto-select on app start |
-| Login State Machine | ⚠️ Partial | Current: Simple Idle→Loading→Success. Need: SPLASH→REGISTRATION→EMPLOYEE_SELECT→PIN_ENTRY→TILL_ASSIGNMENT→ACTIVE |
+| Login State Machine | ✅ Match | Implemented `LoginStage` enum: LOADING→EMPLOYEE_SELECT→PIN_ENTRY→TILL_ASSIGNMENT→SUCCESS (Jan 2026) |
 | NFC Token Authentication | ❌ Missing | Add NFC toggle and hardware token login mode |
 | API Authentication | ❌ Missing | Implement `employeeGroPOSLogin()` with bearer token storage |
 | Token Refresh | ❌ Missing | Implement refresh token logic and `Manager.setBearerToken()` |
@@ -231,8 +231,8 @@
 |-------------------|--------|-------------------|
 | Product Repository | ✅ Match | CouchbaseLite implementation |
 | Transaction Repository | ✅ Match | Save/retrieve transactions |
-| Employee Repository | ❌ Missing | Implement for cashier list caching |
-| Till/Account Repository | ❌ Missing | Implement for till management |
+| Employee Repository | ✅ Match | `EmployeeRepository` interface + `FakeEmployeeRepository` (Jan 2026) |
+| Till/Account Repository | ✅ Match | `TillRepository` interface + `FakeTillRepository` (Jan 2026) |
 | Customer Repository | ❌ Missing | Implement for loyalty customer lookup |
 | Tax Repository | ⚠️ Partial | Current: In-memory. Need: CouchbaseLite persistence |
 | Heartbeat/Sync Service | ❌ Missing | Implement background data synchronization |
