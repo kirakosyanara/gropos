@@ -41,15 +41,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.unisight.gropos.core.components.DangerButton
 import com.unisight.gropos.core.components.OutlineButton
-import com.unisight.gropos.core.components.PrimaryButton
 import com.unisight.gropos.core.components.SuccessButton
 import com.unisight.gropos.core.components.TenKey
 import com.unisight.gropos.core.components.TenKeyMode
 import com.unisight.gropos.core.components.TenKeyState
 import com.unisight.gropos.core.components.WhiteBox
-import com.unisight.gropos.core.components.dialogs.ManagerApprovalDialog
-import com.unisight.gropos.core.security.ManagerInfo
-import com.unisight.gropos.core.security.RequestAction
 import com.unisight.gropos.core.theme.GroPOSColors
 import com.unisight.gropos.core.theme.GroPOSRadius
 import com.unisight.gropos.core.theme.GroPOSSpacing

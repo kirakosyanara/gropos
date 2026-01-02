@@ -5,7 +5,6 @@ import cafe.adriel.voyager.core.model.screenModelScope
 import com.unisight.gropos.core.util.CurrencyFormatter
 import com.unisight.gropos.features.returns.domain.model.ReturnCart
 import com.unisight.gropos.features.returns.domain.model.ReturnItem
-import com.unisight.gropos.features.returns.domain.model.ReturnReason
 import com.unisight.gropos.features.returns.domain.model.ReturnableItem
 import com.unisight.gropos.features.returns.domain.service.ReturnService
 import com.unisight.gropos.features.transaction.domain.repository.TransactionRepository
