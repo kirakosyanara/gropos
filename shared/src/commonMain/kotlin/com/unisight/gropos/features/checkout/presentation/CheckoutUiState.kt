@@ -1,5 +1,7 @@
 package com.unisight.gropos.features.checkout.presentation
 
+import com.unisight.gropos.core.security.ManagerInfo
+import com.unisight.gropos.core.security.RequestAction
 import com.unisight.gropos.features.checkout.presentation.components.ProductLookupState
 
 /**
@@ -87,6 +89,20 @@ sealed interface ScanEvent {
 }
 
 /**
+ * State for the Manager Approval Dialog.
+ * 
+ * Per ROLES_AND_PERMISSIONS.md: Manager approval is required for certain actions.
+ */
+data class ManagerApprovalDialogState(
+    val isVisible: Boolean = false,
+    val action: RequestAction = RequestAction.VOID_TRANSACTION,
+    val managers: List<ManagerInfo> = emptyList(),
+    val isProcessing: Boolean = false,
+    val errorMessage: String? = null,
+    val pendingItemId: Int? = null  // For line-item specific approvals
+)
+
+/**
  * UI State for the Checkout screen.
  * 
  * Per kotlin-standards.mdc: Use sealed interface for strict typing.
@@ -102,6 +118,7 @@ sealed interface ScanEvent {
  * @property selectedItem Details of the selected item for the modification panel
  * @property modificationTenKeyMode Current TenKey mode in modification mode
  * @property modificationInputValue Current input value in modification mode
+ * @property managerApprovalState State for the Manager Approval Dialog
  */
 data class CheckoutUiState(
     val items: List<CheckoutItemUiModel> = emptyList(),
@@ -119,7 +136,8 @@ data class CheckoutUiState(
     val selectedItemId: Int? = null,
     val selectedItem: SelectedItemUiModel? = null,
     val modificationTenKeyMode: ModificationTenKeyMode = ModificationTenKeyMode.QUANTITY,
-    val modificationInputValue: String = ""
+    val modificationInputValue: String = "",
+    val managerApprovalState: ManagerApprovalDialogState = ManagerApprovalDialogState()
 ) {
     /**
      * Whether the screen is in modification mode.

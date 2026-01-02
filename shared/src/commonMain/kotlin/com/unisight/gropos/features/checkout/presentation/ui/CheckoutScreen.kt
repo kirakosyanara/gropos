@@ -106,6 +106,14 @@ class CheckoutScreen : Screen {
                     CheckoutEvent.VoidSelectedLineItem -> {
                         viewModel.onVoidSelectedLineItem()
                     }
+                    
+                    // Manager Approval Events
+                    CheckoutEvent.DismissManagerApproval -> {
+                        viewModel.onDismissManagerApproval()
+                    }
+                    is CheckoutEvent.SubmitManagerApproval -> {
+                        viewModel.onSubmitManagerApproval(event.managerId, event.pin)
+                    }
                 }
             }
         )
@@ -164,4 +172,15 @@ sealed interface CheckoutEvent {
     
     /** Void the selected line item */
     data object VoidSelectedLineItem : CheckoutEvent
+    
+    // ========================================================================
+    // Manager Approval Dialog Events
+    // Per ROLES_AND_PERMISSIONS.md: Manager approval for sensitive actions
+    // ========================================================================
+    
+    /** Dismiss the manager approval dialog */
+    data object DismissManagerApproval : CheckoutEvent
+    
+    /** Submit manager PIN for approval */
+    data class SubmitManagerApproval(val managerId: Int, val pin: String) : CheckoutEvent
 }

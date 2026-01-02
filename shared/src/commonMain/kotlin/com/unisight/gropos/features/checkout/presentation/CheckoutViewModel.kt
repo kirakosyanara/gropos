@@ -2,7 +2,15 @@ package com.unisight.gropos.features.checkout.presentation
 
 import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
+import com.unisight.gropos.core.security.ApprovalDetails
+import com.unisight.gropos.core.security.ApprovalResult
+import com.unisight.gropos.core.security.ManagerApprovalService
+import com.unisight.gropos.core.security.PermissionCheckResult
+import com.unisight.gropos.core.security.PermissionManager
+import com.unisight.gropos.core.security.RequestAction
 import com.unisight.gropos.core.util.CurrencyFormatter
+import com.unisight.gropos.features.auth.domain.model.AuthUser
+import com.unisight.gropos.features.auth.domain.repository.AuthRepository
 import com.unisight.gropos.features.checkout.domain.model.Cart
 import com.unisight.gropos.features.checkout.domain.model.CartItem
 import com.unisight.gropos.features.checkout.domain.model.Product
@@ -45,9 +53,14 @@ class CheckoutViewModel(
     private val cartRepository: CartRepository,
     private val productRepository: ProductRepository,
     private val currencyFormatter: CurrencyFormatter,
+    private val authRepository: AuthRepository,
+    private val managerApprovalService: ManagerApprovalService,
     // Inject scope for testability (per testing-strategy.mdc)
     private val scope: CoroutineScope? = null
 ) : ScreenModel {
+    
+    // Cached current user for permission checks
+    private var currentUser: AuthUser? = null
     
     private val _state = MutableStateFlow(CheckoutUiState.initial())
     
@@ -68,6 +81,18 @@ class CheckoutViewModel(
         // Observe cart changes from the SHARED CartRepository
         // This is the key change - we observe the repository, not use case
         observeCartChanges()
+        
+        // Load current user for permission checks
+        loadCurrentUser()
+    }
+    
+    /**
+     * Loads the current user for permission checks.
+     */
+    private fun loadCurrentUser() {
+        effectiveScope.launch {
+            currentUser = authRepository.getCurrentUser()
+        }
     }
     
     /**
@@ -328,13 +353,166 @@ class CheckoutViewModel(
      * 
      * Per SCREEN_LAYOUTS.md: Remove Item marks as isRemoved = true,
      * item remains visible with strikethrough styling.
+     * 
+     * Per ROLES_AND_PERMISSIONS.md: Voiding requires manager approval
+     * for cashiers, managers can self-approve.
      */
     fun onVoidSelectedLineItem() {
         val selectedItemId = _state.value.selectedItemId ?: return
+        val user = currentUser ?: return
+        
+        // Check permission before voiding
+        val permissionResult = PermissionManager.checkPermission(user, RequestAction.VOID_TRANSACTION)
+        
+        when (permissionResult) {
+            PermissionCheckResult.GRANTED,
+            PermissionCheckResult.SELF_APPROVAL_ALLOWED -> {
+                // Can void directly (manager) or self-approve
+                effectiveScope.launch {
+                    cartRepository.voidItem(selectedItemId)
+                    onDeselectLineItem()
+                }
+            }
+            PermissionCheckResult.REQUIRES_APPROVAL -> {
+                // Show manager approval dialog
+                showManagerApprovalDialog(
+                    action = RequestAction.VOID_TRANSACTION,
+                    pendingItemId = selectedItemId
+                )
+            }
+            PermissionCheckResult.DENIED -> {
+                // User has no permission - show error
+                _state.value = _state.value.copy(
+                    lastScanEvent = ScanEvent.Error("You do not have permission to void items.")
+                )
+            }
+        }
+    }
+    
+    // ========================================================================
+    // Manager Approval Dialog
+    // Per ROLES_AND_PERMISSIONS.md: Manager approval for sensitive actions
+    // ========================================================================
+    
+    /**
+     * Shows the manager approval dialog.
+     * 
+     * @param action The action requiring approval
+     * @param pendingItemId Optional item ID for line-item specific approvals
+     */
+    private fun showManagerApprovalDialog(
+        action: RequestAction,
+        pendingItemId: Int? = null
+    ) {
+        val user = currentUser ?: return
         
         effectiveScope.launch {
-            cartRepository.voidItem(selectedItemId)
-            onDeselectLineItem()
+            // Get available managers
+            val managers = managerApprovalService.getApprovers(action, user)
+            
+            _state.value = _state.value.copy(
+                managerApprovalState = ManagerApprovalDialogState(
+                    isVisible = true,
+                    action = action,
+                    managers = managers,
+                    isProcessing = false,
+                    errorMessage = null,
+                    pendingItemId = pendingItemId
+                )
+            )
+        }
+    }
+    
+    /**
+     * Handles manager approval dialog dismissal.
+     */
+    fun onDismissManagerApproval() {
+        _state.value = _state.value.copy(
+            managerApprovalState = ManagerApprovalDialogState()
+        )
+    }
+    
+    /**
+     * Submits a manager PIN for approval.
+     * 
+     * @param managerId The ID of the manager approving
+     * @param pin The PIN entered by the manager
+     */
+    fun onSubmitManagerApproval(managerId: Int, pin: String) {
+        val approvalState = _state.value.managerApprovalState
+        if (!approvalState.isVisible) return
+        
+        val user = currentUser ?: return
+        
+        // Set processing state
+        _state.value = _state.value.copy(
+            managerApprovalState = approvalState.copy(
+                isProcessing = true,
+                errorMessage = null
+            )
+        )
+        
+        effectiveScope.launch {
+            val result = managerApprovalService.validateApproval(
+                managerId = managerId,
+                pin = pin,
+                action = approvalState.action,
+                details = ApprovalDetails(
+                    itemId = approvalState.pendingItemId
+                ),
+                requesterId = user.id.toIntOrNull() ?: 0
+            )
+            
+            when (result) {
+                is ApprovalResult.Approved -> {
+                    // Execute the pending action
+                    executeApprovedAction(approvalState)
+                    
+                    // Close dialog
+                    _state.value = _state.value.copy(
+                        managerApprovalState = ManagerApprovalDialogState()
+                    )
+                }
+                is ApprovalResult.Denied -> {
+                    _state.value = _state.value.copy(
+                        managerApprovalState = approvalState.copy(
+                            isProcessing = false,
+                            errorMessage = result.reason
+                        )
+                    )
+                }
+                is ApprovalResult.Error -> {
+                    _state.value = _state.value.copy(
+                        managerApprovalState = approvalState.copy(
+                            isProcessing = false,
+                            errorMessage = result.message
+                        )
+                    )
+                }
+            }
+        }
+    }
+    
+    /**
+     * Executes the action that was pending manager approval.
+     */
+    private suspend fun executeApprovedAction(approvalState: ManagerApprovalDialogState) {
+        when (approvalState.action) {
+            RequestAction.VOID_TRANSACTION -> {
+                approvalState.pendingItemId?.let { itemId ->
+                    cartRepository.voidItem(itemId)
+                }
+                onDeselectLineItem()
+            }
+            RequestAction.LINE_DISCOUNT -> {
+                // TODO: Apply discount once discount flow is implemented
+            }
+            RequestAction.PRICE_OVERRIDE -> {
+                // TODO: Apply price override once implemented
+            }
+            else -> {
+                // Other actions to be implemented
+            }
         }
     }
     

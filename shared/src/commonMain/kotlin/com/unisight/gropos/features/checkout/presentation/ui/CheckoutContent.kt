@@ -49,6 +49,7 @@ import com.unisight.gropos.core.components.WhiteBox
 import com.unisight.gropos.core.theme.GroPOSColors
 import com.unisight.gropos.core.theme.GroPOSRadius
 import com.unisight.gropos.core.theme.GroPOSSpacing
+import com.unisight.gropos.core.components.dialogs.ManagerApprovalDialog
 import com.unisight.gropos.features.checkout.presentation.CheckoutItemUiModel
 import com.unisight.gropos.features.checkout.presentation.CheckoutTotalsUiModel
 import com.unisight.gropos.features.checkout.presentation.CheckoutUiState
@@ -210,6 +211,24 @@ fun CheckoutContent(
             onProductSelect = { product -> onEvent(CheckoutEvent.ProductSelected(product)) },
             onDismiss = { onEvent(CheckoutEvent.CloseLookup) }
         )
+        
+        // Manager Approval Dialog
+        // Per ROLES_AND_PERMISSIONS.md: Manager approval for sensitive actions
+        if (state.managerApprovalState.isVisible) {
+            ManagerApprovalDialog(
+                action = state.managerApprovalState.action,
+                amount = null,
+                managers = state.managerApprovalState.managers,
+                isProcessing = state.managerApprovalState.isProcessing,
+                errorMessage = state.managerApprovalState.errorMessage,
+                onApproved = { _, _ -> },  // Handled via state
+                onDenied = { onEvent(CheckoutEvent.DismissManagerApproval) },
+                onCancel = { onEvent(CheckoutEvent.DismissManagerApproval) },
+                onPinSubmit = { managerId, pin ->
+                    onEvent(CheckoutEvent.SubmitManagerApproval(managerId, pin))
+                }
+            )
+        }
     }
 }
 
