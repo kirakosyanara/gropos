@@ -38,10 +38,10 @@
 | Manual Lock (F4 Key) | ✅ Match | F4 key detected in `App.kt` `onPreviewKeyEvent` (Jan 2026) |
 | Lock Types (AutoLocked, Locked, Unlocked) | ✅ Match | `LockType` enum, `LockEventType` enum implemented (Jan 2026) |
 | Unlock Flow - PIN Verification | ⚠️ Partial | Local PIN check ("1234"), need API `employeeVerifyPassword()` |
-| Logout Dialog | ❌ Missing | Create `LogoutDialog` with "Release Till" and "End of Shift" options |
-| Logout - Release Till | ⚠️ Partial | Current: Simple cart clear. Need: API logout, till release |
-| Logout - End of Shift | ❌ Missing | Implement shift report generation, cash drawer open, print receipt |
-| Session Tracking Model | ❌ Missing | Create `CashierSession` data class with metrics |
+| Logout Dialog | ✅ Match | `LogoutDialog.kt` with Lock Station, Release Till, End of Shift options (Jan 2026) |
+| Logout - Release Till | ✅ Match | `CashierSessionManager.releaseTill()` releases till via `TillRepository` (Jan 2026) |
+| Logout - End of Shift | ✅ Match | `CashierSessionManager.endShift()` generates `ShiftReport` with Z-Report output (Jan 2026) |
+| Session Tracking Model | ✅ Match | `CashierSession` data class with metrics, `CashierSessionManager` singleton (Jan 2026) |
 
 ---
 
@@ -258,7 +258,7 @@
 2. ❌ Hold/Recall Transactions
 3. ✅ Void Transaction (Jan 2026)
 4. ❌ Cash Pickup Screen
-5. ❌ Complete Logout Flow (Release Till, End of Shift)
+5. ✅ Complete Logout Flow (Release Till, End of Shift) (Jan 2026)
 
 ### P2 - Medium Priority (Enhanced Features)
 
@@ -281,7 +281,7 @@
 
 | Category | ✅ Match | ⚠️ Partial | ❌ Missing |
 |----------|----------|------------|------------|
-| Auth & Session | 4 | 4 | 13 |
+| Auth & Session | 8 | 2 | 11 |
 | Roles & Permissions | 0 | 1 | 12 |
 | Payment Processing | 2 | 7 | 8 |
 | Checkout & Transaction | 10 | 7 | 8 |
@@ -291,7 +291,7 @@
 | Device Registration | 0 | 0 | 10 |
 | UI/UX Components | 7 | 2 | 5 |
 | Data Layer | 2 | 1 | 7 |
-| **TOTAL** | **27** | **26** | **90** |
+| **TOTAL** | **31** | **24** | **88** |
 
 ---
 
