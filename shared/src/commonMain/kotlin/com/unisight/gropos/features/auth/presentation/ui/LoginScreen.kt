@@ -12,6 +12,9 @@ import com.unisight.gropos.core.session.InactivityManager
 import com.unisight.gropos.features.auth.presentation.LoginStage
 import com.unisight.gropos.features.auth.presentation.LoginViewModel
 import com.unisight.gropos.features.checkout.presentation.ui.CheckoutScreen
+import com.unisight.gropos.features.settings.presentation.AdminSettingsDialog
+import com.unisight.gropos.features.settings.presentation.SettingsViewModel
+import org.koin.compose.koinInject
 
 /**
  * Login screen using Voyager navigation.
@@ -58,7 +61,18 @@ class LoginScreen : Screen {
             onTillSelected = viewModel::onTillSelected,
             onBackPressed = viewModel::onBackPressed,
             onErrorDismissed = viewModel::onErrorDismissed,
-            onRefresh = viewModel::onRefresh
+            onRefresh = viewModel::onRefresh,
+            onAdminSettingsClick = viewModel::showAdminSettings
         )
+        
+        // Admin Settings Dialog (Hidden Menu)
+        // Per SCREEN_LAYOUTS.md: Accessible via secret trigger on Login Screen footer
+        if (state.showAdminSettings) {
+            val settingsViewModel: SettingsViewModel = koinInject()
+            AdminSettingsDialog(
+                viewModel = settingsViewModel,
+                onDismiss = viewModel::hideAdminSettings
+            )
+        }
     }
 }

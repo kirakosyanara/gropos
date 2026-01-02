@@ -40,7 +40,10 @@ data class LoginUiState(
     val errorMessage: String? = null,
     
     // Authentication result
-    val authenticatedUser: AuthUser? = null
+    val authenticatedUser: AuthUser? = null,
+    
+    // Admin Settings Dialog (Hidden Menu)
+    val showAdminSettings: Boolean = false
 ) {
     /**
      * Computed: PIN as dots for display

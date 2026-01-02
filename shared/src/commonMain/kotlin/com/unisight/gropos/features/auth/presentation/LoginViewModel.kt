@@ -292,6 +292,25 @@ class LoginViewModel(
         loadEmployees()
     }
     
+    // ========================================================================
+    // Admin Settings (Hidden Menu)
+    // ========================================================================
+    
+    /**
+     * Show admin settings dialog.
+     * Per SCREEN_LAYOUTS.md: Triggered by secret click on copyright text.
+     */
+    fun showAdminSettings() {
+        _state.update { it.copy(showAdminSettings = true) }
+    }
+    
+    /**
+     * Hide admin settings dialog.
+     */
+    fun hideAdminSettings() {
+        _state.update { it.copy(showAdminSettings = false) }
+    }
+    
     /**
      * Get current time formatted for display.
      */

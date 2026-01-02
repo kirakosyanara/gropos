@@ -23,6 +23,61 @@ This release marks the feature-complete alpha milestone for GroPOS. All core POS
 ## [Unreleased]
 
 ### Added
+- **Hidden Settings Menu (P2 #1)**: Technician/Admin Dashboard accessible from Login Screen
+  - **Secret Trigger (`LoginContent.kt`):**
+    - Click copyright text 5 times rapidly (within 2 seconds) to open Admin Settings
+    - Per SCREEN_LAYOUTS.md: Hidden Administration Menu Trigger on footer
+    - Test tag `secret_admin_trigger` for UI automation
+  - **Admin Settings Dialog (`AdminSettingsDialog.kt`):**
+    - Tab-based navigation: Device Info, Database, Environment
+    - Professional dark header with settings icon
+    - Per SCREEN_LAYOUTS.md: Full dialog specification implementation
+  - **Device Info Section:**
+    - App Version display
+    - Device ID (GUID) - unique device identifier
+    - IP Address (placeholder for network info)
+    - Branch Name and Current Environment
+  - **Database Section:**
+    - Statistics table showing record counts per collection:
+      - Products, Transactions, Categories, Employees, Customers, Held Transactions
+    - Last Sync timestamp
+    - Refresh button to reload stats
+    - **Wipe Database button (Danger Red):**
+      - Per Governance: Requires second confirmation dialog
+      - Warning icon and destructive action warning text
+      - "Yes, Wipe It" / "No, Keep It" confirmation buttons
+  - **Environment Section:**
+    - Radio button selection: Production / Staging / Development
+    - Shows base URL for each environment
+    - "CURRENT" badge on active environment
+    - **Clear Database and Change Environment button:**
+      - Only shown when selected environment differs from current
+      - Orange warning style to indicate destructive action
+  - **State Management (`SettingsUiState.kt`):**
+    - `AdminTab` enum: DEVICE_INFO, DATABASE, ENVIRONMENT
+    - `EnvironmentType` enum with display names and base URLs
+    - `DatabaseStats` model for collection record counts
+    - `SettingsEvent` sealed interface for all dialog actions
+  - **ViewModel (`SettingsViewModel.kt`):**
+    - Event-driven architecture with `onEvent()` handler
+    - Database stats querying (placeholder implementation)
+    - Environment selection with validation
+    - Wipe confirmation flow with loading state
+    - Audit logging to console on wipe action
+  - **DI Module (`SettingsModule.kt`):**
+    - SettingsViewModel as factory (fresh state per dialog)
+    - Integrated into appModule
+  - **LoginViewModel Integration:**
+    - `showAdminSettings()` / `hideAdminSettings()` methods
+    - `showAdminSettings: Boolean` state property
+  - **LoginScreen Integration:**
+    - Renders AdminSettingsDialog when state.showAdminSettings is true
+    - Injects SettingsViewModel via Koin
+  - **Governance Compliance:**
+    - Wipe Database requires confirmation dialog (double-confirm)
+    - Menu only accessible from Login Screen (pre-authentication)
+    - Audit trail logged to console for destructive actions
+
 - **Cash Pickup Screen (P1 #4)**: Cash drawer management for safe deposits
   - **Unit Tests (`CashierSessionManagerTest.kt`)**:
     - Session creation and management tests
