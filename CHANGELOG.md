@@ -7,6 +7,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased] - 2026-01-01
 
 ### Added
+- **Offline-First Persistence (CouchbaseLite)**: Replaced in-memory fakes with persistent database
+  - Created `expect/actual DatabaseProvider` for multiplatform database initialization
+    - Desktop: Uses CouchbaseLite Java SDK, stores in user.dir
+    - Android: Uses CouchbaseLite Android SDK, stores in context.filesDir
+  - Created `CouchbaseProductRepository` implementing `ProductRepository`
+    - Query by barcode: Uses ArrayExpression on `itemNumbers` array (per DATABASE_SCHEMA.md)
+    - Query by category: Uses Expression.property with ordering
+    - Search products: LIKE operator on productName
+    - Full document mapping to `Product` entity with taxes, CRV, itemNumbers
+  - Created `DebugDataSeeder` for first-launch data population
+    - Checks if Product collection is empty
+    - Seeds all 10 test products (Milk, Apple, Cola, Chips, etc.)
+    - Called immediately after Koin initialization
+  - Created `InitialProducts` object with shared seed data
+  - Created platform-specific `DatabaseModule` for Koin DI
+    - Provides DatabaseProvider as singleton
+    - Provides CouchbaseProductRepository bound to ProductRepository interface
+    - Provides DebugDataSeeder
+  - Updated `Main.kt` (Desktop) to initialize database module and seed on startup
+  - Updated `MainActivity.kt` (Android) to initialize database module and seed on startup
+  - Removed `FakeProductRepository` from production DI (still available for tests)
 - **Advanced Calculation Engine**: Production-grade tax, CRV, and discount calculations
   - Created `TaxCalculator` service (per TAX_CALCULATIONS.md, SERVICES.md)
     - Tax Consistency Rule: Tax per unit rounded BEFORE multiplying by quantity

@@ -110,3 +110,9 @@ secrets.properties
 /test-results/
 /coverage/
 
+
+# CouchbaseLite native libraries (extracted at runtime)
+desktopApp/CouchbaseLiteTemp/
+
+# CouchbaseLite database files
+*.cblite2/
