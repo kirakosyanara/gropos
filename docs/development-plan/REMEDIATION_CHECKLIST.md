@@ -30,7 +30,7 @@
 | Till Selection/Scan | ⚠️ Partial | Till selection via list implemented; barcode scan pending |
 | Pre-Assigned Employee Detection | ❌ Missing | Check `deviceInfo.employeeId` and auto-select on app start |
 | Login State Machine | ✅ Match | Implemented `LoginStage` enum: LOADING→EMPLOYEE_SELECT→PIN_ENTRY→TILL_ASSIGNMENT→SUCCESS (Jan 2026) |
-| NFC Token Authentication | ❌ Missing | Add NFC toggle and hardware token login mode |
+| NFC Token Authentication | ✅ Match | `NfcScanner` interface + `SimulatedNfcScanner` + `ScanBadgeDialog` (Jan 2026) |
 | API Authentication | ❌ Missing | Implement `employeeGroPOSLogin()` with bearer token storage |
 | Token Refresh | ❌ Missing | Implement refresh token logic and `Manager.setBearerToken()` |
 | Lock Screen | ✅ Match | `LockScreen.kt`, `LockContent.kt`, `LockViewModel.kt` created (Jan 2026) |
@@ -271,7 +271,7 @@
 ### P3 - Low Priority (Polish)
 
 1. ✅ Advertisement Overlay (Jan 2026) - `IdleDetector.kt` + `AdOverlay.kt`
-2. ❌ NFC Token Login
+2. ✅ NFC Token Login (Jan 2026) - `NfcScanner` interface + `SimulatedNfcScanner` + `ScanBadgeDialog`
 3. ✅ Real-time Clock Display (Jan 2026) - `RealTimeClock.kt` component in Checkout header
 4. ⚠️ Full Error Dialog (vs Snackbar)
 
@@ -281,7 +281,7 @@
 
 | Category | ✅ Match | ⚠️ Partial | ❌ Missing |
 |----------|----------|------------|------------|
-| Auth & Session | 8 | 3 | 10 |
+| Auth & Session | 9 | 3 | 9 |
 | Roles & Permissions | 0 | 1 | 12 |
 | Payment Processing | 9 | 2 | 6 |
 | Checkout & Transaction | 11 | 7 | 7 |
@@ -291,10 +291,10 @@
 | Device Registration | 6 | 2 | 2 |
 | UI/UX Components | 9 | 2 | 3 |
 | Data Layer | 3 | 1 | 6 |
-| **TOTAL** | **54** | **21** | **68** |
+| **TOTAL** | **55** | **21** | **67** |
 
 ---
 
-*Last Updated: January 2, 2026 (Advertisement Overlay Complete)*
-*Next Review: P3 Phase - NFC Token Login Pending*
+*Last Updated: January 2, 2026 (NFC Token Login Complete)*
+*Next Review: P3 Phase Complete - Full Error Dialog Pending*
 

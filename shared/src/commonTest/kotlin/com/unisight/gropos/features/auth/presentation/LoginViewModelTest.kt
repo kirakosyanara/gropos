@@ -1,5 +1,7 @@
 package com.unisight.gropos.features.auth.presentation
 
+import com.unisight.gropos.features.auth.domain.hardware.NfcResult
+import com.unisight.gropos.features.auth.domain.hardware.NfcScanner
 import com.unisight.gropos.features.auth.domain.model.UserRole
 import com.unisight.gropos.features.cashier.domain.model.Employee
 import com.unisight.gropos.features.cashier.domain.model.Till
@@ -112,6 +114,15 @@ class LoginViewModelTest {
         }
     }
     
+    /**
+     * Fake NFC scanner for testing.
+     * Returns cancelled by default (no badge tap in tests).
+     */
+    private class FakeNfcScanner : NfcScanner {
+        override suspend fun startScan(): NfcResult = NfcResult.Cancelled
+        override fun cancelScan() { /* no-op */ }
+    }
+    
     // ========================================================================
     // Helper to create ViewModel with test scope
     // ========================================================================
@@ -119,11 +130,13 @@ class LoginViewModelTest {
     private fun createViewModel(
         employeeRepo: EmployeeRepository = FakeEmployeeRepository(testEmployees),
         tillRepo: TillRepository = FakeTillRepository(testTills),
+        nfcScanner: NfcScanner = FakeNfcScanner(),
         testScope: TestScope
     ): LoginViewModel {
         return LoginViewModel(
             employeeRepository = employeeRepo,
             tillRepository = tillRepo,
+            nfcScanner = nfcScanner,
             coroutineScope = testScope
         )
     }

@@ -66,8 +66,12 @@ class FakeEmployeeRepository : EmployeeRepository {
         val employee = employees.find { it.id == employeeId }
             ?: return Result.failure(IllegalArgumentException("Employee not found"))
         
-        // All employees use PIN "1234" for walking skeleton
-        if (pin != VALID_PIN) {
+        // Accept standard PIN "1234" OR badge token matching employee ID
+        // Per NFC Login spec: Badge token (e.g., "9999") maps to employee with same ID
+        val isValidPin = pin == VALID_PIN
+        val isBadgeToken = pin == employeeId.toString()
+        
+        if (!isValidPin && !isBadgeToken) {
             return Result.failure(IllegalArgumentException("Invalid PIN"))
         }
         

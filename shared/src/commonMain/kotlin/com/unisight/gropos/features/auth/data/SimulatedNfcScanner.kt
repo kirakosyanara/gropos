@@ -3,7 +3,6 @@ package com.unisight.gropos.features.auth.data
 import com.unisight.gropos.features.auth.domain.hardware.NfcResult
 import com.unisight.gropos.features.auth.domain.hardware.NfcScanner
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -46,12 +45,6 @@ class SimulatedNfcScanner : NfcScanner {
      */
     @Volatile
     private var isCancelled = false
-    
-    /**
-     * The current scan job, if any.
-     */
-    @Volatile
-    private var currentScanJob: Job? = null
     
     /**
      * Starts a simulated NFC scan.
