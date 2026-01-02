@@ -5,33 +5,50 @@ import com.unisight.gropos.features.auth.domain.repository.AuthRepository
 import com.unisight.gropos.features.auth.domain.usecase.ValidateLoginUseCase
 import com.unisight.gropos.features.auth.presentation.LockViewModel
 import com.unisight.gropos.features.auth.presentation.LoginViewModel
+import com.unisight.gropos.features.cashier.data.FakeEmployeeRepository
+import com.unisight.gropos.features.cashier.data.FakeTillRepository
+import com.unisight.gropos.features.cashier.domain.repository.EmployeeRepository
+import com.unisight.gropos.features.cashier.domain.repository.TillRepository
 import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.bind
 import org.koin.dsl.module
 
 /**
- * Koin module for Authentication feature.
+ * Koin module for Authentication & Cashier features.
+ * 
+ * Per CASHIER_OPERATIONS.md:
+ * - Provides employee list for login screen
+ * - Provides till management for session assignment
  * 
  * Provides:
- * - AuthRepository (FakeAuthRepository for now, will be replaced with real impl)
+ * - AuthRepository (FakeAuthRepository for now)
+ * - EmployeeRepository (FakeEmployeeRepository for now)
+ * - TillRepository (FakeTillRepository for now)
  * - ValidateLoginUseCase
- * - LoginViewModel
- * 
- * Per project-structure.mdc: DI modules live in core/di/
+ * - LoginViewModel (with state machine flow)
+ * - LockViewModel
  */
 val authModule = module {
     
-    // Data Layer
+    // Data Layer - Auth
     // TODO: Replace FakeAuthRepository with CouchbaseLiteAuthRepository
     singleOf(::FakeAuthRepository) bind AuthRepository::class
+    
+    // Data Layer - Employee
+    // TODO: Replace with API-backed implementation
+    singleOf(::FakeEmployeeRepository) bind EmployeeRepository::class
+    
+    // Data Layer - Till
+    // TODO: Replace with Couchbase-backed implementation
+    singleOf(::FakeTillRepository) bind TillRepository::class
     
     // Domain Layer
     factory { ValidateLoginUseCase(get()) }
     
     // Presentation Layer
-    // Note: ViewModels have optional CoroutineScope for testing, but we don't provide it
-    // at runtime - they will use screenModelScope internally
-    factory { LoginViewModel(get()) }
+    // LoginViewModel now uses EmployeeRepository and TillRepository
+    // per CASHIER_OPERATIONS.md state machine flow
+    factory { LoginViewModel(get(), get()) }
     
     // Lock Screen ViewModel
     // Per SCREEN_LAYOUTS.md: Displays when session is locked

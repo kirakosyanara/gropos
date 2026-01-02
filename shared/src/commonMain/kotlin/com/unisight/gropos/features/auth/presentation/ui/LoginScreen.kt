@@ -9,19 +9,19 @@ import cafe.adriel.voyager.koin.koinScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.unisight.gropos.core.session.InactivityManager
-import com.unisight.gropos.features.auth.presentation.LoginUiState
+import com.unisight.gropos.features.auth.presentation.LoginStage
 import com.unisight.gropos.features.auth.presentation.LoginViewModel
 import com.unisight.gropos.features.checkout.presentation.ui.CheckoutScreen
 
 /**
  * Login screen using Voyager navigation.
  * 
- * This is the entry point for the auth flow.
- * Per project-structure.mdc: Screen classes are in presentation/ui/.
+ * Per CASHIER_OPERATIONS.md:
+ * Implements the login state machine:
+ * LOADING -> EMPLOYEE_SELECT -> PIN_ENTRY -> TILL_ASSIGNMENT -> SUCCESS
  * 
  * Navigation:
- * - On successful login, navigates to CheckoutScreen
- * - Uses LaunchedEffect to ensure navigation only happens once
+ * - On SUCCESS stage, navigates to CheckoutScreen and starts InactivityManager
  */
 class LoginScreen : Screen {
     
@@ -32,9 +32,8 @@ class LoginScreen : Screen {
         val state by viewModel.state.collectAsState()
         
         // Navigate to CheckoutScreen on successful login
-        // Using LaunchedEffect with state as key ensures this only fires once per Success state
-        LaunchedEffect(state) {
-            if (state is LoginUiState.Success) {
+        LaunchedEffect(state.stage) {
+            if (state.stage == LoginStage.SUCCESS) {
                 // Start inactivity monitoring
                 // Per CASHIER_OPERATIONS.md: Timer starts after successful login
                 InactivityManager.start()
@@ -51,8 +50,15 @@ class LoginScreen : Screen {
         
         LoginContent(
             state = state,
-            onLoginClick = viewModel::onLoginClick,
-            onErrorDismissed = viewModel::onErrorDismissed
+            onEmployeeSelected = viewModel::onEmployeeSelected,
+            onPinDigit = viewModel::onPinDigit,
+            onPinClear = viewModel::onPinClear,
+            onPinBackspace = viewModel::onPinBackspace,
+            onPinSubmit = viewModel::onPinSubmit,
+            onTillSelected = viewModel::onTillSelected,
+            onBackPressed = viewModel::onBackPressed,
+            onErrorDismissed = viewModel::onErrorDismissed,
+            onRefresh = viewModel::onRefresh
         )
     }
 }

@@ -7,6 +7,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased] - 2026-01-01
 
 ### Added
+- **Employee List + Till Assignment (P0 #4)**: Login V2 with state machine flow
+  - **Domain Models (`features/cashier/domain/model/`):**
+    - `Till`: Cash drawer model with availability tracking
+    - `CashierSession`: Session tracking with shift metrics
+    - `Employee`: Enhanced employee model for login grid
+  - **Repositories (`features/cashier/domain/repository/` & `data/`):**
+    - `TillRepository` interface with `getTills()`, `assignTill()`, `releaseTill()`
+    - `EmployeeRepository` interface with `getEmployees()`, `verifyPin()`, `getApprovers()`
+    - `FakeTillRepository`: In-memory till management
+    - `FakeEmployeeRepository`: Test employees matching FakeAuthRepository
+  - **Refactored Login Flow (per CASHIER_OPERATIONS.md):**
+    - `LoginUiState`: Now a data class with `LoginStage` enum (LOADING, EMPLOYEE_SELECT, PIN_ENTRY, TILL_ASSIGNMENT, SUCCESS)
+    - `LoginViewModel`: State machine with employee selection, PIN verification, till assignment
+    - `LoginContent`: Multi-stage UI with employee grid, PIN entry, and till dialog
+    - `LoginScreen`: Navigation on SUCCESS stage
+  - **UI Components:**
+    - `TillSelectionDialog`: Per DIALOGS.md spec with table layout
+    - Employee cards with avatar initials, name, and role
+    - PIN dot display and TenKey integration
+    - Back button navigation between stages
+  - **DI Updates (`core/di/AuthModule.kt`):**
+    - Added `EmployeeRepository` and `TillRepository` bindings
+    - Updated `LoginViewModel` to use new repositories
+  - **Tests (`LoginViewModelTest.kt`):**
+    - Full state machine test coverage
+    - Tests for employee selection, PIN entry, till assignment
+    - Tests for error handling and back navigation
 - **Manager Approval Flow (P0 #2)**: RBAC infrastructure for sensitive actions
   - Created `core/security/PermissionModels.kt` with:
     - `PermissionCheckResult` enum: GRANTED, REQUIRES_APPROVAL, SELF_APPROVAL_ALLOWED, DENIED

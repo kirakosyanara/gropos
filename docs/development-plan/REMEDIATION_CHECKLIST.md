@@ -22,12 +22,12 @@
 
 | Feature/Component | Status | Remediation Action |
 |-------------------|--------|-------------------|
-| Login Screen - Basic PIN Entry | ⚠️ Partial | Current: Uses fake 4-digit PIN. Need: Multi-digit PIN support (up to 8) |
-| Login Screen - Employee List | ❌ Missing | Implement `EmployeeListViewModel` fetched from API `/employee/cashiers` |
+| Login Screen - Basic PIN Entry | ✅ Match | Multi-digit PIN (up to 8) supported in new state machine flow (Jan 2026) |
+| Login Screen - Employee List | ✅ Match | Implemented via `EmployeeRepository.getEmployees()` with employee grid UI (Jan 2026) |
 | Login Screen - Employee Selection | ❌ Missing | Create scrollable employee list with avatar, name, role display |
 | Station Claiming Flow | ❌ Missing | Implement `DeviceInfoViewModel`, `BranchDto`, station-employee association |
-| Till Assignment Dialog | ❌ Missing | Create `TillAssignmentDialog` with till list from `/account/till-list` |
-| Till Selection/Scan | ❌ Missing | Implement `TillAssignmentViewModel` with barcode scan support |
+| Till Assignment Dialog | ✅ Match | Created `TillSelectionDialog` with table layout per DIALOGS.md (Jan 2026) |
+| Till Selection/Scan | ⚠️ Partial | Till selection via list implemented; barcode scan pending |
 | Pre-Assigned Employee Detection | ❌ Missing | Check `deviceInfo.employeeId` and auto-select on app start |
 | Login State Machine | ⚠️ Partial | Current: Simple Idle→Loading→Success. Need: SPLASH→REGISTRATION→EMPLOYEE_SELECT→PIN_ENTRY→TILL_ASSIGNMENT→ACTIVE |
 | NFC Token Authentication | ❌ Missing | Add NFC toggle and hardware token login mode |
@@ -249,7 +249,7 @@
 1. ✅ Lock Screen + Inactivity Timer (Jan 2026)
 2. ✅ Manager Approval Flow (for discounts, returns) - Infrastructure complete, wired for Void (Jan 2026)
 3. ⚠️ Modification Mode (change qty ✅, discount ⚠️, void line ⚠️)
-4. ❌ Employee List + Till Assignment
+4. ✅ Employee List + Till Assignment (Jan 2026)
 5. ❌ Return Item Screen
 
 ### P1 - High Priority (Core Functionality)
