@@ -27,10 +27,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.unisight.gropos.core.components.OutlineButton
-import com.unisight.gropos.core.components.SuccessButton
 import com.unisight.gropos.core.theme.GroPOSColors
 import com.unisight.gropos.features.auth.presentation.TillUiModel
 
