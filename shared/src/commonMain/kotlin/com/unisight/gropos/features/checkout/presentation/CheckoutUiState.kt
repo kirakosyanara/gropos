@@ -3,6 +3,7 @@ package com.unisight.gropos.features.checkout.presentation
 import com.unisight.gropos.core.security.ManagerInfo
 import com.unisight.gropos.core.security.RequestAction
 import com.unisight.gropos.features.checkout.presentation.components.ProductLookupState
+import com.unisight.gropos.features.checkout.presentation.components.dialogs.HeldTransactionUiModel
 
 /**
  * UI model for displaying a cart item.
@@ -103,6 +104,26 @@ data class ManagerApprovalDialogState(
 )
 
 /**
+ * State for the Hold Transaction Dialog.
+ * 
+ * Per TRANSACTION_FLOW.md: Hold dialog asks for optional name/note.
+ */
+data class HoldDialogState(
+    val isVisible: Boolean = false
+)
+
+/**
+ * State for the Recall Transactions Dialog.
+ * 
+ * Per TRANSACTION_FLOW.md: Recall shows list of held transactions.
+ */
+data class RecallDialogState(
+    val isVisible: Boolean = false,
+    val isLoading: Boolean = false,
+    val heldTransactions: List<HeldTransactionUiModel> = emptyList()
+)
+
+/**
  * UI State for the Checkout screen.
  * 
  * Per kotlin-standards.mdc: Use sealed interface for strict typing.
@@ -140,7 +161,11 @@ data class CheckoutUiState(
     val managerApprovalState: ManagerApprovalDialogState = ManagerApprovalDialogState(),
     val showVoidConfirmationDialog: Boolean = false,
     val showLogoutDialog: Boolean = false,
-    val logoutFeedback: String? = null
+    val logoutFeedback: String? = null,
+    // Hold/Recall state (per TRANSACTION_FLOW.md)
+    val holdDialogState: HoldDialogState = HoldDialogState(),
+    val recallDialogState: RecallDialogState = RecallDialogState(),
+    val holdRecallFeedback: String? = null
 ) {
     /**
      * Whether the screen is in modification mode.

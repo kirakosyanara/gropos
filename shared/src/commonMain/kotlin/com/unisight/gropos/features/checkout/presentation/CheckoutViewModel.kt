@@ -22,7 +22,11 @@ import com.unisight.gropos.features.checkout.domain.repository.ScannerRepository
 import com.unisight.gropos.features.checkout.domain.usecase.ScanItemUseCase
 import com.unisight.gropos.features.checkout.presentation.components.ProductLookupState
 import com.unisight.gropos.features.checkout.presentation.components.ProductLookupUiModel
+import com.unisight.gropos.features.checkout.presentation.components.dialogs.HeldTransactionUiModel
 import com.unisight.gropos.features.checkout.domain.usecase.ScanResult
+import com.unisight.gropos.features.transaction.domain.model.HeldTransaction
+import com.unisight.gropos.features.transaction.domain.model.HeldTransactionItem
+import com.unisight.gropos.features.transaction.domain.repository.TransactionRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -31,6 +35,9 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.util.UUID
 
 /**
  * ViewModel for the Checkout screen (Cashier window).
@@ -58,6 +65,7 @@ class CheckoutViewModel(
     private val authRepository: AuthRepository,
     private val managerApprovalService: ManagerApprovalService,
     private val cashierSessionManager: CashierSessionManager,
+    private val transactionRepository: TransactionRepository,
     // Inject scope for testability (per testing-strategy.mdc)
     private val scope: CoroutineScope? = null
 ) : ScreenModel {
@@ -750,6 +758,264 @@ class CheckoutViewModel(
         _state.value = _state.value.copy(
             logoutFeedback = null
         )
+    }
+    
+    // ========================================================================
+    // Hold/Recall Transaction
+    // Per TRANSACTION_FLOW.md: Suspend and Resume transactions
+    // ========================================================================
+    
+    /**
+     * Opens the hold transaction dialog.
+     * 
+     * Per TRANSACTION_FLOW.md: Hold button opens dialog for optional name/note.
+     * Per Governance: Cannot hold an empty cart.
+     */
+    fun onOpenHoldDialog() {
+        // Validation: Cannot hold an empty cart
+        if (_state.value.isEmpty) {
+            _state.value = _state.value.copy(
+                lastScanEvent = ScanEvent.Error("Cannot hold an empty cart.")
+            )
+            return
+        }
+        
+        _state.value = _state.value.copy(
+            holdDialogState = HoldDialogState(isVisible = true)
+        )
+    }
+    
+    /**
+     * Dismisses the hold transaction dialog.
+     */
+    fun onDismissHoldDialog() {
+        _state.value = _state.value.copy(
+            holdDialogState = HoldDialogState(isVisible = false)
+        )
+    }
+    
+    /**
+     * Confirms and executes the hold transaction.
+     * 
+     * Per TRANSACTION_FLOW.md:
+     * - Creates a HeldTransaction record
+     * - Clears the active cart
+     * - Shows "Transaction Held" feedback
+     * 
+     * @param holdName Optional name/note for the held transaction
+     */
+    fun onConfirmHold(holdName: String?) {
+        effectiveScope.launch {
+            val cart = cartRepository.getCurrentCart()
+            val user = currentUser
+            
+            // Generate hold name if not provided
+            val now = LocalDateTime.now()
+            val generatedName = holdName ?: "Hold-${now.format(DateTimeFormatter.ofPattern("HH:mm"))}"
+            
+            // Create HeldTransaction from cart
+            val heldTransaction = HeldTransaction(
+                id = UUID.randomUUID().toString(),
+                holdName = generatedName,
+                heldDateTime = now.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
+                employeeId = user?.id?.toIntOrNull(),
+                employeeName = user?.username,
+                stationId = 1,
+                branchId = 1,
+                itemCount = cart.itemCount.toInt(),
+                grandTotal = cart.grandTotal,
+                subTotal = cart.subTotal,
+                taxTotal = cart.taxTotal,
+                crvTotal = cart.crvTotal,
+                items = cart.items.filterNot { it.isRemoved }.map { cartItem ->
+                    HeldTransactionItem(
+                        branchProductId = cartItem.branchProductId,
+                        productName = cartItem.branchProductName,
+                        quantityUsed = cartItem.quantityUsed,
+                        priceUsed = cartItem.effectivePrice,
+                        discountAmountPerUnit = cartItem.discountAmountPerUnit,
+                        transactionDiscountAmountPerUnit = cartItem.transactionDiscountAmountPerUnit,
+                        isRemoved = cartItem.isRemoved,
+                        isPromptedPrice = cartItem.isPromptedPrice,
+                        isFloorPriceOverridden = cartItem.isFloorPriceOverridden,
+                        scanDateTime = cartItem.scanDateTime
+                    )
+                }
+            )
+            
+            // Save to repository
+            val result = transactionRepository.holdTransaction(heldTransaction)
+            
+            result.onSuccess {
+                // Clear the cart
+                cartRepository.clearCart()
+                
+                // Close dialog and show feedback
+                _state.value = _state.value.copy(
+                    holdDialogState = HoldDialogState(isVisible = false),
+                    holdRecallFeedback = "Transaction Held: $generatedName"
+                )
+                
+                println("[HOLD] Transaction held: $generatedName with ${heldTransaction.itemCount} items")
+            }.onFailure { error ->
+                _state.value = _state.value.copy(
+                    holdDialogState = HoldDialogState(isVisible = false),
+                    lastScanEvent = ScanEvent.Error("Failed to hold transaction: ${error.message}")
+                )
+            }
+        }
+    }
+    
+    /**
+     * Opens the recall transactions dialog.
+     * 
+     * Per TRANSACTION_FLOW.md: Show list of HELD transactions.
+     */
+    fun onOpenRecallDialog() {
+        _state.value = _state.value.copy(
+            recallDialogState = RecallDialogState(
+                isVisible = true,
+                isLoading = true,
+                heldTransactions = emptyList()
+            )
+        )
+        
+        // Load held transactions
+        effectiveScope.launch {
+            val heldTransactions = transactionRepository.getHeldTransactions()
+            
+            val uiModels = heldTransactions.map { held ->
+                HeldTransactionUiModel(
+                    id = held.id,
+                    holdName = held.holdName,
+                    heldDateTime = formatHeldDateTime(held.heldDateTime),
+                    itemCount = formatItemCount(BigDecimal(held.itemCount)),
+                    grandTotal = currencyFormatter.format(held.grandTotal),
+                    employeeName = held.employeeName
+                )
+            }
+            
+            _state.value = _state.value.copy(
+                recallDialogState = RecallDialogState(
+                    isVisible = true,
+                    isLoading = false,
+                    heldTransactions = uiModels
+                )
+            )
+        }
+    }
+    
+    /**
+     * Dismisses the recall transactions dialog.
+     */
+    fun onDismissRecallDialog() {
+        _state.value = _state.value.copy(
+            recallDialogState = RecallDialogState(isVisible = false)
+        )
+    }
+    
+    /**
+     * Restores a held transaction to the cart.
+     * 
+     * Per TRANSACTION_FLOW.md:
+     * - Loads items back into CartRepository
+     * - Deletes the HELD record
+     * - Shows "Transaction Restored" feedback
+     * 
+     * Per Governance: Restoring must strictly match original items.
+     * 
+     * @param heldTransactionId The ID of the held transaction to restore
+     */
+    fun onRestoreTransaction(heldTransactionId: String) {
+        effectiveScope.launch {
+            // Check if current cart is not empty
+            if (!_state.value.isEmpty) {
+                _state.value = _state.value.copy(
+                    recallDialogState = RecallDialogState(isVisible = false),
+                    lastScanEvent = ScanEvent.Error("Clear the current cart before recalling a transaction.")
+                )
+                return@launch
+            }
+            
+            // Get the held transaction
+            val heldTransaction = transactionRepository.getHeldTransactionById(heldTransactionId)
+            
+            if (heldTransaction == null) {
+                _state.value = _state.value.copy(
+                    recallDialogState = RecallDialogState(isVisible = false),
+                    lastScanEvent = ScanEvent.Error("Held transaction not found.")
+                )
+                return@launch
+            }
+            
+            // Restore items to cart
+            var restoredCount = 0
+            for (heldItem in heldTransaction.items) {
+                if (heldItem.isRemoved) continue
+                
+                // Load product from repository
+                val product = productRepository.getById(heldItem.branchProductId)
+                if (product != null) {
+                    // Add to cart with original quantity
+                    cartRepository.addToCart(product, heldItem.quantityUsed)
+                    restoredCount++
+                } else {
+                    println("[RECALL] Warning: Product ${heldItem.branchProductId} not found, skipping")
+                }
+            }
+            
+            // Delete the held record
+            transactionRepository.deleteHeldTransaction(heldTransactionId)
+            
+            // Close dialog and show feedback
+            _state.value = _state.value.copy(
+                recallDialogState = RecallDialogState(isVisible = false),
+                holdRecallFeedback = "Transaction Restored: ${heldTransaction.holdName}"
+            )
+            
+            println("[RECALL] Restored ${restoredCount} items from: ${heldTransaction.holdName}")
+        }
+    }
+    
+    /**
+     * Deletes a held transaction without restoring.
+     * 
+     * @param heldTransactionId The ID of the held transaction to delete
+     */
+    fun onDeleteHeldTransaction(heldTransactionId: String) {
+        effectiveScope.launch {
+            val result = transactionRepository.deleteHeldTransaction(heldTransactionId)
+            
+            result.onSuccess {
+                // Refresh the list
+                onOpenRecallDialog()
+            }.onFailure { error ->
+                _state.value = _state.value.copy(
+                    lastScanEvent = ScanEvent.Error("Failed to delete: ${error.message}")
+                )
+            }
+        }
+    }
+    
+    /**
+     * Dismisses the hold/recall feedback message.
+     */
+    fun onDismissHoldRecallFeedback() {
+        _state.value = _state.value.copy(
+            holdRecallFeedback = null
+        )
+    }
+    
+    /**
+     * Formats the held date/time for display.
+     */
+    private fun formatHeldDateTime(isoDateTime: String): String {
+        return try {
+            val dateTime = LocalDateTime.parse(isoDateTime, DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+            dateTime.format(DateTimeFormatter.ofPattern("MMM d, h:mm a"))
+        } catch (e: Exception) {
+            isoDateTime
+        }
     }
     
     // ========================================================================

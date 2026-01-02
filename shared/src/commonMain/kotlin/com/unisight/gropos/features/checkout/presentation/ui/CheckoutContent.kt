@@ -51,6 +51,8 @@ import com.unisight.gropos.core.theme.GroPOSRadius
 import com.unisight.gropos.core.theme.GroPOSSpacing
 import com.unisight.gropos.core.components.dialogs.ManagerApprovalDialog
 import com.unisight.gropos.features.checkout.presentation.components.dialogs.VoidConfirmationDialog
+import com.unisight.gropos.features.checkout.presentation.components.dialogs.HoldTransactionDialog
+import com.unisight.gropos.features.checkout.presentation.components.dialogs.RecallTransactionsDialog
 import com.unisight.gropos.features.auth.presentation.components.dialogs.LogoutDialog
 import com.unisight.gropos.features.auth.presentation.components.dialogs.LogoutOption
 import com.unisight.gropos.features.checkout.presentation.CheckoutItemUiModel
@@ -181,7 +183,8 @@ fun CheckoutContent(
                     },
                     onClearCart = { onEvent(CheckoutEvent.ClearCart) },
                     onLookupClick = { onEvent(CheckoutEvent.OpenLookup) },
-                    onRecallClick = { onEvent(CheckoutEvent.NavigateToRecall) },
+                    onRecallClick = { onEvent(CheckoutEvent.OpenRecallDialog) },
+                    onHoldClick = { onEvent(CheckoutEvent.OpenHoldDialog) },
                     onFunctionsClick = { /* TODO: Show functions panel */ },
                     onVoidTransactionClick = { onEvent(CheckoutEvent.VoidTransactionRequest) },
                     onSignOutClick = { onEvent(CheckoutEvent.OpenLogoutDialog) },
@@ -271,6 +274,48 @@ fun CheckoutContent(
                         Text("OK")
                     }
                 }
+            ) {
+                Text(message)
+            }
+        }
+        
+        // Hold Transaction Dialog
+        // Per TRANSACTION_FLOW.md: Hold suspends current transaction with optional name
+        if (state.holdDialogState.isVisible) {
+            HoldTransactionDialog(
+                grandTotal = state.totals.grandTotal,
+                itemCount = state.totals.itemCount,
+                onHold = { holdName -> onEvent(CheckoutEvent.ConfirmHold(holdName)) },
+                onDismiss = { onEvent(CheckoutEvent.DismissHoldDialog) }
+            )
+        }
+        
+        // Recall Transactions Dialog
+        // Per TRANSACTION_FLOW.md: Recall shows list of held transactions
+        if (state.recallDialogState.isVisible) {
+            RecallTransactionsDialog(
+                heldTransactions = state.recallDialogState.heldTransactions,
+                isLoading = state.recallDialogState.isLoading,
+                onRestore = { id -> onEvent(CheckoutEvent.RestoreTransaction(id)) },
+                onDelete = { id -> onEvent(CheckoutEvent.DeleteHeldTransaction(id)) },
+                onDismiss = { onEvent(CheckoutEvent.DismissRecallDialog) }
+            )
+        }
+        
+        // Hold/Recall Feedback Snackbar
+        state.holdRecallFeedback?.let { message ->
+            Snackbar(
+                modifier = Modifier
+                    .padding(GroPOSSpacing.M)
+                    .align(Alignment.TopCenter)
+                    .testTag("hold_recall_feedback"),
+                action = {
+                    TextButton(onClick = { onEvent(CheckoutEvent.DismissHoldRecallFeedback) }) {
+                        Text("OK", color = GroPOSColors.White)
+                    }
+                },
+                containerColor = GroPOSColors.PrimaryGreen,
+                contentColor = GroPOSColors.White
             ) {
                 Text(message)
             }
@@ -399,6 +444,7 @@ private fun RightPanel(
     onClearCart: () -> Unit,
     onLookupClick: () -> Unit,
     onRecallClick: () -> Unit,
+    onHoldClick: () -> Unit,
     onFunctionsClick: () -> Unit,
     onVoidTransactionClick: () -> Unit,
     onSignOutClick: () -> Unit,
@@ -471,6 +517,7 @@ private fun RightPanel(
             onFunctionsClick = onFunctionsClick,
             onLookupClick = onLookupClick,
             onRecallClick = onRecallClick,
+            onHoldClick = onHoldClick,
             onVoidTransactionClick = onVoidTransactionClick,
             onSignOutClick = onSignOutClick,
             modifier = Modifier

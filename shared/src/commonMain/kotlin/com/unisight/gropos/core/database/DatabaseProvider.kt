@@ -58,5 +58,8 @@ object DatabaseConfig {
     const val COLLECTION_TAX = "Tax"
     const val COLLECTION_CRV = "CRV"
     const val COLLECTION_LOCAL_TRANSACTION = "LocalTransaction"
+    
+    // Per TRANSACTION_FLOW.md: Held transactions for suspend/resume
+    const val COLLECTION_HELD_TRANSACTION = "HeldTransaction"
 }
 

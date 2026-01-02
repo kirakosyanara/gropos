@@ -135,8 +135,9 @@ val checkoutModule: Module = module {
      * - AuthRepository: For current user and permission checks
      * - ManagerApprovalService: For manager approval flow
      * - CashierSessionManager: For logout/session management
+     * - TransactionRepository: For hold/recall operations
      */
-    factory { CheckoutViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
+    factory { CheckoutViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     
     /**
      * Customer Display ViewModel/ScreenModel.

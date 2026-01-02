@@ -23,6 +23,47 @@ This release marks the feature-complete alpha milestone for GroPOS. All core POS
 ## [Unreleased]
 
 ### Added
+- **Hold & Recall Transactions (P1 #2)**: Suspend and resume transactions
+  - **Domain Models (`features/transaction/domain/model/HeldTransaction.kt`):**
+    - `HeldTransaction`: Represents a suspended transaction with all cart data
+    - `HeldTransactionItem`: Individual item data for restoration
+    - Stores complete cart state: items, quantities, prices, discounts
+  - **Repository Extension (`TransactionRepository`):**
+    - `holdTransaction(heldTransaction)`: Saves transaction to HeldTransaction collection
+    - `getHeldTransactions()`: Returns all held transactions (ordered by time)
+    - `getHeldTransactionById(id)`: Retrieves specific held transaction
+    - `deleteHeldTransaction(id)`: Removes held transaction after recall
+  - **Database Implementation (Desktop & Android):**
+    - New collection: `HeldTransaction` in `local` scope (per DATABASE_SCHEMA.md)
+    - Index on `heldDateTime` for ordering queries
+    - Full item serialization and restoration
+  - **UI Components:**
+    - `HoldTransactionDialog`: Optional name/note for held transaction
+      - Displays current cart total and item count
+      - "Recall Name" input field (e.g., "Guy in blue shirt")
+      - Hold and Cancel buttons
+    - `RecallTransactionsDialog`: List of held transactions
+      - Shows hold name, time, item count, and total
+      - Restore button to load items back to cart
+      - Delete button to remove held transaction
+      - Empty state when no held transactions
+  - **ViewModel Integration (`CheckoutViewModel`):**
+    - `onOpenHoldDialog()`: Opens hold dialog (validation: cart not empty)
+    - `onConfirmHold(holdName)`: Creates HeldTransaction, clears cart
+    - `onOpenRecallDialog()`: Loads and displays held transactions
+    - `onRestoreTransaction(id)`: Restores items to cart, deletes held record
+    - `onDeleteHeldTransaction(id)`: Removes held transaction without restoring
+    - Feedback toasts: "Transaction Held" / "Transaction Restored"
+  - **UI Wiring:**
+    - Added "Hold" button to FunctionsGrid (alongside Lookup, Recall, Void)
+    - "Recall" button now opens RecallTransactionsDialog (not TransactionHistory)
+    - New events: OpenHoldDialog, ConfirmHold, OpenRecallDialog, RestoreTransaction, etc.
+  - **Governance:**
+    - Cannot hold empty cart (validation with error message)
+    - Cannot restore to non-empty cart (clear first)
+    - Items restored with original quantities, prices, and discounts
+    - Audit log output on hold and recall actions
+
 - **Complete Logout Flow (P1 #5)**: Advanced logout with three options
   - **LogoutDialog (`LogoutDialog.kt`):**
     - Option 1: Lock Station (Blue) - Keeps session active, requires PIN to re-enter

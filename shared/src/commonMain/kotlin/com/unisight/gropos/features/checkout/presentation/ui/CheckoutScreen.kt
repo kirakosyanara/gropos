@@ -145,6 +145,32 @@ class CheckoutScreen : Screen {
                     CheckoutEvent.DismissLogoutFeedback -> {
                         viewModel.onDismissLogoutFeedback()
                     }
+                    
+                    // Hold/Recall Events
+                    CheckoutEvent.OpenHoldDialog -> {
+                        viewModel.onOpenHoldDialog()
+                    }
+                    CheckoutEvent.DismissHoldDialog -> {
+                        viewModel.onDismissHoldDialog()
+                    }
+                    is CheckoutEvent.ConfirmHold -> {
+                        viewModel.onConfirmHold(event.holdName)
+                    }
+                    CheckoutEvent.OpenRecallDialog -> {
+                        viewModel.onOpenRecallDialog()
+                    }
+                    CheckoutEvent.DismissRecallDialog -> {
+                        viewModel.onDismissRecallDialog()
+                    }
+                    is CheckoutEvent.RestoreTransaction -> {
+                        viewModel.onRestoreTransaction(event.heldTransactionId)
+                    }
+                    is CheckoutEvent.DeleteHeldTransaction -> {
+                        viewModel.onDeleteHeldTransaction(event.heldTransactionId)
+                    }
+                    CheckoutEvent.DismissHoldRecallFeedback -> {
+                        viewModel.onDismissHoldRecallFeedback()
+                    }
                 }
             }
         )
@@ -251,4 +277,33 @@ sealed interface CheckoutEvent {
     
     /** Dismiss logout feedback */
     data object DismissLogoutFeedback : CheckoutEvent
+    
+    // ========================================================================
+    // Hold/Recall Transaction Events
+    // Per TRANSACTION_FLOW.md: Suspend and Resume transactions
+    // ========================================================================
+    
+    /** Open the hold transaction dialog */
+    data object OpenHoldDialog : CheckoutEvent
+    
+    /** Dismiss the hold transaction dialog */
+    data object DismissHoldDialog : CheckoutEvent
+    
+    /** Confirm hold with optional name */
+    data class ConfirmHold(val holdName: String?) : CheckoutEvent
+    
+    /** Open the recall transactions dialog */
+    data object OpenRecallDialog : CheckoutEvent
+    
+    /** Dismiss the recall transactions dialog */
+    data object DismissRecallDialog : CheckoutEvent
+    
+    /** Restore a held transaction */
+    data class RestoreTransaction(val heldTransactionId: String) : CheckoutEvent
+    
+    /** Delete a held transaction */
+    data class DeleteHeldTransaction(val heldTransactionId: String) : CheckoutEvent
+    
+    /** Dismiss hold/recall feedback */
+    data object DismissHoldRecallFeedback : CheckoutEvent
 }

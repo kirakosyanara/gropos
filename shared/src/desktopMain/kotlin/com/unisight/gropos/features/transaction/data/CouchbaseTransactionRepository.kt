@@ -12,6 +12,8 @@ import com.couchbase.lite.SelectResult
 import com.couchbase.lite.ValueIndexItem
 import com.unisight.gropos.core.database.DatabaseConfig
 import com.unisight.gropos.core.database.DatabaseProvider
+import com.unisight.gropos.features.transaction.domain.model.HeldTransaction
+import com.unisight.gropos.features.transaction.domain.model.HeldTransactionItem
 import com.unisight.gropos.features.transaction.domain.model.Transaction
 import com.unisight.gropos.features.transaction.domain.model.TransactionItem
 import com.unisight.gropos.features.transaction.domain.model.TransactionPayment
@@ -330,6 +332,195 @@ class CouchbaseTransactionRepository(
             )
         } catch (e: Exception) {
             println("CouchbaseTransactionRepository: Error mapping payment - ${e.message}")
+            null
+        }
+    }
+    
+    // ========================================================================
+    // Held Transactions (Hold/Recall)
+    // Per TRANSACTION_FLOW.md: Support for suspended transactions
+    // ========================================================================
+    
+    /**
+     * Lazily gets or creates the HeldTransaction collection.
+     */
+    private val heldCollection: Collection by lazy {
+        val db = databaseProvider.getTypedDatabase()
+        val coll = db.createCollection(
+            DatabaseConfig.COLLECTION_HELD_TRANSACTION,
+            DatabaseConfig.SCOPE_LOCAL
+        )
+        
+        // Create index on heldDateTime for ordering queries
+        try {
+            coll.createIndex(
+                "held_date_idx",
+                IndexBuilder.valueIndex(ValueIndexItem.property("heldDateTime"))
+            )
+            println("CouchbaseTransactionRepository: Created heldDateTime index")
+        } catch (e: Exception) {
+            // Index may already exist
+            println("CouchbaseTransactionRepository: Held index creation: ${e.message}")
+        }
+        
+        coll
+    }
+    
+    /**
+     * Holds (suspends) a transaction for later recall.
+     */
+    override suspend fun holdTransaction(heldTransaction: HeldTransaction): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val doc = MutableDocument(heldTransaction.id)
+            
+            // Core fields
+            doc.setString("id", heldTransaction.id)
+            doc.setString("holdName", heldTransaction.holdName)
+            doc.setString("heldDateTime", heldTransaction.heldDateTime)
+            heldTransaction.employeeId?.let { doc.setInt("employeeId", it) }
+            heldTransaction.employeeName?.let { doc.setString("employeeName", it) }
+            doc.setInt("stationId", heldTransaction.stationId)
+            doc.setInt("branchId", heldTransaction.branchId)
+            doc.setInt("itemCount", heldTransaction.itemCount)
+            
+            // Totals
+            doc.setDouble("grandTotal", heldTransaction.grandTotal.toDouble())
+            doc.setDouble("subTotal", heldTransaction.subTotal.toDouble())
+            doc.setDouble("taxTotal", heldTransaction.taxTotal.toDouble())
+            doc.setDouble("crvTotal", heldTransaction.crvTotal.toDouble())
+            
+            // Items array
+            val itemsArray = MutableArray()
+            heldTransaction.items.forEach { item ->
+                itemsArray.addDictionary(com.couchbase.lite.MutableDictionary().apply {
+                    setInt("branchProductId", item.branchProductId)
+                    setString("productName", item.productName)
+                    setDouble("quantityUsed", item.quantityUsed.toDouble())
+                    setDouble("priceUsed", item.priceUsed.toDouble())
+                    setDouble("discountAmountPerUnit", item.discountAmountPerUnit.toDouble())
+                    setDouble("transactionDiscountAmountPerUnit", item.transactionDiscountAmountPerUnit.toDouble())
+                    setBoolean("isRemoved", item.isRemoved)
+                    setBoolean("isPromptedPrice", item.isPromptedPrice)
+                    setBoolean("isFloorPriceOverridden", item.isFloorPriceOverridden)
+                    item.scanDateTime?.let { setString("scanDateTime", it) }
+                })
+            }
+            doc.setArray("items", itemsArray)
+            
+            // Save to database
+            heldCollection.save(doc)
+            
+            println("CouchbaseTransactionRepository: Held transaction ${heldTransaction.id} - ${heldTransaction.holdName}")
+            println("CouchbaseTransactionRepository: ${heldTransaction.itemCount} items, Total = ${heldTransaction.grandTotal}")
+            
+            Result.success(Unit)
+        } catch (e: Exception) {
+            println("CouchbaseTransactionRepository: Error holding transaction - ${e.message}")
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+    
+    /**
+     * Retrieves all held transactions.
+     */
+    override suspend fun getHeldTransactions(): List<HeldTransaction> = withContext(Dispatchers.IO) {
+        try {
+            val query = QueryBuilder
+                .select(SelectResult.all())
+                .from(DataSource.collection(heldCollection))
+                .orderBy(Ordering.property("heldDateTime").descending())
+            
+            query.execute().use { resultSet ->
+                resultSet.allResults().mapNotNull { result ->
+                    val dict = result.getDictionary(heldCollection.name)
+                    dict?.let { mapToHeldTransaction(it.toMap()) }
+                }
+            }
+        } catch (e: Exception) {
+            println("CouchbaseTransactionRepository: Error getting held transactions - ${e.message}")
+            emptyList()
+        }
+    }
+    
+    /**
+     * Retrieves a specific held transaction by ID.
+     */
+    override suspend fun getHeldTransactionById(id: String): HeldTransaction? = withContext(Dispatchers.IO) {
+        try {
+            val doc = heldCollection.getDocument(id)
+            doc?.let { mapToHeldTransaction(it.toMap()) }
+        } catch (e: Exception) {
+            println("CouchbaseTransactionRepository: Error getting held transaction by ID $id - ${e.message}")
+            null
+        }
+    }
+    
+    /**
+     * Deletes a held transaction.
+     */
+    override suspend fun deleteHeldTransaction(id: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val doc = heldCollection.getDocument(id)
+            if (doc != null) {
+                heldCollection.delete(doc)
+                println("CouchbaseTransactionRepository: Deleted held transaction $id")
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            println("CouchbaseTransactionRepository: Error deleting held transaction $id - ${e.message}")
+            Result.failure(e)
+        }
+    }
+    
+    // ========================================================================
+    // Held Transaction Mapping
+    // ========================================================================
+    
+    @Suppress("UNCHECKED_CAST")
+    private fun mapToHeldTransaction(map: Map<String, Any?>): HeldTransaction? {
+        return try {
+            val items = (map["items"] as? List<Map<String, Any?>>)?.mapNotNull { itemMap ->
+                mapToHeldTransactionItem(itemMap)
+            } ?: emptyList()
+            
+            HeldTransaction(
+                id = map["id"] as? String ?: return null,
+                holdName = map["holdName"] as? String ?: "",
+                heldDateTime = map["heldDateTime"] as? String ?: "",
+                employeeId = (map["employeeId"] as? Number)?.toInt(),
+                employeeName = map["employeeName"] as? String,
+                stationId = (map["stationId"] as? Number)?.toInt() ?: 1,
+                branchId = (map["branchId"] as? Number)?.toInt() ?: 1,
+                itemCount = (map["itemCount"] as? Number)?.toInt() ?: 0,
+                grandTotal = BigDecimal((map["grandTotal"] as? Number)?.toString() ?: "0"),
+                subTotal = BigDecimal((map["subTotal"] as? Number)?.toString() ?: "0"),
+                taxTotal = BigDecimal((map["taxTotal"] as? Number)?.toString() ?: "0"),
+                crvTotal = BigDecimal((map["crvTotal"] as? Number)?.toString() ?: "0"),
+                items = items
+            )
+        } catch (e: Exception) {
+            println("CouchbaseTransactionRepository: Error mapping held transaction - ${e.message}")
+            null
+        }
+    }
+    
+    private fun mapToHeldTransactionItem(map: Map<String, Any?>): HeldTransactionItem? {
+        return try {
+            HeldTransactionItem(
+                branchProductId = (map["branchProductId"] as? Number)?.toInt() ?: return null,
+                productName = map["productName"] as? String ?: "",
+                quantityUsed = BigDecimal((map["quantityUsed"] as? Number)?.toString() ?: "1"),
+                priceUsed = BigDecimal((map["priceUsed"] as? Number)?.toString() ?: "0"),
+                discountAmountPerUnit = BigDecimal((map["discountAmountPerUnit"] as? Number)?.toString() ?: "0"),
+                transactionDiscountAmountPerUnit = BigDecimal((map["transactionDiscountAmountPerUnit"] as? Number)?.toString() ?: "0"),
+                isRemoved = map["isRemoved"] as? Boolean ?: false,
+                isPromptedPrice = map["isPromptedPrice"] as? Boolean ?: false,
+                isFloorPriceOverridden = map["isFloorPriceOverridden"] as? Boolean ?: false,
+                scanDateTime = map["scanDateTime"] as? String
+            )
+        } catch (e: Exception) {
+            println("CouchbaseTransactionRepository: Error mapping held item - ${e.message}")
             null
         }
     }

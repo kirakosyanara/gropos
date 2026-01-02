@@ -74,12 +74,14 @@ enum class FunctionAction {
  * - Includes: [Lookup][Recall] and [Functions]
  * 
  * Per FUNCTIONS_MENU.md: Void Transaction is a key action
+ * Per TRANSACTION_FLOW.md: Hold and Recall for suspended transactions
  */
 @Composable
 fun FunctionsGrid(
     onFunctionsClick: () -> Unit,
     onLookupClick: () -> Unit,
     onRecallClick: () -> Unit,
+    onHoldClick: () -> Unit = {},
     onVoidTransactionClick: () -> Unit = {},
     onSignOutClick: () -> Unit = {},
     modifier: Modifier = Modifier
@@ -107,33 +109,45 @@ fun FunctionsGrid(
             }
         }
         
-        // Row 2: Void and Functions
+        // Row 2: Hold and Void
+        // Per TRANSACTION_FLOW.md: Hold suspends the current transaction
         // Per FUNCTIONS_MENU.md: Void Transaction is frequently used
         androidx.compose.foundation.layout.Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(GroPOSSpacing.S)
         ) {
+            OutlineButton(
+                onClick = onHoldClick,
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Hold")
+            }
             DangerButton(
                 onClick = onVoidTransactionClick,
                 modifier = Modifier.weight(1f)
             ) {
                 Text("Void")
             }
+        }
+        
+        // Row 3: Functions and Sign Out
+        androidx.compose.foundation.layout.Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(GroPOSSpacing.S)
+        ) {
             OutlineButton(
                 onClick = onFunctionsClick,
                 modifier = Modifier.weight(1f)
             ) {
                 Text("Functions")
             }
-        }
-        
-        // Row 3: Sign Out
-        // Per CASHIER_OPERATIONS.md: Sign Out shows logout options dialog
-        DangerButton(
-            onClick = onSignOutClick,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Sign Out")
+            // Per CASHIER_OPERATIONS.md: Sign Out shows logout options dialog
+            DangerButton(
+                onClick = onSignOutClick,
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Sign Out")
+            }
         }
     }
 }

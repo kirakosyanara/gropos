@@ -1,5 +1,6 @@
 package com.unisight.gropos.features.transaction.domain.repository
 
+import com.unisight.gropos.features.transaction.domain.model.HeldTransaction
 import com.unisight.gropos.features.transaction.domain.model.Transaction
 
 /**
@@ -9,6 +10,8 @@ import com.unisight.gropos.features.transaction.domain.model.Transaction
  * - Collection: LocalTransaction
  * - Scope: local
  * - Documents stored with ID pattern: {id} or {id}-P (pending sync)
+ * 
+ * Per TRANSACTION_FLOW.md: Supports Hold/Recall transaction operations.
  * 
  * Per project-structure.mdc: Interface in domain layer, implementation in data layer.
  */
@@ -51,5 +54,48 @@ interface TransactionRepository {
      * @return List of pending transactions
      */
     suspend fun getPending(): List<Transaction>
+    
+    // ========================================================================
+    // Hold/Recall Operations
+    // Per TRANSACTION_FLOW.md: Support for suspended transactions
+    // ========================================================================
+    
+    /**
+     * Holds (suspends) a transaction for later recall.
+     * 
+     * Per TRANSACTION_FLOW.md: "Holding" creates a Transaction record with status HELD.
+     * Per FUNCTIONS_MENU.md: Hold button in Functions Panel.
+     * 
+     * @param heldTransaction The transaction to hold with all cart items
+     * @return Result.success(Unit) on success, Result.failure on error
+     */
+    suspend fun holdTransaction(heldTransaction: HeldTransaction): Result<Unit>
+    
+    /**
+     * Retrieves all held transactions.
+     * 
+     * Per TRANSACTION_FLOW.md: Recall shows list of HELD transactions.
+     * 
+     * @return List of held transactions ordered by heldDateTime descending
+     */
+    suspend fun getHeldTransactions(): List<HeldTransaction>
+    
+    /**
+     * Retrieves a specific held transaction by ID.
+     * 
+     * @param id The held transaction ID
+     * @return The held transaction if found, null otherwise
+     */
+    suspend fun getHeldTransactionById(id: String): HeldTransaction?
+    
+    /**
+     * Deletes a held transaction (after recall or manual deletion).
+     * 
+     * Per TRANSACTION_FLOW.md: After recall, delete the HELD record.
+     * 
+     * @param id The held transaction ID to delete
+     * @return Result.success(Unit) on success, Result.failure on error
+     */
+    suspend fun deleteHeldTransaction(id: String): Result<Unit>
 }
 
