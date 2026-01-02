@@ -116,7 +116,7 @@
 | Info Bar - Weight Display | ❌ Missing | Show current scale weight |
 | Info Bar - Quantity Display | ⚠️ Partial | Need: Show preset quantity multiplier |
 | QTY Prefix for Multiple | ❌ Missing | Enter qty → press QTY → scan = single line with qty |
-| Hold Transaction | ❌ Missing | Save cart with recall name for later retrieval |
+| Hold Transaction | ✅ Match | `HoldTransactionDialog` with optional note, `TransactionRepository.holdTransaction()` (Jan 2026) |
 | Void Transaction | ✅ Match | `VoidConfirmationDialog`, permission check, audit log (Jan 2026) |
 | Savings Display | ⚠️ Partial | Current: In totals. Need: "You saved $X.XX" per line item |
 
@@ -237,7 +237,7 @@
 | Tax Repository | ⚠️ Partial | Current: In-memory. Need: CouchbaseLite persistence |
 | Heartbeat/Sync Service | ❌ Missing | Implement background data synchronization |
 | Offline Queue | ❌ Missing | Queue transactions for later sync |
-| Held Transactions Collection | ❌ Missing | Store held/suspended transactions |
+| Held Transactions Collection | ✅ Match | `HeldTransaction` collection in CouchbaseLite, `TransactionRepository` CRUD (Jan 2026) |
 | Approval Audit Collection | ❌ Missing | Store manager approval records |
 
 ---
@@ -255,7 +255,7 @@
 ### P1 - High Priority (Core Functionality)
 
 1. ❌ Payment Terminal Integration
-2. ❌ Hold/Recall Transactions
+2. ✅ Hold/Recall Transactions (Jan 2026)
 3. ✅ Void Transaction (Jan 2026)
 4. ❌ Cash Pickup Screen
 5. ✅ Complete Logout Flow (Release Till, End of Shift) (Jan 2026)
@@ -284,14 +284,14 @@
 | Auth & Session | 8 | 2 | 11 |
 | Roles & Permissions | 0 | 1 | 12 |
 | Payment Processing | 2 | 7 | 8 |
-| Checkout & Transaction | 10 | 7 | 8 |
+| Checkout & Transaction | 11 | 7 | 7 |
 | Customer Display | 2 | 3 | 5 |
 | Returns Processing | 8 | 2 | 3 |
 | Till & Cash Operations | 0 | 1 | 9 |
 | Device Registration | 0 | 0 | 10 |
 | UI/UX Components | 7 | 2 | 5 |
-| Data Layer | 2 | 1 | 7 |
-| **TOTAL** | **31** | **24** | **88** |
+| Data Layer | 3 | 1 | 6 |
+| **TOTAL** | **33** | **24** | **86** |
 
 ---
 

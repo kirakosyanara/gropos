@@ -63,6 +63,9 @@ This release marks the feature-complete alpha milestone for GroPOS. All core POS
     - Cannot restore to non-empty cart (clear first)
     - Items restored with original quantities, prices, and discounts
     - Audit log output on hold and recall actions
+  - **Testing Infrastructure:**
+    - `FakeTransactionRepository` for unit testing hold/recall flows
+    - Updated `CheckoutViewModelTest` with transactionRepository injection
 
 - **Complete Logout Flow (P1 #5)**: Advanced logout with three options
   - **LogoutDialog (`LogoutDialog.kt`):**

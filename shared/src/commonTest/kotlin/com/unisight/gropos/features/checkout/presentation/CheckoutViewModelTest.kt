@@ -9,6 +9,7 @@ import com.unisight.gropos.features.checkout.data.CartRepositoryImpl
 import com.unisight.gropos.features.checkout.data.FakeProductRepository
 import com.unisight.gropos.features.checkout.data.FakeScannerRepository
 import com.unisight.gropos.features.checkout.domain.usecase.ScanItemUseCase
+import com.unisight.gropos.features.transaction.data.FakeTransactionRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -59,6 +60,7 @@ class CheckoutViewModelTest {
         val managerApprovalService = ManagerApprovalService(fakeAuthRepository)
         val fakeTillRepository = FakeTillRepository()
         val cashierSessionManager = CashierSessionManager(fakeTillRepository)
+        val fakeTransactionRepository = FakeTransactionRepository()
         
         val viewModel = CheckoutViewModel(
             scanItemUseCase = useCase,
@@ -69,6 +71,7 @@ class CheckoutViewModelTest {
             authRepository = fakeAuthRepository,
             managerApprovalService = managerApprovalService,
             cashierSessionManager = cashierSessionManager,
+            transactionRepository = fakeTransactionRepository,
             scope = testScope
         )
         
