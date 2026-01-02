@@ -151,7 +151,7 @@ fun CheckoutContent(
                 },
                 onClearCart = { onEvent(CheckoutEvent.ClearCart) },
                 onLookupClick = { onEvent(CheckoutEvent.OpenLookup) },
-                onRecallClick = { /* TODO: Show recall dialog */ },
+                onRecallClick = { onEvent(CheckoutEvent.NavigateToRecall) },
                 onFunctionsClick = { /* TODO: Show functions panel */ },
                 modifier = Modifier
                     .weight(0.3f)

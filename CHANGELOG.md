@@ -7,6 +7,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased] - 2026-01-01
 
 ### Added
+- **Transaction History Screen (Recall)**: View and browse completed transactions
+  - Created `TransactionHistoryScreen.kt` (Voyager Screen) for transaction history
+    - Per FUNCTIONS_MENU.md: Return/Invoice functionality
+    - Per SCREEN_LAYOUTS.md: Order Report Screen layout
+  - Created `TransactionHistoryContent.kt` with 40/60 split layout
+    - Left pane: Scrollable transaction list (ID, time, total, payment method)
+    - Right pane: Detailed transaction view (items, totals, payments)
+    - Empty state with "No Recent Transactions" message
+  - Created `TransactionHistoryViewModel` with data loading
+    - Loads recent transactions via `TransactionRepository.getRecent()`
+    - Auto-selects first transaction on load
+    - Date formatting (ISO-8601 to "Jan 01, 2:30 PM")
+  - Created `TransactionHistoryUiState` with UI models
+    - `TransactionListItemUiModel` for list display
+    - `TransactionDetailUiModel` for detail view
+  - Created `TransactionModule` for Koin DI
+  - Wired "Recall" button in `FunctionsGrid` to navigate to history screen
+  - Added `NavigateToRecall` event to `CheckoutEvent` sealed interface
 - **Transaction Persistence**: Completed transactions are now saved to CouchbaseLite database
   - Created `Transaction`, `TransactionItem`, `TransactionPayment` domain models (per DATABASE_SCHEMA.md)
     - Transaction document structure aligns with LocalTransaction collection schema
