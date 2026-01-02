@@ -61,7 +61,7 @@
 | Request Actions Enum | ❌ Missing | Create `RequestAction` enum (CASH_PICKUP, VENDOR_PAYOUT, LINE_DISCOUNT, etc.) |
 | Approval Audit Trail | ❌ Missing | Create `ApprovalAuditEntry` and logging mechanism |
 | Permission Thresholds | ❌ Missing | Implement `PermissionThresholds` (discount limits, return limits) |
-| Void Transaction Permission Check | ✅ Match | Permission check added to `onVoidSelectedLineItem()` (Jan 2026) |
+| Void Transaction Permission Check | ✅ Match | Permission check in `onVoidSelectedLineItem()` and `onVoidTransactionRequest()` (Jan 2026) |
 | Price Override Permission Check | ❌ Missing | Add permission check for floor price override |
 | Discount Permission Check | ❌ Missing | Add permission check for line/transaction discounts |
 
@@ -117,7 +117,7 @@
 | Info Bar - Quantity Display | ⚠️ Partial | Need: Show preset quantity multiplier |
 | QTY Prefix for Multiple | ❌ Missing | Enter qty → press QTY → scan = single line with qty |
 | Hold Transaction | ❌ Missing | Save cart with recall name for later retrieval |
-| Void Transaction | ❌ Missing | Clear entire transaction with confirmation |
+| Void Transaction | ✅ Match | `VoidConfirmationDialog`, permission check, audit log (Jan 2026) |
 | Savings Display | ⚠️ Partial | Current: In totals. Need: "You saved $X.XX" per line item |
 
 ---
@@ -256,7 +256,7 @@
 
 1. ❌ Payment Terminal Integration
 2. ❌ Hold/Recall Transactions
-3. ❌ Void Transaction
+3. ✅ Void Transaction (Jan 2026)
 4. ❌ Cash Pickup Screen
 5. ❌ Complete Logout Flow (Release Till, End of Shift)
 
@@ -284,14 +284,14 @@
 | Auth & Session | 4 | 4 | 13 |
 | Roles & Permissions | 0 | 1 | 12 |
 | Payment Processing | 2 | 7 | 8 |
-| Checkout & Transaction | 9 | 7 | 9 |
+| Checkout & Transaction | 10 | 7 | 8 |
 | Customer Display | 2 | 3 | 5 |
 | Returns Processing | 8 | 2 | 3 |
 | Till & Cash Operations | 0 | 1 | 9 |
 | Device Registration | 0 | 0 | 10 |
 | UI/UX Components | 7 | 2 | 5 |
 | Data Layer | 2 | 1 | 7 |
-| **TOTAL** | **26** | **26** | **91** |
+| **TOTAL** | **27** | **26** | **90** |
 
 ---
 
