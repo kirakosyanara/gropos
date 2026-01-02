@@ -194,7 +194,6 @@ class LockViewModel(
             // Restart inactivity timer on successful unlock
             InactivityManager.start()
             
-            println("LockViewModel: Unlock successful")
             UnlockResult.Success
         } else {
             _state.value = _state.value.copy(
@@ -217,7 +216,6 @@ class LockViewModel(
         // TODO: Implement manager approval flow
         // For Walking Skeleton: Allow direct sign out
         InactivityManager.stop()
-        println("LockViewModel: Sign out requested")
         return SignOutResult.Proceed
     }
     

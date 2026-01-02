@@ -67,7 +67,6 @@ object InactivityManager {
         if (isActive) return
         isActive = true
         resetTimer()
-        println("InactivityManager: Started (timeout: ${INACTIVITY_TIMEOUT_MS / 1000}s)")
     }
     
     /**
@@ -78,7 +77,6 @@ object InactivityManager {
         isActive = false
         timerJob?.cancel()
         timerJob = null
-        println("InactivityManager: Stopped")
     }
     
     /**
@@ -105,7 +103,6 @@ object InactivityManager {
         scope.launch {
             _lockEvent.emit(LockEvent(LockEventType.Manual))
         }
-        println("InactivityManager: Manual lock triggered")
     }
     
     /**
@@ -131,7 +128,6 @@ object InactivityManager {
         }
         
         _lockEvent.emit(LockEvent(LockEventType.Inactivity))
-        println("InactivityManager: Auto-lock triggered after ${INACTIVITY_TIMEOUT_MS / 1000}s of inactivity")
     }
     
     /**
