@@ -216,7 +216,7 @@
 | RequestStatusBox | ✅ Match | Orange status indicator |
 | Error Dialog | ⚠️ Partial | Current: Snackbar. Need: Full-screen error dialog per spec |
 | Age Verification Dialog | ❌ Missing | Create for age-restricted products |
-| Manager Approval Panel | ❌ Missing | Sliding panel for approval requests |
+| Manager Approval Panel | ✅ Match | `ManagerApprovalDialog` in `core/components/dialogs/` (Jan 2026) |
 | Loading Overlay | ✅ Match | Full-screen loading indicator |
 | Time Display | ❌ Missing | Real-time clock in login/lock screens |
 | Station Name Display | ❌ Missing | Show station identifier in headers |
