@@ -7,6 +7,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased] - 2026-01-01
 
 ### Added
+- **Advanced Calculation Engine**: Production-grade tax, CRV, and discount calculations
+  - Created `TaxCalculator` service (per TAX_CALCULATIONS.md, SERVICES.md)
+    - Tax Consistency Rule: Tax per unit rounded BEFORE multiplying by quantity
+    - SNAP-eligible items are tax-exempt (returns zero tax)
+    - CRV is ALWAYS included in taxable amount (California law)
+  - Created `CRVCalculator` service (per DEPOSITS_FEES.md, SERVICES.md)
+    - California Redemption Value calculation per product
+    - Supports $0.05 (<24oz) and $0.10 (>=24oz) CRV rates
+    - CRV is tracked separately but included in grand total
+  - Created `DiscountCalculator` service (per SERVICES.md)
+    - Price hierarchy: Prompted → Customer → Sale → Bulk → Retail
+    - Percentage and fixed amount discount support
+    - Floor price enforcement with manager override option
+    - Savings calculation per unit and total
+  - Updated `FakeProductRepository` with comprehensive test products:
+    - Cola 2-Liter: Taxable (9.5%) with CRV ($0.10)
+    - Cola Can 12oz: Taxable (9.5%) with CRV ($0.05)
+    - Bottled Water: SNAP-eligible (no tax) with CRV ($0.05)
+    - Potato Chips: SNAP-eligible (no tax), no CRV
+    - Hot Dog: Taxable (9.5%), not SNAP-eligible, no CRV
+  - Added `snapEligibleTotal` property to `Cart` for payment screen SNAP tracking
+  - Registered all calculators as singletons in Koin `checkoutModule`
 - **Payment Screen**: Full payment flow with split tender support (per SCREEN_LAYOUTS.md)
   - Created `PayScreen.kt` and `PayContent.kt` with horizontal split layout
   - Left panel: Transaction summary, SNAP eligible total, payments applied, remaining amount
@@ -104,6 +126,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Android resources: strings.xml, themes.xml for app configuration
 
 ### Changed
+- **BREAKING**: `CartItem.taxPerUnit` calculation now includes CRV in taxable amount (per TAX_CALCULATIONS.md)
+  - Previous: `taxableAmount = effectivePrice - discountAmountPerUnit`
+  - New: `taxableAmount = (effectivePrice - discounts) + CRV`
+  - SNAP-eligible items now return $0.00 tax (tax exemption rule)
 - **UI/UX Overhaul**: Refactored entire UI layer to match new UI/UX Source of Truth (docs/development-plan/ui-ux/)
 - Refactored `GroPOSTheme.kt` to use GroPOS color palette from UI_DESIGN_SYSTEM.md
   - Primary: PrimaryGreen (#04571B) for success actions

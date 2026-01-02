@@ -82,16 +82,45 @@ data class CartItem(
     
     /**
      * Tax per unit (calculated from product tax rates).
+     * 
+     * Per TAX_CALCULATIONS.md - The Tax Consistency Rule:
+     * 1. CRV is ALWAYS included in taxable amount (California law)
+     * 2. SNAP-eligible items are tax-exempt
+     * 3. Tax per unit is rounded BEFORE multiplying by quantity
+     * 
+     * Formula: taxableAmount = (price - discounts) + CRV
+     *          taxPerUnit = taxableAmount × taxRate / 100 (ROUNDED)
      */
     val taxPerUnit: BigDecimal
         get() {
-            val taxableAmount = effectivePrice.subtract(discountAmountPerUnit)
+            // SNAP items are tax-exempt per TAX_CALCULATIONS.md
+            if (product.isSnapEligible) {
+                return BigDecimal.ZERO
+            }
+            
+            // Price after discounts
+            val priceAfterDiscount = effectivePrice
+                .subtract(discountAmountPerUnit)
+                .subtract(transactionDiscountAmountPerUnit)
+            
+            // Per DEPOSITS_FEES.md: CRV is ALWAYS included in taxable amount
+            // "CRV is considered part of the gross receipts from the sale"
+            val taxableAmount = priceAfterDiscount.add(crvRatePerUnit)
+            
+            if (taxableAmount <= BigDecimal.ZERO) {
+                return BigDecimal.ZERO
+            }
+            
+            // Calculate tax for ONE unit and ROUND
             return taxableAmount.multiply(product.totalTaxPercent)
                 .divide(BigDecimal("100"), 2, RoundingMode.HALF_UP)
         }
     
     /**
      * Total tax for this line item.
+     * 
+     * Per TAX_CALCULATIONS.md: Multiply ROUNDED per-unit tax by quantity.
+     * This ensures 3 customers buying 1 item pay same total as 1 customer buying 3.
      */
     val taxTotal: BigDecimal
         get() = taxPerUnit.multiply(quantityUsed).setScale(2, RoundingMode.HALF_UP)
