@@ -169,8 +169,8 @@
 
 | Feature/Component | Status | Remediation Action |
 |-------------------|--------|-------------------|
-| Cash Pickup Screen | ❌ Missing | Create `CashPickupScreen` with amount entry |
-| Cash Pickup ViewModel | ❌ Missing | Implement pickup amount validation and manager approval |
+| Cash Pickup Screen | ✅ Match | `CashPickupDialog.kt` with TenKey amount entry, drawer balance display (Jan 2026) |
+| Cash Pickup ViewModel | ✅ Match | `CheckoutViewModel.onCashPickupConfirm()` with validation + manager approval (Jan 2026) |
 | Vendor Payout Screen | ❌ Missing | Create `VendorPayoutScreen` with vendor selection |
 | Vendor List API | ❌ Missing | Fetch vendors from API |
 | Add Cash Dialog | ❌ Missing | Create dialog to add cash to drawer |
@@ -257,7 +257,7 @@
 1. ✅ Payment Terminal Integration (Jan 2026)
 2. ✅ Hold/Recall Transactions (Jan 2026)
 3. ✅ Void Transaction (Jan 2026)
-4. ❌ Cash Pickup Screen
+4. ✅ Cash Pickup Screen (Jan 2026)
 5. ✅ Complete Logout Flow (Release Till, End of Shift) (Jan 2026)
 
 ### P2 - Medium Priority (Enhanced Features)
@@ -287,11 +287,11 @@
 | Checkout & Transaction | 11 | 7 | 7 |
 | Customer Display | 2 | 3 | 5 |
 | Returns Processing | 8 | 2 | 3 |
-| Till & Cash Operations | 0 | 1 | 9 |
+| Till & Cash Operations | 2 | 1 | 7 |
 | Device Registration | 0 | 0 | 10 |
 | UI/UX Components | 7 | 2 | 5 |
 | Data Layer | 3 | 1 | 6 |
-| **TOTAL** | **40** | **19** | **84** |
+| **TOTAL** | **42** | **19** | **82** |
 
 ---
 

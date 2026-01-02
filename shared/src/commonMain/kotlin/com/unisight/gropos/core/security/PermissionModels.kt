@@ -24,7 +24,7 @@ enum class PermissionCheckResult {
  * Per ROLES_AND_PERMISSIONS.md: Maps actions to permission base strings.
  */
 enum class RequestAction(val permissionBase: String, val displayName: String) {
-    CASH_PICKUP("GroPOS.Cash Pickup", "Cash Pickup"),
+    CASH_PICKUP("GroPOS.Cash Pickup.", "Cash Pickup"),
     VENDOR_PAYOUT("GroPOS.VendorPayout", "Vendor Payout"),
     LINE_DISCOUNT("GroPOS.Transactions.Discounts.Items", "Line Item Discount"),
     TRANSACTION_DISCOUNT("GroPOS.Transactions.Discounts.Total", "Transaction Discount"),

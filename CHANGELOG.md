@@ -24,6 +24,16 @@ This release marks the feature-complete alpha milestone for GroPOS. All core POS
 
 ### Added
 - **Cash Pickup Screen (P1 #4)**: Cash drawer management for safe deposits
+  - **Unit Tests (`CashierSessionManagerTest.kt`)**:
+    - Session creation and management tests
+    - Transaction recording tests (cash sales)
+    - Cash pickup validation tests:
+      - Fails when no active session
+      - Fails when amount is zero or negative
+      - Fails when amount exceeds drawer balance (Insufficient Funds)
+      - Succeeds and decreases drawer balance correctly
+      - Multiple pickups accumulate correctly
+      - Pickup exactly equal to balance succeeds
   - **Domain Layer (`features/cashier/domain/`):**
     - Updated `CashierSession` model with cash pickup tracking:
       - `totalCashPickups`: Running total of cash pickups during session
