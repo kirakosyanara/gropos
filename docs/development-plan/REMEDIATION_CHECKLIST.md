@@ -149,17 +149,17 @@
 |-------------------|--------|-------------------|
 | Find Transaction Screen | ❌ Missing | Create `FindTransactionScreen` with receipt/date search |
 | Transaction Search API | ❌ Missing | Implement `transactionRepository.searchTransactions()` |
-| Return Item Screen | ❌ Missing | Create `ReturnItemScreen` with original items grid |
-| Returnable Items Grid | ❌ Missing | 2-column grid of original transaction items |
-| Add to Return Action | ❌ Missing | "+ Add" button on each returnable item |
-| Return Quantity Dialog | ❌ Missing | Enter partial quantity to return |
-| Return Reason Selection | ❌ Missing | Create `ReturnReasonDialog` with reason codes |
-| Return Reason Enum | ❌ Missing | Implement `ReturnReason` (DEFECTIVE, WRONG_ITEM, CHANGED_MIND, QUALITY, OTHER) |
-| Manager Approval for Returns | ❌ Missing | Trigger approval flow for returns over threshold |
-| Refund Payment Processing | ❌ Missing | Cash refund (open drawer) or card refund (terminal) |
+| Return Item Screen | ✅ Match | `ReturnScreen.kt` with 70/30 split layout (Jan 2026) |
+| Returnable Items Grid | ✅ Match | `LazyVerticalGrid` in `LeftPanel` of `ReturnContent.kt` (Jan 2026) |
+| Add to Return Action | ✅ Match | "+ Add to Return" button on `ReturnableItemCard` (Jan 2026) |
+| Return Quantity Dialog | ✅ Match | `QuantityDialog` with TenKey in `ReturnContent.kt` (Jan 2026) |
+| Return Reason Selection | ⚠️ Partial | `ReturnReason` enum exists, dialog not wired yet |
+| Return Reason Enum | ✅ Match | `ReturnReason` in `ReturnModels.kt` (Jan 2026) |
+| Manager Approval for Returns | ✅ Match | `SimpleApprovalDialog` in `ReturnContent.kt` (P0 stub) (Jan 2026) |
+| Refund Payment Processing | ⚠️ Partial | Virtual receipt log implemented; terminal integration pending |
 | Pullback Flow | ❌ Missing | Implement pullback with receipt scan |
-| Return Item ViewModel | ❌ Missing | Create `ReturnItemViewModel` with state management |
-| Return Receipt Print | ❌ Missing | Print refund receipt after successful return |
+| Return Item ViewModel | ✅ Match | `ReturnViewModel.kt` with full state management (Jan 2026) |
+| Return Receipt Print | ✅ Match | Virtual console receipt in `onManagerApprovalGranted()` (Jan 2026) |
 
 ---
 
@@ -250,7 +250,7 @@
 2. ✅ Manager Approval Flow (for discounts, returns) - Infrastructure complete, wired for Void (Jan 2026)
 3. ⚠️ Modification Mode (change qty ✅, discount ⚠️, void line ⚠️)
 4. ✅ Employee List + Till Assignment (Jan 2026)
-5. ❌ Return Item Screen
+5. ✅ Return Item Screen (Jan 2026)
 
 ### P1 - High Priority (Core Functionality)
 
@@ -286,7 +286,7 @@
 | Payment Processing | 2 | 7 | 8 |
 | Checkout & Transaction | 9 | 7 | 9 |
 | Customer Display | 2 | 3 | 5 |
-| Returns Processing | 0 | 0 | 13 |
+| Returns Processing | 8 | 2 | 3 |
 | Till & Cash Operations | 0 | 1 | 9 |
 | Device Registration | 0 | 0 | 10 |
 | UI/UX Components | 7 | 2 | 5 |

@@ -80,6 +80,7 @@ fun TransactionHistoryContent(
     onRefresh: () -> Unit,
     onBack: () -> Unit,
     onDismissError: () -> Unit,
+    onReturnItemsClick: (Long) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -106,6 +107,7 @@ fun TransactionHistoryContent(
             // RIGHT PANEL - Transaction Detail (60%)
             TransactionDetailPanel(
                 detail = state.selectedTransaction,
+                onReturnItemsClick = onReturnItemsClick,
                 modifier = Modifier
                     .weight(0.6f)
                     .fillMaxHeight()
@@ -331,6 +333,7 @@ private fun EmptyTransactionsState(modifier: Modifier = Modifier) {
 @Composable
 private fun TransactionDetailPanel(
     detail: TransactionDetailUiModel?,
+    onReturnItemsClick: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -354,6 +357,7 @@ private fun TransactionDetailPanel(
             // Transaction Detail
             TransactionDetailView(
                 detail = detail,
+                onReturnItemsClick = onReturnItemsClick,
                 modifier = Modifier
                     .fillMaxSize()
                     .testTag(TransactionHistoryTestTags.DETAIL_VIEW)
@@ -365,56 +369,70 @@ private fun TransactionDetailPanel(
 @Composable
 private fun TransactionDetailView(
     detail: TransactionDetailUiModel,
+    onReturnItemsClick: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(GroPOSSpacing.M)
     ) {
-        // Header Card
+        // Header Card with Return Items Button
         item {
             WhiteBox(modifier = Modifier.fillMaxWidth()) {
                 Column {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Top
                     ) {
-                        Text(
-                            text = "Transaction ${detail.formattedId}",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = GroPOSColors.TextPrimary
-                        )
-                        Surface(
-                            shape = RoundedCornerShape(4.dp),
-                            color = GroPOSColors.PrimaryGreen.copy(alpha = 0.1f)
-                        ) {
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = detail.typeName,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = GroPOSColors.PrimaryGreen
+                                text = "Transaction ${detail.formattedId}",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = GroPOSColors.TextPrimary
+                            )
+                            Spacer(modifier = Modifier.height(GroPOSSpacing.S))
+                            Text(
+                                text = detail.formattedDateTime,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = GroPOSColors.TextSecondary
+                            )
+                            detail.employeeName?.let { name ->
+                                Text(
+                                    text = "Cashier: $name",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = GroPOSColors.TextSecondary
+                                )
+                            }
+                            Text(
+                                text = detail.stationId,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = GroPOSColors.TextSecondary
                             )
                         }
+                        Column(horizontalAlignment = Alignment.End) {
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = GroPOSColors.PrimaryGreen.copy(alpha = 0.1f)
+                            ) {
+                                Text(
+                                    text = detail.typeName,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = GroPOSColors.PrimaryGreen
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(GroPOSSpacing.M))
+                            // Return Items Button
+                            OutlineButton(
+                                onClick = { onReturnItemsClick(detail.id) },
+                                modifier = Modifier.testTag("return_items_button")
+                            ) {
+                                Text("Return Items", color = GroPOSColors.DangerRed)
+                            }
+                        }
                     }
-                    Spacer(modifier = Modifier.height(GroPOSSpacing.S))
-                    Text(
-                        text = detail.formattedDateTime,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = GroPOSColors.TextSecondary
-                    )
-                    detail.employeeName?.let { name ->
-                        Text(
-                            text = "Cashier: $name",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = GroPOSColors.TextSecondary
-                        )
-                    }
-                    Text(
-                        text = detail.stationId,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = GroPOSColors.TextSecondary
-                    )
                 }
             }
         }

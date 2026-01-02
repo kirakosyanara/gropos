@@ -7,6 +7,7 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.koin.koinScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import com.unisight.gropos.features.returns.presentation.ui.ReturnScreen
 import com.unisight.gropos.features.transaction.presentation.TransactionHistoryViewModel
 
 /**
@@ -33,7 +34,10 @@ class TransactionHistoryScreen : Screen {
             onTransactionSelect = { viewModel.onTransactionSelect(it) },
             onRefresh = { viewModel.refresh() },
             onBack = { navigator.pop() },
-            onDismissError = { viewModel.dismissError() }
+            onDismissError = { viewModel.dismissError() },
+            onReturnItemsClick = { transactionId ->
+                navigator.push(ReturnScreen(transactionId))
+            }
         )
     }
 }
