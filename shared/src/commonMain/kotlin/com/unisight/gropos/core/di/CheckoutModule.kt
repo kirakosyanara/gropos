@@ -1,5 +1,6 @@
 package com.unisight.gropos.core.di
 
+import com.unisight.gropos.core.security.ManagerApprovalService
 import com.unisight.gropos.core.util.CurrencyFormatter
 import com.unisight.gropos.core.util.UsdCurrencyFormatter
 import com.unisight.gropos.features.checkout.data.CartRepositoryImpl
@@ -92,6 +93,17 @@ val checkoutModule: Module = module {
     single { DiscountCalculator() }
     
     // ========================================================================
+    // Security Services
+    // Per ROLES_AND_PERMISSIONS.md: Manager approval for sensitive actions
+    // ========================================================================
+    
+    /**
+     * Manager approval service.
+     * Handles permission checks and manager PIN validation.
+     */
+    single { ManagerApprovalService(get()) }
+    
+    // ========================================================================
     // Domain Layer - Use Cases
     // ========================================================================
     
@@ -120,8 +132,10 @@ val checkoutModule: Module = module {
      * - CartRepository: Shared cart state (singleton)
      * - ProductRepository: For product lookup dialog
      * - CurrencyFormatter: For price formatting
+     * - AuthRepository: For current user and permission checks
+     * - ManagerApprovalService: For manager approval flow
      */
-    factory { CheckoutViewModel(get(), get(), get(), get(), get()) }
+    factory { CheckoutViewModel(get(), get(), get(), get(), get(), get(), get()) }
     
     /**
      * Customer Display ViewModel/ScreenModel.

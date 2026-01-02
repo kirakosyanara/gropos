@@ -62,22 +62,68 @@ class FakeAuthRepository : AuthRepository {
         /**
          * Fake user database for walking skeleton.
          * Maps username to AuthUser.
+         *
+         * Per ROLES_AND_PERMISSIONS.md:
+         * - Manager users have approval permissions
+         * - Cashiers can request approval (.Request suffix)
          */
         private val FAKE_USERS = mapOf(
             "admin" to AuthUser(
                 id = "1",
                 username = "admin",
-                role = UserRole.ADMIN
+                role = UserRole.ADMIN,
+                permissions = listOf(
+                    "GroPOS.Transactions.Void",
+                    "GroPOS.Transactions.Discounts.Items",
+                    "GroPOS.Transactions.Discounts.Total",
+                    "GroPOS.Transactions.Price Override",
+                    "GroPOS.Returns",
+                    "GroPOS.Cash Pickup"
+                ),
+                isManager = true,
+                jobTitle = "System Administrator"
             ),
             "manager" to AuthUser(
-                id = "2",
+                id = "9999",
                 username = "manager",
-                role = UserRole.MANAGER
+                role = UserRole.MANAGER,
+                permissions = listOf(
+                    "GroPOS.Transactions.Void.Self Approval",
+                    "GroPOS.Transactions.Discounts.Items.Self Approval",
+                    "GroPOS.Transactions.Discounts.Total.Self Approval",
+                    "GroPOS.Transactions.Price Override.Self Approval",
+                    "GroPOS.Returns.Self Approval",
+                    "GroPOS.Cash Pickup.Self Approval"
+                ),
+                isManager = true,
+                jobTitle = "Store Manager"
+            ),
+            "supervisor" to AuthUser(
+                id = "9998",
+                username = "supervisor",
+                role = UserRole.SUPERVISOR,
+                permissions = listOf(
+                    "GroPOS.Transactions.Discounts.Items.Self Approval",
+                    "GroPOS.Transactions.Discounts.Total.Request",
+                    "GroPOS.Transactions.Void.Request",
+                    "GroPOS.Returns.Request"
+                ),
+                isManager = true,
+                jobTitle = "Assistant Manager"
             ),
             "cashier" to AuthUser(
                 id = "3",
                 username = "cashier",
-                role = UserRole.CASHIER
+                role = UserRole.CASHIER,
+                permissions = listOf(
+                    "GroPOS.Transactions.Void.Request",
+                    "GroPOS.Transactions.Discounts.Items.Request",
+                    "GroPOS.Transactions.Discounts.Total.Request",
+                    "GroPOS.Transactions.Price Override.Request",
+                    "GroPOS.Returns.Request"
+                ),
+                isManager = false,
+                jobTitle = "Cashier"
             )
         )
     }

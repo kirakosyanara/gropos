@@ -7,6 +7,52 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased] - 2026-01-01
 
 ### Added
+- **Manager Approval Flow (P0 #2)**: RBAC infrastructure for sensitive actions
+  - Created `core/security/PermissionModels.kt` with:
+    - `PermissionCheckResult` enum: GRANTED, REQUIRES_APPROVAL, SELF_APPROVAL_ALLOWED, DENIED
+    - `RequestAction` enum: Maps actions to permission base strings per ROLES_AND_PERMISSIONS.md
+    - `ApprovalResult` sealed class: Approved, Denied, Error
+    - `ApprovalAuditEntry` data class for audit logging
+    - `ApprovalState` sealed class: Flow state machine (Idle -> SelectManager -> EnterPin -> Approved/Denied)
+    - `ManagerInfo` data class for manager list display
+  - Created `core/security/PermissionManager` singleton:
+    - `checkPermission(user, action)`: Checks direct permission, then .Request, then .Self Approval
+    - `checkRoleDefaults()`: Role-based fallbacks for Admin/Manager/Supervisor/Cashier
+    - `canApproveForOthers()`: Check if user can approve requests
+    - `getRoleLevel()` and `hasMinimumRole()`: Role hierarchy utilities
+  - Created `core/security/ManagerApprovalService`:
+    - `getApprovers(action, currentUser)`: Returns managers who can approve, excludes self if no self-approval
+    - `validateApproval()`: Validates manager PIN and logs to audit trail
+    - `generateApprovalCode()`: Format APR-YYYYMMDD-XXXX
+    - Console audit log output for verification (no PIN in logs per governance)
+    - Walking skeleton: Manager "9999" uses PIN "1234", Manager "9998" uses PIN "5678"
+  - Created `core/components/dialogs/ManagerApprovalDialog.kt`:
+    - Two-step flow per DIALOGS.md: Select Manager -> Enter PIN
+    - Green header (#04571B) per UI_DESIGN_SYSTEM.md
+    - Manager list with avatar, name, job title
+    - TenKey integration for PIN entry
+    - PIN dot display (4-6 digits)
+    - Error message display for invalid PIN
+    - Back/Cancel/Approve buttons
+  - Updated `AuthUser` model with:
+    - `permissions: List<String>`: Permission strings per ROLES_AND_PERMISSIONS.md
+    - `isManager: Boolean`: Can approve requests for others
+    - `jobTitle: String?`: Display in approval dialog
+    - `imageUrl: String?`: Avatar URL
+  - Updated `FakeAuthRepository` with permission-aware users:
+    - Admin: Full direct permissions
+    - Manager (ID 9999): .Self Approval permissions
+    - Supervisor (ID 9998): Mixed .Request and .Self Approval
+    - Cashier: .Request permissions only
+  - Updated `CheckoutViewModel`:
+    - `onVoidSelectedLineItem()` now checks permissions before voiding
+    - Shows `ManagerApprovalDialog` if REQUIRES_APPROVAL
+    - `onSubmitManagerApproval()`: Validates PIN and executes pending action
+    - `executeApprovedAction()`: Executes voiding after approval
+  - Updated `CheckoutUiState` with `ManagerApprovalDialogState`
+  - Updated `CheckoutScreen` with manager approval events
+  - Updated `CheckoutContent` to render `ManagerApprovalDialog`
+  - Updated `CheckoutModule` with `ManagerApprovalService` singleton
 - **Lock Screen & Inactivity Timer (P0 #1)**: Security feature for automatic session lock
   - Created `LockScreen.kt` (Voyager Screen) with dark gradient theme per SCREEN_LAYOUTS.md
     - Left panel: Station name, large real-time clock, date, lock status, version footer
