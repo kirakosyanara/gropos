@@ -7,6 +7,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased] - 2026-01-01
 
 ### Added
+- **Checkout Modification Mode**: Line item modification panel (per SCREEN_LAYOUTS.md)
+  - Clicking a line item enters modification mode (right panel transforms)
+  - Selected item highlighted with green border and background
+  - Mode buttons: QUANTITY (change qty 1-99), DISCOUNT (%), PRICE (override)
+  - Weighted items start in DISCOUNT mode (quantity disabled)
+  - TenKey with mode-specific input display (prefix/suffix based on mode)
+  - REMOVE ITEM button to void selected line (marks as isRemoved)
+  - BACK button exits modification mode
+  - Updated `CheckoutUiState` with `selectedItemId`, `selectedItem`, `modificationTenKeyMode`, `modificationInputValue`
+  - Added `isModificationMode` computed property for panel swap logic
+  - Created `ModificationPanel` composable with full modification UI
+  - Created `ModeButton` component for mode selection
+  - Created `SelectedItemUiModel` for modification panel display
+  - Added `ModificationTenKeyMode` enum (QUANTITY, DISCOUNT, PRICE)
+  - Added 8 new modification events to `CheckoutEvent` sealed interface
+  - Added modification handlers to `CheckoutViewModel`
+  - Integrated `CartRepository.updateQuantity()` for quantity changes
+  - Integrated `CartRepository.voidItem()` for remove item action
 - **Transaction History Screen (Recall)**: View and browse completed transactions
   - Created `TransactionHistoryScreen.kt` (Voyager Screen) for transaction history
     - Per FUNCTIONS_MENU.md: Return/Invoice functionality

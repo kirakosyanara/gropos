@@ -15,6 +15,7 @@ import com.unisight.gropos.features.checkout.presentation.components.ProductLook
 import com.unisight.gropos.features.checkout.domain.usecase.ScanResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
+import java.math.RoundingMode
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.launchIn
@@ -174,6 +175,168 @@ class CheckoutViewModel(
      */
     fun onDismissScanEvent() {
         _state.value = _state.value.copy(lastScanEvent = null)
+    }
+    
+    // ========================================================================
+    // Modification Mode
+    // Per SCREEN_LAYOUTS.md: When a line item is selected, the right panel
+    // transforms to show modification options.
+    // ========================================================================
+    
+    /**
+     * Selects a line item to enter modification mode.
+     * 
+     * Per SCREEN_LAYOUTS.md: The right panel transforms when an item is selected.
+     * Weighted items start in DISCOUNT mode (can't change qty for weighted items).
+     * 
+     * @param branchProductId The product ID to select
+     */
+    fun onSelectLineItem(branchProductId: Int) {
+        val currentCart = cartRepository.getCurrentCart()
+        val cartItem = currentCart.items.find { it.branchProductId == branchProductId }
+        
+        if (cartItem == null || cartItem.isRemoved) {
+            return
+        }
+        
+        val isWeighted = cartItem.soldById == "Weight" || cartItem.soldById == "WeightOnScale"
+        val initialMode = if (isWeighted) {
+            ModificationTenKeyMode.DISCOUNT
+        } else {
+            ModificationTenKeyMode.QUANTITY
+        }
+        
+        val selectedItemUiModel = SelectedItemUiModel(
+            branchProductId = cartItem.branchProductId,
+            productName = cartItem.branchProductName,
+            currentQuantity = formatQuantity(cartItem),
+            currentPrice = currencyFormatter.format(cartItem.effectivePrice),
+            lineTotal = currencyFormatter.format(cartItem.subTotal),
+            isWeighted = isWeighted,
+            rawQuantity = cartItem.quantityUsed.toInt()
+        )
+        
+        _state.value = _state.value.copy(
+            selectedItemId = branchProductId,
+            selectedItem = selectedItemUiModel,
+            modificationTenKeyMode = initialMode,
+            modificationInputValue = ""
+        )
+    }
+    
+    /**
+     * Deselects the current item and exits modification mode.
+     */
+    fun onDeselectLineItem() {
+        _state.value = _state.value.copy(
+            selectedItemId = null,
+            selectedItem = null,
+            modificationInputValue = ""
+        )
+    }
+    
+    /**
+     * Changes the TenKey mode in modification mode.
+     * 
+     * @param mode The new mode (QUANTITY, DISCOUNT, PRICE)
+     */
+    fun onChangeModificationMode(mode: ModificationTenKeyMode) {
+        _state.value = _state.value.copy(
+            modificationTenKeyMode = mode,
+            modificationInputValue = "" // Clear input when switching modes
+        )
+    }
+    
+    /**
+     * Handles digit press in modification mode.
+     */
+    fun onModificationDigitPress(digit: String) {
+        val currentInput = _state.value.modificationInputValue
+        val newInput = currentInput + digit
+        _state.value = _state.value.copy(modificationInputValue = newInput)
+    }
+    
+    /**
+     * Clears the modification input.
+     */
+    fun onModificationClear() {
+        _state.value = _state.value.copy(modificationInputValue = "")
+    }
+    
+    /**
+     * Handles backspace in modification mode.
+     */
+    fun onModificationBackspace() {
+        val currentInput = _state.value.modificationInputValue
+        if (currentInput.isNotEmpty()) {
+            _state.value = _state.value.copy(
+                modificationInputValue = currentInput.dropLast(1)
+            )
+        }
+    }
+    
+    /**
+     * Confirms and applies the modification.
+     * 
+     * Per SCREEN_LAYOUTS.md:
+     * - QUANTITY: Update quantity (1-99)
+     * - DISCOUNT: Apply % discount (placeholder for now)
+     * - PRICE: Override price (placeholder for now)
+     */
+    fun onModificationConfirm() {
+        val selectedItemId = _state.value.selectedItemId ?: return
+        val inputValue = _state.value.modificationInputValue
+        
+        if (inputValue.isBlank()) {
+            onDeselectLineItem()
+            return
+        }
+        
+        effectiveScope.launch {
+            when (_state.value.modificationTenKeyMode) {
+                ModificationTenKeyMode.QUANTITY -> {
+                    val newQty = inputValue.toIntOrNull()
+                    if (newQty != null && newQty in 1..99) {
+                        cartRepository.updateQuantity(
+                            selectedItemId,
+                            BigDecimal(newQty)
+                        )
+                    }
+                }
+                ModificationTenKeyMode.DISCOUNT -> {
+                    // Placeholder: Discount requires manager approval logic
+                    // For now, just show a message
+                    _state.value = _state.value.copy(
+                        lastScanEvent = ScanEvent.Error("Discount requires manager approval (not implemented)")
+                    )
+                }
+                ModificationTenKeyMode.PRICE -> {
+                    // Placeholder: Price override requires floor price check
+                    // For now, just show a message
+                    _state.value = _state.value.copy(
+                        lastScanEvent = ScanEvent.Error("Price override requires approval (not implemented)")
+                    )
+                }
+            }
+            
+            // Exit modification mode after applying
+            onDeselectLineItem()
+        }
+    }
+    
+    /**
+     * Voids the selected line item.
+     * 
+     * Per SCREEN_LAYOUTS.md: Remove Item marks as isRemoved = true,
+     * item remains visible with strikethrough styling.
+     */
+    fun onVoidSelectedLineItem() {
+        val selectedItemId = _state.value.selectedItemId ?: return
+        
+        effectiveScope.launch {
+            cartRepository.voidItem(selectedItemId)
+            onDeselectLineItem()
+        }
     }
     
     // ========================================================================
@@ -397,7 +560,9 @@ class CheckoutViewModel(
             hasSavings = hasSavings,
             savingsAmount = if (hasSavings) {
                 currencyFormatter.formatWithSign(cartItem.savingsTotal.negate(), false)
-            } else null
+            } else null,
+            soldById = cartItem.soldById,
+            rawQuantity = cartItem.quantityUsed.toInt()
         )
     }
     

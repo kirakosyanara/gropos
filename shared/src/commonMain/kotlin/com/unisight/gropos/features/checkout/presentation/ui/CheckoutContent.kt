@@ -1,6 +1,8 @@
 package com.unisight.gropos.features.checkout.presentation.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -50,7 +52,9 @@ import com.unisight.gropos.core.theme.GroPOSSpacing
 import com.unisight.gropos.features.checkout.presentation.CheckoutItemUiModel
 import com.unisight.gropos.features.checkout.presentation.CheckoutTotalsUiModel
 import com.unisight.gropos.features.checkout.presentation.CheckoutUiState
+import com.unisight.gropos.features.checkout.presentation.ModificationTenKeyMode
 import com.unisight.gropos.features.checkout.presentation.ScanEvent
+import com.unisight.gropos.features.checkout.presentation.SelectedItemUiModel
 import com.unisight.gropos.features.checkout.presentation.components.ProductLookupDialog
 
 // ============================================================================
@@ -107,6 +111,7 @@ fun CheckoutContent(
             LeftPanel(
                 items = state.items,
                 isEmpty = state.isEmpty,
+                selectedItemId = state.selectedItemId,
                 barcodeInput = barcodeInput,
                 onBarcodeChange = { barcodeInput = it },
                 onBarcodeSubmit = {
@@ -115,6 +120,7 @@ fun CheckoutContent(
                         barcodeInput = ""
                     }
                 },
+                onItemClick = { id -> onEvent(CheckoutEvent.SelectLineItem(id)) },
                 onRemoveItem = { id -> onEvent(CheckoutEvent.RemoveItem(id)) },
                 onLogout = { onEvent(CheckoutEvent.Logout) },
                 modifier = Modifier
@@ -124,40 +130,61 @@ fun CheckoutContent(
             )
             
             // ================================================================
-            // RIGHT SECTION (30%) - Totals, Ten-Key, Actions
-            // Per UI_DESIGN_SYSTEM.md: LightGray1 background (#EFF1F1)
+            // RIGHT SECTION (30%) - Totals, Ten-Key, Actions OR Modification Panel
+            // Per SCREEN_LAYOUTS.md: Panel swaps when item is selected
             // ================================================================
-            RightPanel(
-                totals = state.totals,
-                tenKeyInput = tenKeyInput,
-                onTenKeyDigit = { digit -> tenKeyInput += digit },
-                onTenKeyClear = { tenKeyInput = "" },
-                onTenKeyBackspace = { 
-                    if (tenKeyInput.isNotEmpty()) {
-                        tenKeyInput = tenKeyInput.dropLast(1)
-                    }
-                },
-                onTenKeyOk = { value ->
-                    if (value.isNotBlank()) {
-                        onEvent(CheckoutEvent.ManualBarcodeEnter(value))
-                        tenKeyInput = ""
-                    }
-                },
-                onPayClick = { 
-                    // Only navigate if cart is not empty
-                    if (!state.isEmpty) {
-                        onEvent(CheckoutEvent.NavigateToPay)
-                    }
-                },
-                onClearCart = { onEvent(CheckoutEvent.ClearCart) },
-                onLookupClick = { onEvent(CheckoutEvent.OpenLookup) },
-                onRecallClick = { onEvent(CheckoutEvent.NavigateToRecall) },
-                onFunctionsClick = { /* TODO: Show functions panel */ },
-                modifier = Modifier
-                    .weight(0.3f)
-                    .fillMaxHeight()
-                    .testTag(CheckoutTestTags.RIGHT_PANEL)
-            )
+            if (state.isModificationMode && state.selectedItem != null) {
+                // Modification Mode Panel
+                ModificationPanel(
+                    selectedItem = state.selectedItem,
+                    currentMode = state.modificationTenKeyMode,
+                    inputValue = state.modificationInputValue,
+                    onModeChange = { mode -> onEvent(CheckoutEvent.ChangeModificationMode(mode)) },
+                    onDigitPress = { digit -> onEvent(CheckoutEvent.ModificationDigitPress(digit)) },
+                    onClearPress = { onEvent(CheckoutEvent.ModificationClear) },
+                    onBackspacePress = { onEvent(CheckoutEvent.ModificationBackspace) },
+                    onConfirmPress = { onEvent(CheckoutEvent.ModificationConfirm) },
+                    onVoidPress = { onEvent(CheckoutEvent.VoidSelectedLineItem) },
+                    onBackPress = { onEvent(CheckoutEvent.DeselectLineItem) },
+                    modifier = Modifier
+                        .weight(0.3f)
+                        .fillMaxHeight()
+                        .testTag(CheckoutTestTags.RIGHT_PANEL)
+                )
+            } else {
+                // Normal Mode Panel
+                RightPanel(
+                    totals = state.totals,
+                    tenKeyInput = tenKeyInput,
+                    onTenKeyDigit = { digit -> tenKeyInput += digit },
+                    onTenKeyClear = { tenKeyInput = "" },
+                    onTenKeyBackspace = { 
+                        if (tenKeyInput.isNotEmpty()) {
+                            tenKeyInput = tenKeyInput.dropLast(1)
+                        }
+                    },
+                    onTenKeyOk = { value ->
+                        if (value.isNotBlank()) {
+                            onEvent(CheckoutEvent.ManualBarcodeEnter(value))
+                            tenKeyInput = ""
+                        }
+                    },
+                    onPayClick = { 
+                        // Only navigate if cart is not empty
+                        if (!state.isEmpty) {
+                            onEvent(CheckoutEvent.NavigateToPay)
+                        }
+                    },
+                    onClearCart = { onEvent(CheckoutEvent.ClearCart) },
+                    onLookupClick = { onEvent(CheckoutEvent.OpenLookup) },
+                    onRecallClick = { onEvent(CheckoutEvent.NavigateToRecall) },
+                    onFunctionsClick = { /* TODO: Show functions panel */ },
+                    modifier = Modifier
+                        .weight(0.3f)
+                        .fillMaxHeight()
+                        .testTag(CheckoutTestTags.RIGHT_PANEL)
+                )
+            }
         }
         
         // Loading Overlay
@@ -194,9 +221,11 @@ fun CheckoutContent(
 private fun LeftPanel(
     items: List<CheckoutItemUiModel>,
     isEmpty: Boolean,
+    selectedItemId: Int?,
     barcodeInput: String,
     onBarcodeChange: (String) -> Unit,
     onBarcodeSubmit: () -> Unit,
+    onItemClick: (Int) -> Unit,
     onRemoveItem: (Int) -> Unit,
     onLogout: () -> Unit,
     modifier: Modifier = Modifier
@@ -271,8 +300,11 @@ private fun LeftPanel(
                         items = items,
                         key = { it.branchProductId }
                     ) { item ->
+                        val isSelected = item.branchProductId == selectedItemId
                         OrderListItem(
                             item = item,
+                            isSelected = isSelected,
+                            onClick = { onItemClick(item.branchProductId) },
                             onRemove = { onRemoveItem(item.branchProductId) },
                             modifier = Modifier.testTag(
                                 CheckoutTestTags.itemRow(item.branchProductId)
@@ -496,17 +528,41 @@ private fun TotalRow(
  *             Description         $XX.XX
  *             Tax+CRV        [Disc]
  *             "You saved..."
+ * 
+ * Per SCREEN_LAYOUTS.md: Clicking a row enters modification mode.
  */
 @Composable
 private fun OrderListItem(
     item: CheckoutItemUiModel,
+    isSelected: Boolean,
+    onClick: () -> Unit,
     onRemove: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Selection highlight color
+    val backgroundColor = if (isSelected) {
+        GroPOSColors.PrimaryGreen.copy(alpha = 0.15f)
+    } else {
+        Color.Transparent
+    }
+    
+    val borderModifier = if (isSelected) {
+        Modifier.border(
+            width = 2.dp,
+            color = GroPOSColors.PrimaryGreen,
+            shape = RoundedCornerShape(8.dp)
+        )
+    } else {
+        Modifier
+    }
+    
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = GroPOSSpacing.S),
+            .then(borderModifier)
+            .background(backgroundColor, RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = GroPOSSpacing.S, horizontal = GroPOSSpacing.XS),
         verticalAlignment = Alignment.Top
     ) {
         // Quantity (10%)
@@ -718,5 +774,241 @@ private fun ScanFeedbackSnackbar(
         contentColor = GroPOSColors.White
     ) {
         Text(message)
+    }
+}
+
+// ============================================================================
+// MODIFICATION PANEL
+// Per SCREEN_LAYOUTS.md: When a line item is selected, the right panel transforms
+// ============================================================================
+
+/**
+ * Modification Panel - shown when a line item is selected.
+ * 
+ * Per SCREEN_LAYOUTS.md:
+ * - Top buttons: BACK, QUANTITY, DISCOUNT, PRICE CHANGE
+ * - TenKey section with mode-specific behavior
+ * - Action buttons: REMOVE ITEM, MORE INFORMATION
+ */
+@Composable
+private fun ModificationPanel(
+    selectedItem: SelectedItemUiModel,
+    currentMode: ModificationTenKeyMode,
+    inputValue: String,
+    onModeChange: (ModificationTenKeyMode) -> Unit,
+    onDigitPress: (String) -> Unit,
+    onClearPress: () -> Unit,
+    onBackspacePress: () -> Unit,
+    onConfirmPress: () -> Unit,
+    onVoidPress: () -> Unit,
+    onBackPress: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .background(GroPOSColors.LightGray1)
+            .padding(horizontal = GroPOSSpacing.XXXL, vertical = GroPOSSpacing.M)
+    ) {
+        // Selected Item Info Card
+        WhiteBox(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = selectedItem.productName,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            
+            Spacer(modifier = Modifier.height(GroPOSSpacing.S))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "Qty: ${selectedItem.currentQuantity}",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = GroPOSColors.TextSecondary
+                )
+                Text(
+                    text = selectedItem.lineTotal,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = GroPOSColors.PrimaryGreen
+                )
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(GroPOSSpacing.M))
+        
+        // Mode Selection Buttons
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(GroPOSSpacing.S)
+        ) {
+            // Quantity button - disabled for weighted items
+            ModeButton(
+                text = "QTY",
+                isSelected = currentMode == ModificationTenKeyMode.QUANTITY,
+                enabled = !selectedItem.isWeighted,
+                onClick = { onModeChange(ModificationTenKeyMode.QUANTITY) },
+                modifier = Modifier.weight(1f)
+            )
+            
+            ModeButton(
+                text = "DISC",
+                isSelected = currentMode == ModificationTenKeyMode.DISCOUNT,
+                enabled = true,
+                onClick = { onModeChange(ModificationTenKeyMode.DISCOUNT) },
+                modifier = Modifier.weight(1f)
+            )
+            
+            ModeButton(
+                text = "PRICE",
+                isSelected = currentMode == ModificationTenKeyMode.PRICE,
+                enabled = true,
+                onClick = { onModeChange(ModificationTenKeyMode.PRICE) },
+                modifier = Modifier.weight(1f)
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(GroPOSSpacing.M))
+        
+        // Input Display with Mode Label
+        Column(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                text = when (currentMode) {
+                    ModificationTenKeyMode.QUANTITY -> "New Quantity"
+                    ModificationTenKeyMode.DISCOUNT -> "Discount %"
+                    ModificationTenKeyMode.PRICE -> "New Price"
+                },
+                style = MaterialTheme.typography.labelMedium,
+                color = GroPOSColors.TextSecondary
+            )
+            
+            Spacer(modifier = Modifier.height(4.dp))
+            
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(GroPOSRadius.Small),
+                color = GroPOSColors.White
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(GroPOSSpacing.M),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Prefix/suffix based on mode
+                    if (currentMode == ModificationTenKeyMode.PRICE) {
+                        Text(
+                            text = "$",
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = GroPOSColors.TextSecondary
+                        )
+                    }
+                    
+                    Text(
+                        text = inputValue.ifEmpty { "0" },
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.End,
+                        modifier = Modifier.weight(1f)
+                    )
+                    
+                    if (currentMode == ModificationTenKeyMode.DISCOUNT) {
+                        Text(
+                            text = "%",
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = GroPOSColors.TextSecondary
+                        )
+                    }
+                }
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(GroPOSSpacing.S))
+        
+        // Ten-Key Pad
+        TenKey(
+            state = TenKeyState(inputValue = inputValue),
+            onDigitClick = onDigitPress,
+            onOkClick = { onConfirmPress() },
+            onClearClick = onClearPress,
+            onBackspaceClick = onBackspacePress,
+            showQtyButton = false,
+            modifier = Modifier.fillMaxWidth()
+        )
+        
+        Spacer(modifier = Modifier.weight(1f))
+        
+        // Action Buttons
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(GroPOSSpacing.S)
+        ) {
+            // Void Line Button
+            DangerButton(
+                onClick = onVoidPress,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("REMOVE ITEM", fontWeight = FontWeight.Bold)
+            }
+            
+            // Back Button
+            OutlineButton(
+                onClick = onBackPress,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("BACK")
+            }
+        }
+    }
+}
+
+/**
+ * Mode selection button for the modification panel.
+ */
+@Composable
+private fun ModeButton(
+    text: String,
+    isSelected: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val backgroundColor = when {
+        !enabled -> GroPOSColors.LightGray3
+        isSelected -> GroPOSColors.PrimaryGreen
+        else -> GroPOSColors.White
+    }
+    
+    val textColor = when {
+        !enabled -> GroPOSColors.TextSecondary.copy(alpha = 0.5f)
+        isSelected -> GroPOSColors.White
+        else -> GroPOSColors.TextPrimary
+    }
+    
+    Surface(
+        modifier = modifier
+            .height(48.dp)
+            .clickable(enabled = enabled, onClick = onClick),
+        shape = RoundedCornerShape(GroPOSRadius.Small),
+        color = backgroundColor
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold,
+                color = textColor
+            )
+        }
     }
 }
