@@ -19,6 +19,8 @@ import com.unisight.gropos.features.checkout.presentation.components.ProductLook
  * @property taxIndicator Tax indicator for receipt (F = SNAP, T = Taxable)
  * @property hasSavings Whether there are savings on this item
  * @property savingsAmount Formatted savings amount if any
+ * @property soldById How the product is sold (Quantity, Weight, etc.)
+ * @property rawQuantity Raw quantity value for display in modification mode
  */
 data class CheckoutItemUiModel(
     val branchProductId: Int,
@@ -29,7 +31,38 @@ data class CheckoutItemUiModel(
     val isSnapEligible: Boolean,
     val taxIndicator: String,
     val hasSavings: Boolean = false,
-    val savingsAmount: String? = null
+    val savingsAmount: String? = null,
+    val soldById: String = "Quantity",
+    val rawQuantity: Int = 1
+)
+
+/**
+ * TenKey mode when in modification mode.
+ * 
+ * Per SCREEN_LAYOUTS.md: Modification Mode has different TenKey behaviors.
+ */
+enum class ModificationTenKeyMode {
+    /** Enter new quantity (1-99) */
+    QUANTITY,
+    /** Enter percentage discount (0-100) */
+    DISCOUNT,
+    /** Enter new unit price */
+    PRICE
+}
+
+/**
+ * UI model for the selected item in modification mode.
+ * 
+ * Contains the details needed for the modification panel.
+ */
+data class SelectedItemUiModel(
+    val branchProductId: Int,
+    val productName: String,
+    val currentQuantity: String,
+    val currentPrice: String,
+    val lineTotal: String,
+    val isWeighted: Boolean,
+    val rawQuantity: Int
 )
 
 /**
@@ -67,6 +100,10 @@ sealed interface ScanEvent {
  * @property lastScanEvent The last scan event for user feedback
  * @property isEmpty Whether the cart is empty
  * @property lookupState State for the Product Lookup Dialog
+ * @property selectedItemId ID of the currently selected item (null = no selection)
+ * @property selectedItem Details of the selected item for the modification panel
+ * @property modificationTenKeyMode Current TenKey mode in modification mode
+ * @property modificationInputValue Current input value in modification mode
  */
 data class CheckoutUiState(
     val items: List<CheckoutItemUiModel> = emptyList(),
@@ -80,8 +117,21 @@ data class CheckoutUiState(
     val isLoading: Boolean = false,
     val lastScanEvent: ScanEvent? = null,
     val isEmpty: Boolean = true,
-    val lookupState: ProductLookupState = ProductLookupState()
+    val lookupState: ProductLookupState = ProductLookupState(),
+    val selectedItemId: Int? = null,
+    val selectedItem: SelectedItemUiModel? = null,
+    val modificationTenKeyMode: ModificationTenKeyMode = ModificationTenKeyMode.QUANTITY,
+    val modificationInputValue: String = ""
 ) {
+    /**
+     * Whether the screen is in modification mode.
+     * 
+     * Per SCREEN_LAYOUTS.md: When a line item is selected, the right panel
+     * transforms to show modification options instead of normal TenKey.
+     */
+    val isModificationMode: Boolean
+        get() = selectedItemId != null
+    
     companion object {
         /**
          * Creates the initial empty state.

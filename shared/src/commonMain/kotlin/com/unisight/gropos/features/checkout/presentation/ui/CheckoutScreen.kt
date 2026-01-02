@@ -80,6 +80,32 @@ class CheckoutScreen : Screen {
                         // Navigate to Transaction History (Recall) screen
                         navigator.push(TransactionHistoryScreen())
                     }
+                    
+                    // Modification Mode Events
+                    is CheckoutEvent.SelectLineItem -> {
+                        viewModel.onSelectLineItem(event.branchProductId)
+                    }
+                    CheckoutEvent.DeselectLineItem -> {
+                        viewModel.onDeselectLineItem()
+                    }
+                    is CheckoutEvent.ChangeModificationMode -> {
+                        viewModel.onChangeModificationMode(event.mode)
+                    }
+                    is CheckoutEvent.ModificationDigitPress -> {
+                        viewModel.onModificationDigitPress(event.digit)
+                    }
+                    CheckoutEvent.ModificationClear -> {
+                        viewModel.onModificationClear()
+                    }
+                    CheckoutEvent.ModificationBackspace -> {
+                        viewModel.onModificationBackspace()
+                    }
+                    CheckoutEvent.ModificationConfirm -> {
+                        viewModel.onModificationConfirm()
+                    }
+                    CheckoutEvent.VoidSelectedLineItem -> {
+                        viewModel.onVoidSelectedLineItem()
+                    }
                 }
             }
         )
@@ -109,4 +135,33 @@ sealed interface CheckoutEvent {
     // Navigation Events
     data object NavigateToPay : CheckoutEvent
     data object NavigateToRecall : CheckoutEvent
+    
+    // ========================================================================
+    // Modification Mode Events
+    // Per SCREEN_LAYOUTS.md: When a line item is selected, right panel transforms
+    // ========================================================================
+    
+    /** Select a line item to enter modification mode */
+    data class SelectLineItem(val branchProductId: Int) : CheckoutEvent
+    
+    /** Deselect item and exit modification mode */
+    data object DeselectLineItem : CheckoutEvent
+    
+    /** Change the TenKey mode in modification (QUANTITY, DISCOUNT, PRICE) */
+    data class ChangeModificationMode(val mode: com.unisight.gropos.features.checkout.presentation.ModificationTenKeyMode) : CheckoutEvent
+    
+    /** Digit pressed in modification mode */
+    data class ModificationDigitPress(val digit: String) : CheckoutEvent
+    
+    /** Clear pressed in modification mode */
+    data object ModificationClear : CheckoutEvent
+    
+    /** Backspace pressed in modification mode */
+    data object ModificationBackspace : CheckoutEvent
+    
+    /** OK/Confirm pressed in modification mode - applies the change */
+    data object ModificationConfirm : CheckoutEvent
+    
+    /** Void the selected line item */
+    data object VoidSelectedLineItem : CheckoutEvent
 }
