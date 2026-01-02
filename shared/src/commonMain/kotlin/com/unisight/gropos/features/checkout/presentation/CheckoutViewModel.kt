@@ -6,6 +6,8 @@ import com.unisight.gropos.core.security.ApprovalDetails
 import com.unisight.gropos.core.security.ApprovalResult
 import com.unisight.gropos.core.security.ManagerApprovalService
 import com.unisight.gropos.core.security.PermissionCheckResult
+import com.unisight.gropos.core.session.InactivityManager
+import com.unisight.gropos.features.cashier.domain.service.CashierSessionManager
 import com.unisight.gropos.core.security.PermissionManager
 import com.unisight.gropos.core.security.RequestAction
 import com.unisight.gropos.core.util.CurrencyFormatter
@@ -55,6 +57,7 @@ class CheckoutViewModel(
     private val currencyFormatter: CurrencyFormatter,
     private val authRepository: AuthRepository,
     private val managerApprovalService: ManagerApprovalService,
+    private val cashierSessionManager: CashierSessionManager,
     // Inject scope for testability (per testing-strategy.mdc)
     private val scope: CoroutineScope? = null
 ) : ScreenModel {
@@ -629,6 +632,123 @@ class CheckoutViewModel(
     fun onCancelVoidTransaction() {
         _state.value = _state.value.copy(
             showVoidConfirmationDialog = false
+        )
+    }
+    
+    // ========================================================================
+    // Logout Flow
+    // Per CASHIER_OPERATIONS.md: Logout options (Lock, Release Till, End Shift)
+    // ========================================================================
+    
+    /**
+     * Opens the logout dialog.
+     * 
+     * Per CASHIER_OPERATIONS.md: Show logout options when "Sign Out" clicked.
+     */
+    fun onOpenLogoutDialog() {
+        _state.value = _state.value.copy(
+            showLogoutDialog = true
+        )
+    }
+    
+    /**
+     * Dismisses the logout dialog.
+     */
+    fun onDismissLogoutDialog() {
+        _state.value = _state.value.copy(
+            showLogoutDialog = false
+        )
+    }
+    
+    /**
+     * Locks the station (keeps session active).
+     * 
+     * Per CASHIER_OPERATIONS.md: User can lock without fully logging out.
+     */
+    fun onLockStation() {
+        _state.value = _state.value.copy(
+            showLogoutDialog = false
+        )
+        
+        // Trigger the inactivity manager to lock (manual lock)
+        InactivityManager.manualLock()
+    }
+    
+    /**
+     * Releases the till and logs out.
+     * 
+     * Per CASHIER_OPERATIONS.md: Quick logout that frees the drawer.
+     */
+    fun onReleaseTill() {
+        // Safety check: cart must be empty
+        if (!_state.value.isEmpty) {
+            _state.value = _state.value.copy(
+                showLogoutDialog = false,
+                lastScanEvent = ScanEvent.Error("Clear the cart before signing out.")
+            )
+            return
+        }
+        
+        _state.value = _state.value.copy(
+            showLogoutDialog = false
+        )
+        
+        effectiveScope.launch {
+            val result = cashierSessionManager.releaseTill()
+            result.onSuccess { tillName ->
+                _state.value = _state.value.copy(
+                    logoutFeedback = "Till Released: $tillName"
+                )
+            }.onFailure { error ->
+                _state.value = _state.value.copy(
+                    lastScanEvent = ScanEvent.Error("Failed to release till: ${error.message}")
+                )
+            }
+        }
+    }
+    
+    /**
+     * Ends the shift with a report.
+     * 
+     * Per CASHIER_OPERATIONS.md: Full close-out with Z-Report.
+     */
+    fun onEndShift() {
+        // Safety check: cart must be empty
+        if (!_state.value.isEmpty) {
+            _state.value = _state.value.copy(
+                showLogoutDialog = false,
+                lastScanEvent = ScanEvent.Error("Clear the cart before ending shift.")
+            )
+            return
+        }
+        
+        _state.value = _state.value.copy(
+            showLogoutDialog = false
+        )
+        
+        effectiveScope.launch {
+            val result = cashierSessionManager.endShift()
+            result.onSuccess { report ->
+                // Print the shift report to console (virtual printer)
+                println(report.formatForPrint())
+                
+                _state.value = _state.value.copy(
+                    logoutFeedback = "Shift ended. Report printed."
+                )
+            }.onFailure { error ->
+                _state.value = _state.value.copy(
+                    lastScanEvent = ScanEvent.Error("Failed to end shift: ${error.message}")
+                )
+            }
+        }
+    }
+    
+    /**
+     * Dismisses the logout feedback message.
+     */
+    fun onDismissLogoutFeedback() {
+        _state.value = _state.value.copy(
+            logoutFeedback = null
         )
     }
     

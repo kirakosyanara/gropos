@@ -134,8 +134,9 @@ val checkoutModule: Module = module {
      * - CurrencyFormatter: For price formatting
      * - AuthRepository: For current user and permission checks
      * - ManagerApprovalService: For manager approval flow
+     * - CashierSessionManager: For logout/session management
      */
-    factory { CheckoutViewModel(get(), get(), get(), get(), get(), get(), get()) }
+    factory { CheckoutViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
     
     /**
      * Customer Display ViewModel/ScreenModel.

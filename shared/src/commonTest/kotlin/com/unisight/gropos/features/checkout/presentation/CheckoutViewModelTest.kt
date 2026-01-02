@@ -3,6 +3,8 @@ package com.unisight.gropos.features.checkout.presentation
 import com.unisight.gropos.core.security.ManagerApprovalService
 import com.unisight.gropos.core.util.UsdCurrencyFormatter
 import com.unisight.gropos.features.auth.data.FakeAuthRepository
+import com.unisight.gropos.features.cashier.data.FakeTillRepository
+import com.unisight.gropos.features.cashier.domain.service.CashierSessionManager
 import com.unisight.gropos.features.checkout.data.CartRepositoryImpl
 import com.unisight.gropos.features.checkout.data.FakeProductRepository
 import com.unisight.gropos.features.checkout.data.FakeScannerRepository
@@ -55,6 +57,8 @@ class CheckoutViewModelTest {
         val currencyFormatter = UsdCurrencyFormatter()
         val fakeAuthRepository = FakeAuthRepository()
         val managerApprovalService = ManagerApprovalService(fakeAuthRepository)
+        val fakeTillRepository = FakeTillRepository()
+        val cashierSessionManager = CashierSessionManager(fakeTillRepository)
         
         val viewModel = CheckoutViewModel(
             scanItemUseCase = useCase,
@@ -64,6 +68,7 @@ class CheckoutViewModelTest {
             currencyFormatter = currencyFormatter,
             authRepository = fakeAuthRepository,
             managerApprovalService = managerApprovalService,
+            cashierSessionManager = cashierSessionManager,
             scope = testScope
         )
         

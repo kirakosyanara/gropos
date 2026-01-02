@@ -51,6 +51,8 @@ import com.unisight.gropos.core.theme.GroPOSRadius
 import com.unisight.gropos.core.theme.GroPOSSpacing
 import com.unisight.gropos.core.components.dialogs.ManagerApprovalDialog
 import com.unisight.gropos.features.checkout.presentation.components.dialogs.VoidConfirmationDialog
+import com.unisight.gropos.features.auth.presentation.components.dialogs.LogoutDialog
+import com.unisight.gropos.features.auth.presentation.components.dialogs.LogoutOption
 import com.unisight.gropos.features.checkout.presentation.CheckoutItemUiModel
 import com.unisight.gropos.features.checkout.presentation.CheckoutTotalsUiModel
 import com.unisight.gropos.features.checkout.presentation.CheckoutUiState
@@ -182,6 +184,7 @@ fun CheckoutContent(
                     onRecallClick = { onEvent(CheckoutEvent.NavigateToRecall) },
                     onFunctionsClick = { /* TODO: Show functions panel */ },
                     onVoidTransactionClick = { onEvent(CheckoutEvent.VoidTransactionRequest) },
+                    onSignOutClick = { onEvent(CheckoutEvent.OpenLogoutDialog) },
                     modifier = Modifier
                         .weight(0.3f)
                         .fillMaxHeight()
@@ -239,6 +242,38 @@ fun CheckoutContent(
                 onConfirm = { onEvent(CheckoutEvent.ConfirmVoidTransaction) },
                 onCancel = { onEvent(CheckoutEvent.CancelVoidTransaction) }
             )
+        }
+        
+        // Logout Dialog
+        // Per CASHIER_OPERATIONS.md: Logout options (Lock, Release Till, End Shift)
+        if (state.showLogoutDialog) {
+            LogoutDialog(
+                onOptionSelected = { option ->
+                    when (option) {
+                        LogoutOption.LOCK_STATION -> onEvent(CheckoutEvent.LockStation)
+                        LogoutOption.RELEASE_TILL -> onEvent(CheckoutEvent.ReleaseTill)
+                        LogoutOption.END_OF_SHIFT -> onEvent(CheckoutEvent.EndShift)
+                    }
+                },
+                onDismiss = { onEvent(CheckoutEvent.DismissLogoutDialog) },
+                isCartEmpty = state.isEmpty
+            )
+        }
+        
+        // Logout Feedback Snackbar
+        state.logoutFeedback?.let { message ->
+            Snackbar(
+                modifier = Modifier
+                    .padding(GroPOSSpacing.M)
+                    .testTag("logout_feedback"),
+                action = {
+                    TextButton(onClick = { onEvent(CheckoutEvent.DismissLogoutFeedback) }) {
+                        Text("OK")
+                    }
+                }
+            ) {
+                Text(message)
+            }
         }
     }
 }
@@ -366,6 +401,7 @@ private fun RightPanel(
     onRecallClick: () -> Unit,
     onFunctionsClick: () -> Unit,
     onVoidTransactionClick: () -> Unit,
+    onSignOutClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -436,6 +472,7 @@ private fun RightPanel(
             onLookupClick = onLookupClick,
             onRecallClick = onRecallClick,
             onVoidTransactionClick = onVoidTransactionClick,
+            onSignOutClick = onSignOutClick,
             modifier = Modifier
                 .fillMaxWidth()
                 .testTag(CheckoutTestTags.FUNCTIONS_GRID)

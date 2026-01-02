@@ -9,6 +9,7 @@ import com.unisight.gropos.features.cashier.data.FakeEmployeeRepository
 import com.unisight.gropos.features.cashier.data.FakeTillRepository
 import com.unisight.gropos.features.cashier.domain.repository.EmployeeRepository
 import com.unisight.gropos.features.cashier.domain.repository.TillRepository
+import com.unisight.gropos.features.cashier.domain.service.CashierSessionManager
 import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.bind
 import org.koin.dsl.module
@@ -41,6 +42,10 @@ val authModule = module {
     // Data Layer - Till
     // TODO: Replace with Couchbase-backed implementation
     singleOf(::FakeTillRepository) bind TillRepository::class
+    
+    // Domain Layer - Session Manager
+    // Per CASHIER_OPERATIONS.md: Tracks active session, handles logout
+    single { CashierSessionManager(get()) }
     
     // Domain Layer
     factory { ValidateLoginUseCase(get()) }

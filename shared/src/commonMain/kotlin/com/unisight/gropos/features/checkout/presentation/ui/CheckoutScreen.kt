@@ -125,6 +125,26 @@ class CheckoutScreen : Screen {
                     CheckoutEvent.CancelVoidTransaction -> {
                         viewModel.onCancelVoidTransaction()
                     }
+                    
+                    // Logout Events
+                    CheckoutEvent.OpenLogoutDialog -> {
+                        viewModel.onOpenLogoutDialog()
+                    }
+                    CheckoutEvent.DismissLogoutDialog -> {
+                        viewModel.onDismissLogoutDialog()
+                    }
+                    CheckoutEvent.LockStation -> {
+                        viewModel.onLockStation()
+                    }
+                    CheckoutEvent.ReleaseTill -> {
+                        viewModel.onReleaseTill()
+                    }
+                    CheckoutEvent.EndShift -> {
+                        viewModel.onEndShift()
+                    }
+                    CheckoutEvent.DismissLogoutFeedback -> {
+                        viewModel.onDismissLogoutFeedback()
+                    }
                 }
             }
         )
@@ -208,4 +228,27 @@ sealed interface CheckoutEvent {
     
     /** Cancel the void transaction dialog */
     data object CancelVoidTransaction : CheckoutEvent
+    
+    // ========================================================================
+    // Logout Events
+    // Per CASHIER_OPERATIONS.md: Logout options (Lock, Release Till, End Shift)
+    // ========================================================================
+    
+    /** Open the logout dialog */
+    data object OpenLogoutDialog : CheckoutEvent
+    
+    /** Dismiss the logout dialog */
+    data object DismissLogoutDialog : CheckoutEvent
+    
+    /** Lock the station (keep session active) */
+    data object LockStation : CheckoutEvent
+    
+    /** Release the till and logout */
+    data object ReleaseTill : CheckoutEvent
+    
+    /** End the shift with report */
+    data object EndShift : CheckoutEvent
+    
+    /** Dismiss logout feedback */
+    data object DismissLogoutFeedback : CheckoutEvent
 }

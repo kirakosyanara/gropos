@@ -81,6 +81,7 @@ fun FunctionsGrid(
     onLookupClick: () -> Unit,
     onRecallClick: () -> Unit,
     onVoidTransactionClick: () -> Unit = {},
+    onSignOutClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -124,6 +125,15 @@ fun FunctionsGrid(
             ) {
                 Text("Functions")
             }
+        }
+        
+        // Row 3: Sign Out
+        // Per CASHIER_OPERATIONS.md: Sign Out shows logout options dialog
+        DangerButton(
+            onClick = onSignOutClick,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Sign Out")
         }
     }
 }

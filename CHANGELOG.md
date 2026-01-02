@@ -23,6 +23,27 @@ This release marks the feature-complete alpha milestone for GroPOS. All core POS
 ## [Unreleased]
 
 ### Added
+- **Complete Logout Flow (P1 #5)**: Advanced logout with three options
+  - **LogoutDialog (`LogoutDialog.kt`):**
+    - Option 1: Lock Station (Blue) - Keeps session active, requires PIN to re-enter
+    - Option 2: Release Till (Orange) - Simple logout, frees drawer for another user
+    - Option 3: End of Shift (Red) - Full close-out with Z-Report
+    - Disabled options when cart is not empty (safety check)
+  - **CashierSessionManager (`CashierSessionManager.kt`):**
+    - Tracks active session from login to logout
+    - `releaseTill()` - Quick logout that releases the till
+    - `endShift()` - Full shift close with ShiftReport generation
+    - Session metrics tracking (transaction count, sales totals)
+  - **ShiftReport (`ShiftReport.kt`):**
+    - Z-Report model with transaction summary, sales breakdown, payment methods
+    - Cash drawer reconciliation (opening float, cash in/out, expected vs actual)
+    - `formatForPrint()` for console/receipt output
+  - **UI Integration:**
+    - "Sign Out" button in FunctionsGrid triggers LogoutDialog
+    - Lock Station calls `InactivityManager.manualLock()`
+    - Release Till and End Shift navigate back to LoginScreen
+    - Logout feedback via Snackbar
+
 - **Void Transaction (P1 #3)**: Full transaction void functionality
   - **UI Component (`VoidConfirmationDialog.kt`):**
     - Confirmation dialog with warning icon
