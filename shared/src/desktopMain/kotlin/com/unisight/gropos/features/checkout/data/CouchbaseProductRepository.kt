@@ -318,7 +318,7 @@ class CouchbaseProductRepository(
                     ?: false,
                 isActive = map["isActive"] as? Boolean ?: true,
                 isForSale = map["isForSale"] as? Boolean ?: true,
-                ageRestriction = map["ageRestriction"] as? String ?: "NO",
+                ageRestriction = (map["ageRestriction"] as? Number)?.toInt(),
                 order = (map["order"] as? Number)?.toInt() ?: 0,
                 itemNumbers = itemNumbers,
                 taxes = taxes,
@@ -361,7 +361,7 @@ class CouchbaseProductRepository(
             doc.setBoolean("isFoodStampEligible", product.isSnapEligible) // For schema compatibility
             doc.setBoolean("isActive", product.isActive)
             doc.setBoolean("isForSale", product.isForSale)
-            doc.setString("ageRestriction", product.ageRestriction)
+            product.ageRestriction?.let { doc.setInt("ageRestriction", it) }
             doc.setInt("order", product.order)
             doc.setDouble("crvRatePerUnit", product.crvRatePerUnit.toDouble())
             product.crvId?.let { doc.setInt("crvId", it) }

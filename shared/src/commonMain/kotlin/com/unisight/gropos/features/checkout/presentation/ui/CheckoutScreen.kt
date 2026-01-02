@@ -194,6 +194,29 @@ class CheckoutScreen : Screen {
                     CheckoutEvent.DismissCashPickupFeedback -> {
                         viewModel.onDismissCashPickupFeedback()
                     }
+                    
+                    // Age Verification Events
+                    is CheckoutEvent.AgeVerificationDigitPress -> {
+                        viewModel.onAgeVerificationDigitPress(event.digit)
+                    }
+                    CheckoutEvent.AgeVerificationClear -> {
+                        viewModel.onAgeVerificationClear()
+                    }
+                    CheckoutEvent.AgeVerificationBackspace -> {
+                        viewModel.onAgeVerificationBackspace()
+                    }
+                    is CheckoutEvent.AgeVerificationFieldSelect -> {
+                        viewModel.onAgeVerificationFieldSelect(event.field)
+                    }
+                    CheckoutEvent.AgeVerificationConfirm -> {
+                        viewModel.onAgeVerificationConfirm()
+                    }
+                    CheckoutEvent.AgeVerificationCancel -> {
+                        viewModel.onAgeVerificationCancel()
+                    }
+                    CheckoutEvent.AgeVerificationManagerOverride -> {
+                        viewModel.onAgeVerificationManagerOverride()
+                    }
                 }
             }
         )
@@ -355,4 +378,30 @@ sealed interface CheckoutEvent {
     
     /** Dismiss cash pickup feedback */
     data object DismissCashPickupFeedback : CheckoutEvent
+    
+    // ========================================================================
+    // Age Verification Events
+    // Per DIALOGS.md: Age Verification for alcohol/tobacco products
+    // ========================================================================
+    
+    /** Digit pressed in age verification dialog */
+    data class AgeVerificationDigitPress(val digit: String) : CheckoutEvent
+    
+    /** Clear pressed in age verification dialog */
+    data object AgeVerificationClear : CheckoutEvent
+    
+    /** Backspace pressed in age verification dialog */
+    data object AgeVerificationBackspace : CheckoutEvent
+    
+    /** Select a date field (Month, Day, Year) */
+    data class AgeVerificationFieldSelect(val field: com.unisight.gropos.features.checkout.presentation.DateField) : CheckoutEvent
+    
+    /** Confirm age verification and add product to cart */
+    data object AgeVerificationConfirm : CheckoutEvent
+    
+    /** Cancel age verification (product not added) */
+    data object AgeVerificationCancel : CheckoutEvent
+    
+    /** Request manager override for age verification */
+    data object AgeVerificationManagerOverride : CheckoutEvent
 }

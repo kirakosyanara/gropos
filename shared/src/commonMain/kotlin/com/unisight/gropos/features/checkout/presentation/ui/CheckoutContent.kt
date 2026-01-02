@@ -50,6 +50,7 @@ import com.unisight.gropos.core.theme.GroPOSColors
 import com.unisight.gropos.core.theme.GroPOSRadius
 import com.unisight.gropos.core.theme.GroPOSSpacing
 import com.unisight.gropos.core.components.dialogs.ManagerApprovalDialog
+import com.unisight.gropos.features.checkout.presentation.components.dialogs.AgeVerificationDialog
 import com.unisight.gropos.features.checkout.presentation.components.dialogs.VoidConfirmationDialog
 import com.unisight.gropos.features.checkout.presentation.components.dialogs.HoldTransactionDialog
 import com.unisight.gropos.features.checkout.presentation.components.dialogs.RecallTransactionsDialog
@@ -59,6 +60,7 @@ import com.unisight.gropos.features.auth.presentation.components.dialogs.LogoutO
 import com.unisight.gropos.features.checkout.presentation.CheckoutItemUiModel
 import com.unisight.gropos.features.checkout.presentation.CheckoutTotalsUiModel
 import com.unisight.gropos.features.checkout.presentation.CheckoutUiState
+import com.unisight.gropos.features.checkout.presentation.DateField
 import com.unisight.gropos.features.checkout.presentation.ModificationTenKeyMode
 import com.unisight.gropos.features.checkout.presentation.ScanEvent
 import com.unisight.gropos.features.checkout.presentation.SelectedItemUiModel
@@ -355,6 +357,21 @@ fun CheckoutContent(
             ) {
                 Text(message)
             }
+        }
+        
+        // Age Verification Dialog
+        // Per DIALOGS.md: Age Verification for alcohol/tobacco products
+        if (state.ageVerificationDialogState.isVisible) {
+            AgeVerificationDialog(
+                state = state.ageVerificationDialogState,
+                onDigitClick = { digit -> onEvent(CheckoutEvent.AgeVerificationDigitPress(digit)) },
+                onClear = { onEvent(CheckoutEvent.AgeVerificationClear) },
+                onBackspace = { onEvent(CheckoutEvent.AgeVerificationBackspace) },
+                onFieldSelect = { field -> onEvent(CheckoutEvent.AgeVerificationFieldSelect(field)) },
+                onConfirm = { onEvent(CheckoutEvent.AgeVerificationConfirm) },
+                onCancel = { onEvent(CheckoutEvent.AgeVerificationCancel) },
+                onManagerOverride = { onEvent(CheckoutEvent.AgeVerificationManagerOverride) }
+            )
         }
     }
 }

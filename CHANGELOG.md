@@ -23,6 +23,105 @@ This release marks the feature-complete alpha milestone for GroPOS. All core POS
 ## [Unreleased]
 
 ### Added
+- **Vendor Payout Screen (P2 #5)**: Cash Drawer Expense Management for paying vendors from till
+  - **Domain Layer (`features/cashier/domain/`):**
+    - `Vendor` model: id, name for vendor identification
+    - `VendorRepository` interface with `getVendors()`, `getVendorById()`
+    - `FakeVendorRepository`: Seeded with Coca-Cola, Pepsi, Frito-Lay, Local Bakery
+  - **Session Logic (`CashierSessionManager`):**
+    - `vendorPayout(amount, vendorId, vendorName, managerId)`: Records payout, decreases cash balance
+    - Validation: Cannot pay out more than current drawer balance
+    - Validation: Amount must be positive
+    - Audit logging: `[AUDIT] VENDOR PAYOUT: $50.00 to Pepsi`
+  - **State Management:**
+    - Updated `CashierSession` model with vendor payout tracking:
+      - `totalVendorPayouts`: Running total of vendor payouts during session
+      - `vendorPayoutCount`: Number of payouts performed
+    - Updated `ShiftReport` model with vendor payout summary in Z-Report
+    - `VendorPayoutDialogState` in `CheckoutUiState`:
+      - Two-step flow: VENDOR_SELECTION → AMOUNT_INPUT
+      - Tracks selected vendor, input amount, current balance, error state
+    - `VendorPayoutStep` enum and `VendorUiModel` for UI
+  - **UI Component (`VendorPayoutDialog.kt`):**
+    - Title: "Vendor Payout" with blue header
+    - **Step 1**: Vendor selection grid (2-column layout)
+    - **Step 2**: Amount input with TenKey
+    - Helper: "Current Drawer Balance: $XXX.XX"
+    - Back button navigation between steps
+    - Actions: Cancel, Pay (enabled when amount entered)
+    - Animated step transitions using `AnimatedContent`
+  - **ViewModel Logic (`CheckoutViewModel`):**
+    - `onOpenVendorPayoutDialog()`: Validation (cart must be empty), loads vendors
+    - `onVendorPayoutSelectVendor()`: Transitions to step 2
+    - `onVendorPayoutBack()`: Returns to step 1
+    - Digit/Clear/Backspace handlers for amount input
+    - `onVendorPayoutConfirm()`: Permission check with `RequestAction.VENDOR_PAYOUT`
+      - GRANTED/SELF_APPROVAL → execute directly
+      - REQUIRES_APPROVAL → show ManagerApprovalDialog
+      - DENIED → show error message
+    - `executeVendorPayout()`: Calls session manager, prints virtual receipt
+    - Success feedback: "Payout Recorded: $50.00 to Pepsi"
+  - **DI Updates (`CheckoutModule`):**
+    - Added `VendorRepository` singleton binding
+    - Updated `CheckoutViewModel` with `VendorRepository` dependency
+  - **Governance Compliance:**
+    - Validation: Cannot pay out more cash than drawer balance
+    - Security: Requires Manager approval (unless user is Manager)
+    - Reporting: ShiftReport now includes `totalVendorPayouts` in Z-Report
+    - Audit trail: Console output with timestamp, employee, manager, vendor, amounts
+    - Virtual receipt printed to console with signature lines
+
+- **Age Verification Dialog (P2 #4)**: Restricted Item "Gatekeeper" for age-restricted products
+  - **Domain Layer (`features/checkout/domain/model/`):**
+    - Updated `Product` model: Changed `ageRestriction` from `String` to `Int?`
+    - Added `isAgeRestricted: Boolean` computed property for convenience checks
+    - Age values: 21 (Alcohol), 18 (Tobacco), null (unrestricted)
+  - **Data Seeding (`core/database/seeder/`):**
+    - Added "Craft Beer 6-Pack" (21+ restriction, Alcohol category, $12.99)
+    - Added "Cigarettes" (18+ restriction, Tobacco category, $8.50)
+    - Synchronized `InitialProducts.kt` and `FakeProductRepository.kt`
+  - **UI Component (`features/checkout/presentation/components/dialogs/AgeVerificationDialog.kt`):**
+    - Title: "Age Verification Required"
+    - Warning icon with orange color
+    - Body: "Item: {ProductName} (Minimum Age: {Age})"
+    - DOB Input: MM/DD/YYYY format using TenKey component
+    - Dynamic "Current Age: XX" display (green if valid, red if underage)
+    - Action buttons: Cancel, Confirm (enabled only if age >= limit)
+    - Manager Override button for approval workflow
+    - Green header per UI_DESIGN_SYSTEM.md
+  - **State Management (`CheckoutUiState`):**
+    - `AgeVerificationDialogState` data class with:
+      - `isVisible`: Controls dialog visibility
+      - `pendingProduct`: Product awaiting verification
+      - `requiredAge`: Minimum age requirement
+      - `dobInput`: Raw DOB digits (MMDDYYYY)
+      - `currentAge`: Calculated age from DOB
+      - `errorMessage`: Validation errors
+      - `isConfirmEnabled`: Confirm button state
+  - **ViewModel Logic (`CheckoutViewModel`):**
+    - `onDobInput(digit)`: Handles digit input, validates, calculates age
+    - `onClearDob()`: Clears DOB input field
+    - `onBackspaceDob()`: Removes last DOB digit
+    - `onConfirmAgeVerification(dob)`: Verifies age and adds to cart
+    - `onCancelAgeVerification()`: Dismisses dialog, clears pending
+    - `onManagerOverrideAgeVerification()`: Bypasses age check (for managers)
+    - `calculateAge(dob, today)`: Uses `java.time.Period.between()` for accurate age
+    - Age-restricted products intercepted in `processScan()` and `onProductSelected()`
+  - **Event Wiring (`CheckoutScreen`):**
+    - Added 6 new `CheckoutEvent` types for age verification flow
+    - Events: AgeVerificationDobInput, AgeVerificationClearDob, AgeVerificationBackspaceDob,
+      AgeVerificationConfirm, AgeVerificationCancel, AgeVerificationManagerOverride
+    - All events wired to corresponding ViewModel methods
+  - **Governance Compliance:**
+    - Item CANNOT be added to cart until dialog is confirmed
+    - Age calculated correctly using `Clock.System.now()` (handles leap years)
+    - DOB validated for valid date format before age calculation
+    - Manager Override provides approval workflow for edge cases
+  - **Data Layer Fixes:**
+    - Updated `CouchbaseProductRepository` (Desktop & Android) for `Int?` ageRestriction type
+    - Read: `(map["ageRestriction"] as? Number)?.toInt()`
+    - Write: `product.ageRestriction?.let { doc.setInt("ageRestriction", it) }`
+
 - **Device Registration Flow (P2 #2)**: Station Claiming / Out-of-Box Experience (OOBE)
   - **Domain Layer (`features/device/`):**
     - `DeviceInfo` model: stationId, apiKey, branchName, branchId, environment

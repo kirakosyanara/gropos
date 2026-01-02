@@ -13,6 +13,7 @@ import com.unisight.gropos.core.security.RequestAction
 import com.unisight.gropos.core.util.CurrencyFormatter
 import com.unisight.gropos.features.auth.domain.model.AuthUser
 import com.unisight.gropos.features.auth.domain.repository.AuthRepository
+import com.unisight.gropos.features.cashier.domain.repository.VendorRepository
 import com.unisight.gropos.features.checkout.domain.model.Cart
 import com.unisight.gropos.features.checkout.domain.model.CartItem
 import com.unisight.gropos.features.checkout.domain.model.Product
@@ -35,7 +36,9 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
+import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.Period
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 
@@ -66,6 +69,7 @@ class CheckoutViewModel(
     private val managerApprovalService: ManagerApprovalService,
     private val cashierSessionManager: CashierSessionManager,
     private val transactionRepository: TransactionRepository,
+    private val vendorRepository: VendorRepository,
     // Inject scope for testability (per testing-strategy.mdc)
     private val scope: CoroutineScope? = null
 ) : ScreenModel {
@@ -130,10 +134,32 @@ class CheckoutViewModel(
     /**
      * Processes a scanned barcode.
      * Called automatically from hardware scanner flow.
+     * 
+     * Per DIALOGS.md: If product is age-restricted, show Age Verification Dialog
+     * BEFORE adding to cart. The item MUST NOT be added until verified.
      */
     private suspend fun processScan(barcode: String) {
         _state.value = _state.value.copy(isLoading = true)
         
+        // First, look up the product to check for age restriction
+        val product = productRepository.getByBarcode(barcode)
+        
+        if (product == null) {
+            _state.value = _state.value.copy(
+                isLoading = false,
+                lastScanEvent = ScanEvent.ProductNotFound(barcode)
+            )
+            return
+        }
+        
+        // Check for age restriction BEFORE adding to cart
+        if (product.isAgeRestricted) {
+            _state.value = _state.value.copy(isLoading = false)
+            checkAndHandleAgeRestriction(product)
+            return
+        }
+        
+        // Product is not age-restricted, add normally via use case
         when (val result = scanItemUseCase.processScan(barcode)) {
             is ScanResult.Success -> {
                 val lastItem = result.cart.items.lastOrNull()
@@ -529,6 +555,23 @@ class CheckoutViewModel(
                 val approverId = approvalState.managers.firstOrNull()?.id?.toString() ?: "Unknown"
                 
                 executeCashPickup(amount, approverId)
+            }
+            RequestAction.VENDOR_PAYOUT -> {
+                // Vendor payout was approved - execute with pending vendor and amount
+                val payoutState = _state.value.vendorPayoutDialogState
+                val inputValue = payoutState.inputValue
+                val amountCents = inputValue.toLongOrNull() ?: 0
+                val amount = BigDecimal(amountCents).divide(BigDecimal(100))
+                
+                // Get the approving manager ID
+                val approverId = approvalState.managers.firstOrNull()?.id?.toString() ?: "Unknown"
+                
+                executeVendorPayout(
+                    amount = amount,
+                    vendorId = payoutState.selectedVendorId ?: "",
+                    vendorName = payoutState.selectedVendorName ?: "Unknown",
+                    approverId = approverId
+                )
             }
             RequestAction.LINE_DISCOUNT -> {
                 // TODO: Apply discount once discount flow is implemented
@@ -1162,6 +1205,7 @@ class CheckoutViewModel(
      * Handles product selection from the lookup dialog.
      * 
      * Per requirement: Call cartRepository.addToCart(product) -> Close Dialog.
+     * Per DIALOGS.md: If age-restricted, show Age Verification Dialog first.
      * 
      * @param productUiModel The selected product
      */
@@ -1171,7 +1215,16 @@ class CheckoutViewModel(
                 // Get the full product by ID
                 val product = productRepository.getById(productUiModel.branchProductId)
                 if (product != null) {
-                    // Add to cart
+                    // Close lookup dialog first
+                    onCloseLookup()
+                    
+                    // Check for age restriction BEFORE adding to cart
+                    if (product.isAgeRestricted) {
+                        checkAndHandleAgeRestriction(product)
+                        return@launch
+                    }
+                    
+                    // Add to cart (not age-restricted)
                     cartRepository.addToCart(product)
                     
                     // Show success feedback
@@ -1183,10 +1236,9 @@ class CheckoutViewModel(
                 _state.value = _state.value.copy(
                     lastScanEvent = ScanEvent.Error(e.message ?: "Failed to add product")
                 )
+                // Close the dialog on error
+                onCloseLookup()
             }
-            
-            // Close the dialog
-            onCloseLookup()
         }
     }
     
@@ -1471,6 +1523,349 @@ class CheckoutViewModel(
         )
     }
     
+    // ========================================================================
+    // Vendor Payout
+    // Per FUNCTIONS_MENU.md: Vendor Payout pays vendors directly from the till
+    // ========================================================================
+    
+    /**
+     * Opens the Vendor Payout dialog.
+     * 
+     * Per FUNCTIONS_MENU.md:
+     * - Prerequisites: No active payments in current transaction
+     * - Flow: Select vendor → Enter amount → Manager approval → Cash dispensed
+     */
+    fun onOpenVendorPayoutDialog() {
+        // Validation: Cannot do vendor payout with items in cart
+        if (!_state.value.isEmpty) {
+            _state.value = _state.value.copy(
+                lastScanEvent = ScanEvent.Error("Complete or void the current transaction before vendor payout.")
+            )
+            return
+        }
+        
+        // Get current drawer balance
+        val currentBalance = cashierSessionManager.getCurrentDrawerBalance()
+        
+        // Load vendors
+        effectiveScope.launch {
+            val vendors = vendorRepository.getVendors()
+            
+            _state.value = _state.value.copy(
+                vendorPayoutDialogState = VendorPayoutDialogState(
+                    isVisible = true,
+                    step = VendorPayoutStep.VENDOR_SELECTION,
+                    vendors = vendors.map { VendorUiModel(it.id, it.name) },
+                    currentBalance = currencyFormatter.format(currentBalance),
+                    inputValue = "",
+                    errorMessage = null
+                )
+            )
+        }
+    }
+    
+    /**
+     * Handles vendor selection in step 1.
+     * 
+     * @param vendorId The ID of the selected vendor
+     * @param vendorName The name of the selected vendor
+     */
+    fun onVendorPayoutSelectVendor(vendorId: String, vendorName: String) {
+        _state.value = _state.value.copy(
+            vendorPayoutDialogState = _state.value.vendorPayoutDialogState.copy(
+                step = VendorPayoutStep.AMOUNT_INPUT,
+                selectedVendorId = vendorId,
+                selectedVendorName = vendorName,
+                inputValue = "",
+                errorMessage = null
+            )
+        )
+    }
+    
+    /**
+     * Handles back button in step 2 (returns to step 1).
+     */
+    fun onVendorPayoutBack() {
+        _state.value = _state.value.copy(
+            vendorPayoutDialogState = _state.value.vendorPayoutDialogState.copy(
+                step = VendorPayoutStep.VENDOR_SELECTION,
+                selectedVendorId = null,
+                selectedVendorName = null,
+                inputValue = "",
+                errorMessage = null
+            )
+        )
+    }
+    
+    /**
+     * Handles digit press in Vendor Payout dialog.
+     */
+    fun onVendorPayoutDigitPress(digit: String) {
+        val currentInput = _state.value.vendorPayoutDialogState.inputValue
+        val newInput = currentInput + digit
+        
+        // Limit to reasonable input length
+        if (newInput.length <= 10) {
+            _state.value = _state.value.copy(
+                vendorPayoutDialogState = _state.value.vendorPayoutDialogState.copy(
+                    inputValue = newInput,
+                    errorMessage = null
+                )
+            )
+        }
+    }
+    
+    /**
+     * Clears the Vendor Payout input.
+     */
+    fun onVendorPayoutClear() {
+        _state.value = _state.value.copy(
+            vendorPayoutDialogState = _state.value.vendorPayoutDialogState.copy(
+                inputValue = "",
+                errorMessage = null
+            )
+        )
+    }
+    
+    /**
+     * Handles backspace in Vendor Payout dialog.
+     */
+    fun onVendorPayoutBackspace() {
+        val currentInput = _state.value.vendorPayoutDialogState.inputValue
+        if (currentInput.isNotEmpty()) {
+            _state.value = _state.value.copy(
+                vendorPayoutDialogState = _state.value.vendorPayoutDialogState.copy(
+                    inputValue = currentInput.dropLast(1),
+                    errorMessage = null
+                )
+            )
+        }
+    }
+    
+    /**
+     * Initiates the vendor payout with permission check.
+     * 
+     * Per FUNCTIONS_MENU.md: Manager approval required.
+     * Per Governance: Cannot pay out more than drawer balance.
+     */
+    fun onVendorPayoutConfirm() {
+        val payoutState = _state.value.vendorPayoutDialogState
+        val inputValue = payoutState.inputValue
+        
+        if (inputValue.isBlank()) {
+            _state.value = _state.value.copy(
+                vendorPayoutDialogState = payoutState.copy(
+                    errorMessage = "Please enter an amount"
+                )
+            )
+            return
+        }
+        
+        if (payoutState.selectedVendorId == null) {
+            _state.value = _state.value.copy(
+                vendorPayoutDialogState = payoutState.copy(
+                    errorMessage = "Please select a vendor"
+                )
+            )
+            return
+        }
+        
+        // Parse the amount (input is in cents, e.g., "5000" = $50.00)
+        val amountCents = inputValue.toLongOrNull() ?: 0
+        val amount = BigDecimal(amountCents).divide(BigDecimal(100))
+        
+        if (amount <= BigDecimal.ZERO) {
+            _state.value = _state.value.copy(
+                vendorPayoutDialogState = payoutState.copy(
+                    errorMessage = "Amount must be greater than zero"
+                )
+            )
+            return
+        }
+        
+        // Validate against drawer balance
+        val currentBalance = cashierSessionManager.getCurrentDrawerBalance()
+        if (amount > currentBalance) {
+            _state.value = _state.value.copy(
+                vendorPayoutDialogState = payoutState.copy(
+                    errorMessage = "Cannot pay out more than drawer balance (${currencyFormatter.format(currentBalance)})"
+                )
+            )
+            return
+        }
+        
+        val user = currentUser
+        if (user == null) {
+            _state.value = _state.value.copy(
+                vendorPayoutDialogState = payoutState.copy(
+                    errorMessage = "User session not found"
+                )
+            )
+            return
+        }
+        
+        // Check permission - Vendor Payout requires manager approval for cashiers
+        val permissionResult = PermissionManager.checkPermission(user, RequestAction.VENDOR_PAYOUT)
+        
+        when (permissionResult) {
+            PermissionCheckResult.GRANTED,
+            PermissionCheckResult.SELF_APPROVAL_ALLOWED -> {
+                // Manager can self-approve - proceed directly
+                executeVendorPayout(
+                    amount = amount,
+                    vendorId = payoutState.selectedVendorId,
+                    vendorName = payoutState.selectedVendorName ?: "Unknown",
+                    approverId = user.id
+                )
+            }
+            PermissionCheckResult.REQUIRES_APPROVAL -> {
+                // Close payout dialog and show manager approval
+                _state.value = _state.value.copy(
+                    vendorPayoutDialogState = payoutState.copy(
+                        isVisible = false,
+                        approvalPending = true
+                    )
+                )
+                showManagerApprovalDialogForVendorPayout(amount)
+            }
+            PermissionCheckResult.DENIED -> {
+                _state.value = _state.value.copy(
+                    vendorPayoutDialogState = payoutState.copy(
+                        errorMessage = "You do not have permission for vendor payout"
+                    )
+                )
+            }
+        }
+    }
+    
+    /**
+     * Shows manager approval dialog for vendor payout.
+     */
+    private fun showManagerApprovalDialogForVendorPayout(amount: BigDecimal) {
+        val user = currentUser ?: return
+        
+        effectiveScope.launch {
+            val managers = managerApprovalService.getApprovers(RequestAction.VENDOR_PAYOUT, user)
+            
+            _state.value = _state.value.copy(
+                managerApprovalState = ManagerApprovalDialogState(
+                    isVisible = true,
+                    action = RequestAction.VENDOR_PAYOUT,
+                    managers = managers,
+                    isProcessing = false,
+                    errorMessage = null
+                )
+            )
+        }
+    }
+    
+    /**
+     * Executes the vendor payout after approval.
+     * 
+     * @param amount The amount to pay out
+     * @param vendorId The ID of the vendor receiving the payout
+     * @param vendorName The name of the vendor for audit logging
+     * @param approverId The ID of the approving manager (or self for managers)
+     */
+    private fun executeVendorPayout(
+        amount: BigDecimal,
+        vendorId: String,
+        vendorName: String,
+        approverId: String
+    ) {
+        effectiveScope.launch {
+            _state.value = _state.value.copy(
+                vendorPayoutDialogState = _state.value.vendorPayoutDialogState.copy(
+                    isProcessing = true
+                )
+            )
+            
+            val result = cashierSessionManager.vendorPayout(
+                amount = amount,
+                vendorId = vendorId,
+                vendorName = vendorName,
+                managerId = approverId
+            )
+            
+            result.onSuccess {
+                // Print virtual receipt
+                printVendorPayoutReceipt(amount, vendorId, vendorName, approverId)
+                
+                // Close dialog and show success feedback
+                _state.value = _state.value.copy(
+                    vendorPayoutDialogState = VendorPayoutDialogState(),
+                    managerApprovalState = ManagerApprovalDialogState(),
+                    vendorPayoutFeedback = "Payout Recorded: ${currencyFormatter.format(amount)} to $vendorName"
+                )
+            }.onFailure { error ->
+                _state.value = _state.value.copy(
+                    vendorPayoutDialogState = _state.value.vendorPayoutDialogState.copy(
+                        isVisible = true,
+                        isProcessing = false,
+                        errorMessage = error.message ?: "Failed to record payout"
+                    )
+                )
+            }
+        }
+    }
+    
+    /**
+     * Prints a virtual receipt for the vendor payout.
+     */
+    private fun printVendorPayoutReceipt(
+        amount: BigDecimal,
+        vendorId: String,
+        vendorName: String,
+        approverId: String
+    ) {
+        val session = cashierSessionManager.getCurrentSession()
+        
+        println("================================================================================")
+        println("                          VENDOR PAYOUT RECEIPT")
+        println("================================================================================")
+        println()
+        println("Date/Time:       ${java.time.LocalDateTime.now()}")
+        println("Employee:        ${session?.employeeName ?: "Unknown"}")
+        println("Till:            Till ${session?.tillId ?: "?"}")
+        println("Manager Approval: $approverId")
+        println()
+        println("--------------------------------------------------------------------------------")
+        println("VENDOR:          $vendorName (ID: $vendorId)")
+        println("PAYOUT AMOUNT:   ${currencyFormatter.format(amount)}")
+        println("--------------------------------------------------------------------------------")
+        println()
+        println("New Drawer Balance: ${currencyFormatter.format(cashierSessionManager.getCurrentDrawerBalance())}")
+        println()
+        println("________________________________________________________________________________")
+        println("Cashier Signature")
+        println()
+        println("________________________________________________________________________________")
+        println("Manager Signature")
+        println()
+        println("________________________________________________________________________________")
+        println("Vendor Signature")
+        println()
+        println("================================================================================")
+    }
+    
+    /**
+     * Dismisses the Vendor Payout dialog.
+     */
+    fun onDismissVendorPayoutDialog() {
+        _state.value = _state.value.copy(
+            vendorPayoutDialogState = VendorPayoutDialogState()
+        )
+    }
+    
+    /**
+     * Dismisses the vendor payout feedback message.
+     */
+    fun onDismissVendorPayoutFeedback() {
+        _state.value = _state.value.copy(
+            vendorPayoutFeedback = null
+        )
+    }
+    
     /**
      * Maps Cart domain model to CheckoutUiState.
      * 
@@ -1539,5 +1934,358 @@ class CheckoutViewModel(
     private fun formatItemCount(count: BigDecimal): String {
         val intCount = count.toInt()
         return if (intCount == 1) "1 item" else "$intCount items"
+    }
+    
+    // ========================================================================
+    // Age Verification
+    // Per DIALOGS.md: Age Verification Dialog for alcohol/tobacco products
+    // ========================================================================
+    
+    /**
+     * Checks if a product requires age verification and shows the dialog if needed.
+     * 
+     * Per DIALOGS.md: Age-restricted products MUST trigger verification before
+     * being added to cart.
+     * 
+     * @param product The product to check
+     * @return true if the product was handled (dialog shown or added to cart),
+     *         false if further processing is needed
+     */
+    private fun checkAndHandleAgeRestriction(product: Product): Boolean {
+        if (!product.isAgeRestricted) {
+            return false
+        }
+        
+        // Show age verification dialog
+        _state.value = _state.value.copy(
+            ageVerificationDialogState = AgeVerificationDialogState(
+                isVisible = true,
+                productName = product.productName,
+                requiredAge = product.ageRestriction ?: 21,
+                branchProductId = product.branchProductId,
+                monthInput = "",
+                dayInput = "",
+                yearInput = "",
+                activeField = DateField.MONTH,
+                calculatedAge = null,
+                errorMessage = null
+            )
+        )
+        
+        return true
+    }
+    
+    /**
+     * Handles digit input in the Age Verification dialog.
+     * 
+     * Per DIALOGS.md: Input fills MM/DD/YYYY fields sequentially.
+     * When a field is full, automatically moves to the next field.
+     */
+    fun onAgeVerificationDigitPress(digit: String) {
+        val currentState = _state.value.ageVerificationDialogState
+        if (!currentState.isVisible) return
+        
+        // Filter out non-numeric input
+        if (!digit.all { it.isDigit() }) return
+        
+        val newState = when (currentState.activeField) {
+            DateField.MONTH -> {
+                val newMonth = currentState.monthInput + digit
+                if (newMonth.length >= 2) {
+                    // Move to day field
+                    currentState.copy(
+                        monthInput = newMonth.take(2),
+                        activeField = DateField.DAY
+                    )
+                } else {
+                    currentState.copy(monthInput = newMonth)
+                }
+            }
+            DateField.DAY -> {
+                val newDay = currentState.dayInput + digit
+                if (newDay.length >= 2) {
+                    // Move to year field
+                    currentState.copy(
+                        dayInput = newDay.take(2),
+                        activeField = DateField.YEAR
+                    )
+                } else {
+                    currentState.copy(dayInput = newDay)
+                }
+            }
+            DateField.YEAR -> {
+                val newYear = currentState.yearInput + digit
+                currentState.copy(yearInput = newYear.take(4))
+            }
+        }
+        
+        // Calculate age if date is complete
+        val calculatedAge = calculateAgeFromDOB(
+            newState.monthInput,
+            newState.dayInput,
+            newState.yearInput
+        )
+        
+        _state.value = _state.value.copy(
+            ageVerificationDialogState = newState.copy(
+                calculatedAge = calculatedAge,
+                errorMessage = null
+            )
+        )
+    }
+    
+    /**
+     * Clears the current date field input.
+     */
+    fun onAgeVerificationClear() {
+        val currentState = _state.value.ageVerificationDialogState
+        if (!currentState.isVisible) return
+        
+        _state.value = _state.value.copy(
+            ageVerificationDialogState = currentState.copy(
+                monthInput = "",
+                dayInput = "",
+                yearInput = "",
+                activeField = DateField.MONTH,
+                calculatedAge = null,
+                errorMessage = null
+            )
+        )
+    }
+    
+    /**
+     * Handles backspace in the Age Verification dialog.
+     */
+    fun onAgeVerificationBackspace() {
+        val currentState = _state.value.ageVerificationDialogState
+        if (!currentState.isVisible) return
+        
+        val newState = when (currentState.activeField) {
+            DateField.MONTH -> {
+                if (currentState.monthInput.isNotEmpty()) {
+                    currentState.copy(monthInput = currentState.monthInput.dropLast(1))
+                } else {
+                    currentState
+                }
+            }
+            DateField.DAY -> {
+                if (currentState.dayInput.isNotEmpty()) {
+                    currentState.copy(dayInput = currentState.dayInput.dropLast(1))
+                } else {
+                    // Move back to month field
+                    currentState.copy(activeField = DateField.MONTH)
+                }
+            }
+            DateField.YEAR -> {
+                if (currentState.yearInput.isNotEmpty()) {
+                    currentState.copy(yearInput = currentState.yearInput.dropLast(1))
+                } else {
+                    // Move back to day field
+                    currentState.copy(activeField = DateField.DAY)
+                }
+            }
+        }
+        
+        // Recalculate age
+        val calculatedAge = calculateAgeFromDOB(
+            newState.monthInput,
+            newState.dayInput,
+            newState.yearInput
+        )
+        
+        _state.value = _state.value.copy(
+            ageVerificationDialogState = newState.copy(calculatedAge = calculatedAge)
+        )
+    }
+    
+    /**
+     * Selects a date field for input.
+     */
+    fun onAgeVerificationFieldSelect(field: DateField) {
+        val currentState = _state.value.ageVerificationDialogState
+        if (!currentState.isVisible) return
+        
+        _state.value = _state.value.copy(
+            ageVerificationDialogState = currentState.copy(activeField = field)
+        )
+    }
+    
+    /**
+     * Confirms age verification and adds product to cart.
+     * 
+     * Per Governance: Item MUST NOT be added until verification passes.
+     */
+    fun onAgeVerificationConfirm() {
+        val currentState = _state.value.ageVerificationDialogState
+        if (!currentState.isVisible) return
+        
+        if (!currentState.meetsAgeRequirement) {
+            _state.value = _state.value.copy(
+                ageVerificationDialogState = currentState.copy(
+                    errorMessage = "Customer does not meet the minimum age requirement of ${currentState.requiredAge}"
+                )
+            )
+            return
+        }
+        
+        // Add product to cart
+        effectiveScope.launch {
+            val product = productRepository.getById(currentState.branchProductId)
+            if (product != null) {
+                cartRepository.addToCart(product)
+                
+                // Log verification for audit
+                println("[AUDIT] AGE VERIFICATION PASSED")
+                println("  Product: ${product.productName}")
+                println("  Required Age: ${currentState.requiredAge}")
+                println("  Verified Age: ${currentState.calculatedAge}")
+                println("  DOB: ${currentState.formattedDate}")
+                println("  Timestamp: ${LocalDateTime.now()}")
+                
+                _state.value = _state.value.copy(
+                    ageVerificationDialogState = AgeVerificationDialogState(),
+                    lastScanEvent = ScanEvent.ProductAdded(product.productName)
+                )
+            }
+        }
+    }
+    
+    /**
+     * Cancels age verification without adding product.
+     */
+    fun onAgeVerificationCancel() {
+        val currentState = _state.value.ageVerificationDialogState
+        if (currentState.isVisible) {
+            println("[AUDIT] AGE VERIFICATION CANCELLED for ${currentState.productName}")
+        }
+        
+        _state.value = _state.value.copy(
+            ageVerificationDialogState = AgeVerificationDialogState()
+        )
+    }
+    
+    /**
+     * Initiates manager override for age verification.
+     * 
+     * Per DIALOGS.md: Manager Override button allows managers to override
+     * age verification in special cases (e.g., ID already checked).
+     */
+    fun onAgeVerificationManagerOverride() {
+        val currentState = _state.value.ageVerificationDialogState
+        if (!currentState.isVisible) return
+        
+        val user = currentUser ?: return
+        
+        // Check if user has permission to override
+        val permissionResult = PermissionManager.checkPermission(user, RequestAction.LINE_DISCOUNT)
+        
+        when (permissionResult) {
+            PermissionCheckResult.GRANTED,
+            PermissionCheckResult.SELF_APPROVAL_ALLOWED -> {
+                // Manager can self-approve - add product directly
+                executeAgeVerificationOverride()
+            }
+            PermissionCheckResult.REQUIRES_APPROVAL -> {
+                // Set processing state and show manager approval
+                _state.value = _state.value.copy(
+                    ageVerificationDialogState = currentState.copy(isProcessing = true)
+                )
+                showManagerApprovalForAgeOverride()
+            }
+            PermissionCheckResult.DENIED -> {
+                _state.value = _state.value.copy(
+                    ageVerificationDialogState = currentState.copy(
+                        errorMessage = "You do not have permission for manager override"
+                    )
+                )
+            }
+        }
+    }
+    
+    /**
+     * Shows manager approval dialog for age verification override.
+     */
+    private fun showManagerApprovalForAgeOverride() {
+        val user = currentUser ?: return
+        
+        effectiveScope.launch {
+            val managers = managerApprovalService.getApprovers(RequestAction.LINE_DISCOUNT, user)
+            
+            _state.value = _state.value.copy(
+                managerApprovalState = ManagerApprovalDialogState(
+                    isVisible = true,
+                    action = RequestAction.LINE_DISCOUNT,  // Using existing action type
+                    managers = managers,
+                    isProcessing = false,
+                    errorMessage = null,
+                    pendingItemId = _state.value.ageVerificationDialogState.branchProductId
+                )
+            )
+        }
+    }
+    
+    /**
+     * Executes age verification override after approval.
+     */
+    private fun executeAgeVerificationOverride() {
+        val currentState = _state.value.ageVerificationDialogState
+        
+        effectiveScope.launch {
+            val product = productRepository.getById(currentState.branchProductId)
+            if (product != null) {
+                cartRepository.addToCart(product)
+                
+                // Log override for audit
+                println("[AUDIT] AGE VERIFICATION OVERRIDE")
+                println("  Product: ${product.productName}")
+                println("  Required Age: ${currentState.requiredAge}")
+                println("  Override By: ${currentUser?.username ?: "Unknown"}")
+                println("  Timestamp: ${LocalDateTime.now()}")
+                
+                _state.value = _state.value.copy(
+                    ageVerificationDialogState = AgeVerificationDialogState(),
+                    lastScanEvent = ScanEvent.ProductAdded(product.productName)
+                )
+            }
+        }
+    }
+    
+    /**
+     * Calculates age from date of birth components.
+     * 
+     * Per Governance: Must calculate age correctly including leap years.
+     * Uses java.time.Period for accurate age calculation.
+     * 
+     * @param month Month (MM)
+     * @param day Day (DD)
+     * @param year Year (YYYY)
+     * @return Age in years, or null if date is invalid/incomplete
+     */
+    private fun calculateAgeFromDOB(month: String, day: String, year: String): Int? {
+        if (month.length != 2 || day.length != 2 || year.length != 4) {
+            return null
+        }
+        
+        val monthInt = month.toIntOrNull() ?: return null
+        val dayInt = day.toIntOrNull() ?: return null
+        val yearInt = year.toIntOrNull() ?: return null
+        
+        // Basic validation
+        if (monthInt !in 1..12) return null
+        if (dayInt !in 1..31) return null
+        if (yearInt < 1900 || yearInt > LocalDate.now().year) return null
+        
+        return try {
+            val birthDate = LocalDate.of(yearInt, monthInt, dayInt)
+            val today = LocalDate.now()
+            
+            // Ensure birth date is in the past
+            if (birthDate.isAfter(today)) return null
+            
+            Period.between(birthDate, today).years
+        } catch (e: Exception) {
+            // Invalid date (e.g., Feb 30)
+            null
+        }
     }
 }

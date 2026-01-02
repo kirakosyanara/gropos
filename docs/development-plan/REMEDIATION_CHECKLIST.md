@@ -215,7 +215,7 @@
 | BackButton | ⚠️ Partial | Need: Consistent back navigation component |
 | RequestStatusBox | ✅ Match | Orange status indicator |
 | Error Dialog | ⚠️ Partial | Current: Snackbar. Need: Full-screen error dialog per spec |
-| Age Verification Dialog | ❌ Missing | Create for age-restricted products |
+| Age Verification Dialog | ✅ Match | `AgeVerificationDialog.kt` with DOB input, dynamic age calc, Manager Override (Jan 2026) |
 | Manager Approval Panel | ✅ Match | `ManagerApprovalDialog` in `core/components/dialogs/` (Jan 2026) |
 | Loading Overlay | ✅ Match | Full-screen loading indicator |
 | Time Display | ❌ Missing | Real-time clock in login/lock screens |
@@ -265,7 +265,7 @@
 1. ✅ Hidden Settings Menu (Jan 2026)
 2. ⚠️ Device Registration Flow (Jan 2026) - UI complete, persistence in-memory (P3: persistent storage)
 3. ❌ Customer Display Ordering Fix
-4. ❌ Age Verification Dialog
+4. ✅ Age Verification Dialog (Jan 2026)
 5. ❌ Vendor Payout Screen
 
 ### P3 - Low Priority (Polish)
@@ -289,12 +289,12 @@
 | Returns Processing | 8 | 2 | 3 |
 | Till & Cash Operations | 2 | 1 | 7 |
 | Device Registration | 6 | 2 | 2 |
-| UI/UX Components | 7 | 2 | 5 |
+| UI/UX Components | 8 | 2 | 4 |
 | Data Layer | 3 | 1 | 6 |
-| **TOTAL** | **48** | **22** | **73** |
+| **TOTAL** | **49** | **22** | **72** |
 
 ---
 
-*Last Updated: January 2026*
+*Last Updated: January 2, 2026*
 *Next Review: After P0 items complete*
 

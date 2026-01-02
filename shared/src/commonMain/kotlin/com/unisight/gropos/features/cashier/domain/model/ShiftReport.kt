@@ -45,6 +45,8 @@ data class ShiftReport(
     val cashOut: BigDecimal,
     val cashPickups: BigDecimal = BigDecimal.ZERO,
     val cashPickupCount: Int = 0,
+    val vendorPayouts: BigDecimal = BigDecimal.ZERO,
+    val vendorPayoutCount: Int = 0,
     val expectedCash: BigDecimal,
     val actualCash: BigDecimal? = null,
     val variance: BigDecimal? = null,
@@ -98,6 +100,7 @@ data class ShiftReport(
             appendLine("Cash In (Sales):        $cashIn")
             appendLine("Cash Out (Returns):    -$cashOut")
             appendLine("Cash Pickups ($cashPickupCount):       -$cashPickups")
+            appendLine("Vendor Payouts ($vendorPayoutCount):   -$vendorPayouts")
             appendLine("Expected Cash:          $expectedCash")
             if (actualCash != null) {
                 appendLine("Actual Cash:            $actualCash")

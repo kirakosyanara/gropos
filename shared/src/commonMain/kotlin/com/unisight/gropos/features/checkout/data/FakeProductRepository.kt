@@ -45,7 +45,6 @@ class FakeProductRepository : ProductRepository {
             isSnapEligible = true,
             isActive = true,
             isForSale = true,
-            ageRestriction = "NO",
             order = 10,
             itemNumbers = listOf(
                 ItemNumber("070000000121", isPrimary = true),
@@ -152,7 +151,6 @@ class FakeProductRepository : ProductRepository {
             isSnapEligible = false,  // Soda is NOT SNAP eligible
             isActive = true,
             isForSale = true,
-            ageRestriction = "NO",
             order = 20,
             itemNumbers = listOf(
                 ItemNumber("555", isPrimary = true),
@@ -185,7 +183,6 @@ class FakeProductRepository : ProductRepository {
             isSnapEligible = false,
             isActive = true,
             isForSale = true,
-            ageRestriction = "NO",
             order = 21,
             itemNumbers = listOf(
                 ItemNumber("556", isPrimary = true)
@@ -215,7 +212,6 @@ class FakeProductRepository : ProductRepository {
             isSnapEligible = true,  // Water IS SNAP eligible (no tax)
             isActive = true,
             isForSale = true,
-            ageRestriction = "NO",
             order = 22,
             itemNumbers = listOf(
                 ItemNumber("557", isPrimary = true)
@@ -247,7 +243,6 @@ class FakeProductRepository : ProductRepository {
             isSnapEligible = true,  // Chips ARE SNAP eligible (no tax)
             isActive = true,
             isForSale = true,
-            ageRestriction = "NO",
             order = 30,
             itemNumbers = listOf(
                 ItemNumber("558", isPrimary = true)
@@ -278,7 +273,6 @@ class FakeProductRepository : ProductRepository {
             isSnapEligible = false,  // Hot prepared food is NOT SNAP eligible
             isActive = true,
             isForSale = true,
-            ageRestriction = "NO",
             order = 40,
             itemNumbers = listOf(
                 ItemNumber("559", isPrimary = true)
@@ -287,6 +281,78 @@ class FakeProductRepository : ProductRepository {
                 ProductTax(taxId = 1, tax = "CA State Tax", percent = BigDecimal("7.25")),
                 ProductTax(taxId = 2, tax = "County Tax", percent = BigDecimal("1.00")),
                 ProductTax(taxId = 3, tax = "City Tax", percent = BigDecimal("1.25"))
+            ),
+            crvRatePerUnit = BigDecimal.ZERO,
+            crvId = null
+        ),
+        
+        // =====================================================================
+        // AGE-RESTRICTED ITEMS (for testing Age Verification Dialog)
+        // Per DIALOGS.md: Age Verification Dialog required for alcohol/tobacco
+        // =====================================================================
+        
+        // Beer 6-Pack: Age 21+ required
+        12355 to Product(
+            branchProductId = 12355,
+            productId = 110,
+            productName = "Craft Beer 6-Pack",
+            description = "Premium craft beer, 6 x 12oz bottles",
+            category = 9,
+            categoryName = "Alcohol",
+            departmentId = 5,
+            departmentName = "Beer & Wine",
+            retailPrice = BigDecimal("12.99"),
+            floorPrice = BigDecimal("10.00"),
+            cost = BigDecimal("7.50"),
+            soldById = "Quantity",
+            soldByName = "Each",
+            isSnapEligible = false,  // Alcohol is NOT SNAP eligible
+            isActive = true,
+            isForSale = true,
+            ageRestriction = 21,  // Must be 21+ to purchase
+            order = 50,
+            itemNumbers = listOf(
+                ItemNumber("BEER21", isPrimary = true),
+                ItemNumber("600", isPrimary = false)
+            ),
+            taxes = listOf(
+                ProductTax(taxId = 1, tax = "CA State Tax", percent = BigDecimal("7.25")),
+                ProductTax(taxId = 2, tax = "County Tax", percent = BigDecimal("1.00")),
+                ProductTax(taxId = 3, tax = "City Tax", percent = BigDecimal("1.25"))
+            ),
+            crvRatePerUnit = BigDecimal("0.30"),  // 6 x $0.05 per can
+            crvId = 2
+        ),
+        
+        // Cigarettes: Age 18+ required
+        12356 to Product(
+            branchProductId = 12356,
+            productId = 111,
+            productName = "Cigarettes Pack",
+            description = "Premium tobacco cigarettes, 20 count",
+            category = 10,
+            categoryName = "Tobacco",
+            departmentId = 6,
+            departmentName = "Tobacco Products",
+            retailPrice = BigDecimal("9.99"),
+            floorPrice = BigDecimal("8.00"),
+            cost = BigDecimal("5.00"),
+            soldById = "Quantity",
+            soldByName = "Each",
+            isSnapEligible = false,  // Tobacco is NOT SNAP eligible
+            isActive = true,
+            isForSale = true,
+            ageRestriction = 18,  // Must be 18+ to purchase
+            order = 51,
+            itemNumbers = listOf(
+                ItemNumber("TOBACCO18", isPrimary = true),
+                ItemNumber("601", isPrimary = false)
+            ),
+            taxes = listOf(
+                ProductTax(taxId = 1, tax = "CA State Tax", percent = BigDecimal("7.25")),
+                ProductTax(taxId = 2, tax = "County Tax", percent = BigDecimal("1.00")),
+                ProductTax(taxId = 3, tax = "City Tax", percent = BigDecimal("1.25")),
+                ProductTax(taxId = 4, tax = "Tobacco Tax", percent = BigDecimal("5.00"))
             ),
             crvRatePerUnit = BigDecimal.ZERO,
             crvId = null

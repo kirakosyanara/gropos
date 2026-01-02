@@ -3,6 +3,8 @@ package com.unisight.gropos.core.di
 import com.unisight.gropos.core.security.ManagerApprovalService
 import com.unisight.gropos.core.util.CurrencyFormatter
 import com.unisight.gropos.core.util.UsdCurrencyFormatter
+import com.unisight.gropos.features.cashier.data.FakeVendorRepository
+import com.unisight.gropos.features.cashier.domain.repository.VendorRepository
 import com.unisight.gropos.features.checkout.data.CartRepositoryImpl
 // FakeProductRepository replaced by CouchbaseProductRepository in platform-specific DatabaseModule
 import com.unisight.gropos.features.checkout.data.FakeScannerRepository
@@ -68,6 +70,14 @@ val checkoutModule: Module = module {
      * Per ARCHITECTURE_BLUEPRINT.md: Single Source of Truth for cart state.
      */
     single<CartRepository> { CartRepositoryImpl() }
+    
+    /**
+     * Vendor repository for vendor payout operations.
+     * 
+     * Per FUNCTIONS_MENU.md: Provides list of vendors for payout selection.
+     * TODO: Replace with API-backed implementation for production.
+     */
+    single<VendorRepository> { FakeVendorRepository() }
     
     // ========================================================================
     // Domain Layer - Calculation Services
@@ -136,8 +146,9 @@ val checkoutModule: Module = module {
      * - ManagerApprovalService: For manager approval flow
      * - CashierSessionManager: For logout/session management
      * - TransactionRepository: For hold/recall operations
+     * - VendorRepository: For vendor payout operations
      */
-    factory { CheckoutViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    factory { CheckoutViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     
     /**
      * Customer Display ViewModel/ScreenModel.

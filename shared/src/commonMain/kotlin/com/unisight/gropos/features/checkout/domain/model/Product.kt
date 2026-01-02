@@ -61,7 +61,7 @@ data class ProductSale(
  * @property isSnapEligible SNAP/EBT eligible
  * @property isActive Product is active
  * @property isForSale Product is available for sale
- * @property ageRestriction Age restriction (NO, 18, 21)
+ * @property ageRestriction Minimum age required to purchase (18, 21) or null for no restriction
  * @property order Display order
  * @property itemNumbers List of barcodes/item numbers
  * @property taxes List of applicable taxes
@@ -86,7 +86,7 @@ data class Product(
     val isSnapEligible: Boolean = false,
     val isActive: Boolean = true,
     val isForSale: Boolean = true,
-    val ageRestriction: String = "NO",
+    val ageRestriction: Int? = null,
     val order: Int = 0,
     val itemNumbers: List<ItemNumber> = emptyList(),
     val taxes: List<ProductTax> = emptyList(),
@@ -125,4 +125,13 @@ data class Product(
      */
     val totalTaxPercent: BigDecimal
         get() = taxes.fold(BigDecimal.ZERO) { acc, tax -> acc.add(tax.percent) }
+    
+    /**
+     * Whether this product requires age verification before purchase.
+     * 
+     * Per DIALOGS.md: Age-restricted products (alcohol, tobacco) must trigger
+     * the Age Verification Dialog before being added to cart.
+     */
+    val isAgeRestricted: Boolean
+        get() = ageRestriction != null
 }

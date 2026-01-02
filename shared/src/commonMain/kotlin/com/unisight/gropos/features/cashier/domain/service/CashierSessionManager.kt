@@ -178,6 +178,69 @@ class CashierSessionManager(
     }
     
     /**
+     * Records a vendor payout from the drawer.
+     * 
+     * Per FUNCTIONS_MENU.md (Vendor Payout section):
+     * - Pays vendors directly from the till
+     * - Decreases the drawer's cash balance
+     * - Requires manager approval (handled by caller)
+     * - Audit logged for accountability
+     * 
+     * @param amount The payout amount
+     * @param vendorId The ID of the vendor receiving the payout
+     * @param vendorName The name of the vendor for audit logging
+     * @param managerId The ID of the manager who approved the payout
+     * @return Result indicating success or failure with validation error
+     */
+    suspend fun vendorPayout(
+        amount: BigDecimal,
+        vendorId: String,
+        vendorName: String,
+        managerId: String
+    ): Result<Unit> {
+        val current = _activeSession.value
+            ?: return Result.failure(IllegalStateException("No active session"))
+        
+        // Validation: Cannot pay out more than current drawer balance
+        if (amount > current.expectedCash) {
+            return Result.failure(
+                IllegalArgumentException("Cannot pay out more than drawer balance. " +
+                    "Current balance: \$${current.expectedCash}, Requested: \$${amount}")
+            )
+        }
+        
+        // Validation: Amount must be positive
+        if (amount <= BigDecimal.ZERO) {
+            return Result.failure(
+                IllegalArgumentException("Payout amount must be greater than zero")
+            )
+        }
+        
+        // Update session with payout
+        _activeSession.value = current.copy(
+            expectedCash = current.expectedCash - amount,
+            totalVendorPayouts = current.totalVendorPayouts + amount,
+            vendorPayoutCount = current.vendorPayoutCount + 1
+        )
+        
+        // Audit log (per governance: log all cash drawer operations)
+        println("================================================================================")
+        println("[AUDIT] VENDOR PAYOUT: \$$amount to $vendorName")
+        println("================================================================================")
+        println("Timestamp: ${kotlinx.datetime.Clock.System.now()}")
+        println("Employee: ${current.employeeName} (ID: ${current.employeeId})")
+        println("Manager Approval: $managerId")
+        println("Vendor: $vendorName (ID: $vendorId)")
+        println("Payout Amount: \$$amount")
+        println("Previous Balance: \$${current.expectedCash}")
+        println("New Balance: \$${current.expectedCash - amount}")
+        println("Till ID: ${current.tillId}")
+        println("================================================================================")
+        
+        return Result.success(Unit)
+    }
+    
+    /**
      * Releases the till and ends the session (quick logout).
      * 
      * Per CASHIER_OPERATIONS.md: "Release Till - Simple logout"
@@ -246,7 +309,9 @@ class CashierSessionManager(
             cashOut = BigDecimal.ZERO, // Would track refunds
             cashPickups = session.totalCashPickups,
             cashPickupCount = session.cashPickupCount,
-            expectedCash = session.expectedCash, // Use session's tracked balance (includes pickups)
+            vendorPayouts = session.totalVendorPayouts,
+            vendorPayoutCount = session.vendorPayoutCount,
+            expectedCash = session.expectedCash, // Use session's tracked balance (includes pickups and payouts)
             status = ShiftReportStatus.PENDING
         )
         

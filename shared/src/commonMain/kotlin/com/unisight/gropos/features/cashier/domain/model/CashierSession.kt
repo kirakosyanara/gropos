@@ -45,7 +45,11 @@ data class CashierSession(
     
     // Cash pickup tracking (per CASHIER_OPERATIONS.md: Safe Drops / Pickups)
     val totalCashPickups: BigDecimal = BigDecimal.ZERO,
-    val cashPickupCount: Int = 0
+    val cashPickupCount: Int = 0,
+    
+    // Vendor payout tracking (per FUNCTIONS_MENU.md: Vendor Payout)
+    val totalVendorPayouts: BigDecimal = BigDecimal.ZERO,
+    val vendorPayoutCount: Int = 0
 )
 
 /**

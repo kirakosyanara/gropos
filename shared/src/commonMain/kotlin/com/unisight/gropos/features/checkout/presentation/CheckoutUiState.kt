@@ -141,6 +141,118 @@ data class CashPickupDialogState(
 )
 
 /**
+ * State for the Vendor Payout Dialog.
+ * 
+ * Per FUNCTIONS_MENU.md (Vendor Payout section):
+ * - Pay vendors directly from the till
+ * - Flow: Select vendor → Enter amount → Manager approval → Cash dispensed
+ * - Cannot pay out more than drawer balance
+ * 
+ * @property isVisible Whether the dialog is showing
+ * @property step Current step (VENDOR_SELECTION or AMOUNT_INPUT)
+ * @property vendors List of available vendors
+ * @property selectedVendorId ID of the selected vendor (null in step 1)
+ * @property selectedVendorName Name of the selected vendor for display
+ * @property inputValue Current input value for the amount
+ * @property currentBalance Current drawer balance (formatted)
+ * @property errorMessage Validation error message
+ * @property isProcessing Whether payout is being processed
+ * @property approvalPending Whether manager approval is pending
+ */
+data class VendorPayoutDialogState(
+    val isVisible: Boolean = false,
+    val step: VendorPayoutStep = VendorPayoutStep.VENDOR_SELECTION,
+    val vendors: List<VendorUiModel> = emptyList(),
+    val selectedVendorId: String? = null,
+    val selectedVendorName: String? = null,
+    val inputValue: String = "",
+    val currentBalance: String = "$0.00",
+    val errorMessage: String? = null,
+    val isProcessing: Boolean = false,
+    val approvalPending: Boolean = false
+)
+
+/**
+ * Steps in the Vendor Payout dialog flow.
+ */
+enum class VendorPayoutStep {
+    /** Step 1: Select a vendor from the list */
+    VENDOR_SELECTION,
+    /** Step 2: Enter the payout amount */
+    AMOUNT_INPUT
+}
+
+/**
+ * UI model for displaying a vendor in the payout dialog.
+ */
+data class VendorUiModel(
+    val id: String,
+    val name: String
+)
+
+/**
+ * State for the Age Verification Dialog.
+ * 
+ * Per DIALOGS.md (Age Verification section):
+ * - Triggered when scanning age-restricted products (alcohol, tobacco)
+ * - Requires date of birth entry to verify customer age
+ * - Item MUST NOT be added to cart until verification passes
+ * - Supports Manager Override for special cases
+ *
+ * @property isVisible Whether the dialog is showing
+ * @property productName Name of the age-restricted product
+ * @property requiredAge Minimum age required (18, 21)
+ * @property branchProductId The product ID pending verification
+ * @property monthInput Month component of DOB (MM)
+ * @property dayInput Day component of DOB (DD)
+ * @property yearInput Year component of DOB (YYYY)
+ * @property activeField Which date field is currently being edited
+ * @property calculatedAge Age calculated from entered DOB (null if DOB incomplete)
+ * @property errorMessage Validation error message
+ * @property isProcessing Whether manager override is being processed
+ */
+data class AgeVerificationDialogState(
+    val isVisible: Boolean = false,
+    val productName: String = "",
+    val requiredAge: Int = 21,
+    val branchProductId: Int = 0,
+    val monthInput: String = "",
+    val dayInput: String = "",
+    val yearInput: String = "",
+    val activeField: DateField = DateField.MONTH,
+    val calculatedAge: Int? = null,
+    val errorMessage: String? = null,
+    val isProcessing: Boolean = false
+) {
+    /**
+     * Whether the entered DOB is complete (all fields filled).
+     */
+    val isDateComplete: Boolean
+        get() = monthInput.length == 2 && dayInput.length == 2 && yearInput.length == 4
+    
+    /**
+     * Whether the customer meets the age requirement.
+     */
+    val meetsAgeRequirement: Boolean
+        get() = calculatedAge != null && calculatedAge >= requiredAge
+    
+    /**
+     * Formatted date string for display.
+     */
+    val formattedDate: String
+        get() = "$monthInput/$dayInput/$yearInput"
+}
+
+/**
+ * Which field of the date input is currently active.
+ */
+enum class DateField {
+    MONTH,
+    DAY,
+    YEAR
+}
+
+/**
  * UI State for the Checkout screen.
  * 
  * Per kotlin-standards.mdc: Use sealed interface for strict typing.
@@ -186,7 +298,14 @@ data class CheckoutUiState(
     
     // Cash Pickup state (per FUNCTIONS_MENU.md: Cash Pickup)
     val cashPickupDialogState: CashPickupDialogState = CashPickupDialogState(),
-    val cashPickupFeedback: String? = null
+    val cashPickupFeedback: String? = null,
+    
+    // Vendor Payout state (per FUNCTIONS_MENU.md: Vendor Payout)
+    val vendorPayoutDialogState: VendorPayoutDialogState = VendorPayoutDialogState(),
+    val vendorPayoutFeedback: String? = null,
+    
+    // Age Verification state (per DIALOGS.md: Age Verification Dialog)
+    val ageVerificationDialogState: AgeVerificationDialogState = AgeVerificationDialogState()
 ) {
     /**
      * Whether the screen is in modification mode.
