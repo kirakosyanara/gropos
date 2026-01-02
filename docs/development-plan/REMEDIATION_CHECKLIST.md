@@ -134,7 +134,7 @@
 | SNAP Eligible Display | ⚠️ Partial | Need: Add to customer display totals panel |
 | Customer Order Cell | ⚠️ Partial | Need: Full layout with image, qty, CRV, tax indicator |
 | Removed Item Strikethrough | ❌ Missing | Show voided items in red with strikethrough |
-| Advertisement Overlay | ❌ Missing | Full-screen ads during idle |
+| Advertisement Overlay | ✅ Match | `AdOverlay.kt` in features/ad/presentation/ with z-index:100, "Tap to Start", pulsing animation (Jan 2026) |
 | Savings Display | ❌ Missing | "Saved $X.XX" in green for discounted items |
 | Store Name Header | ❌ Missing | Show store name in customer display header |
 | Weight Display | ❌ Missing | Show current scale weight |
@@ -270,7 +270,7 @@
 
 ### P3 - Low Priority (Polish)
 
-1. ❌ Advertisement Overlay
+1. ✅ Advertisement Overlay (Jan 2026) - `IdleDetector.kt` + `AdOverlay.kt`
 2. ❌ NFC Token Login
 3. ✅ Real-time Clock Display (Jan 2026) - `RealTimeClock.kt` component in Checkout header
 4. ⚠️ Full Error Dialog (vs Snackbar)
@@ -285,16 +285,16 @@
 | Roles & Permissions | 0 | 1 | 12 |
 | Payment Processing | 9 | 2 | 6 |
 | Checkout & Transaction | 11 | 7 | 7 |
-| Customer Display | 3 | 2 | 5 |
+| Customer Display | 4 | 2 | 4 |
 | Returns Processing | 8 | 2 | 3 |
 | Till & Cash Operations | 4 | 1 | 5 |
 | Device Registration | 6 | 2 | 2 |
 | UI/UX Components | 9 | 2 | 3 |
 | Data Layer | 3 | 1 | 6 |
-| **TOTAL** | **53** | **21** | **69** |
+| **TOTAL** | **54** | **21** | **68** |
 
 ---
 
-*Last Updated: January 2, 2026 (Real-time Clock Display Complete)*
-*Next Review: P3 Phase In Progress*
+*Last Updated: January 2, 2026 (Advertisement Overlay Complete)*
+*Next Review: P3 Phase - NFC Token Login Pending*
 

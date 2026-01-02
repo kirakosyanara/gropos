@@ -90,6 +90,13 @@ object GroPOSColors {
     val SnapBadgeBackground = Color(0xFFE8F5E9)
     
     // ========================================================================
+    // Container Colors (Surface variants for elevation/highlighting)
+    // ========================================================================
+    
+    /** ContainerHigh: #E8F5E9 - Subtle highlight for newest/most recent items */
+    val ContainerHigh = Color(0xFFE8F5E9)
+    
+    // ========================================================================
     // Savings Colors
     // ========================================================================
     

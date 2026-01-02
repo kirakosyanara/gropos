@@ -43,6 +43,8 @@ import com.unisight.gropos.core.components.BarcodeInputField
 import com.unisight.gropos.core.components.DangerButton
 import com.unisight.gropos.core.components.ExtraLargeButton
 import com.unisight.gropos.core.components.FunctionsGrid
+import com.unisight.gropos.core.components.IdleDetector
+import com.unisight.gropos.core.components.IdleDetectorConfig
 import com.unisight.gropos.core.components.OutlineButton
 import com.unisight.gropos.core.components.RealTimeClock
 import com.unisight.gropos.core.components.SuccessButton
@@ -53,6 +55,7 @@ import com.unisight.gropos.core.theme.GroPOSColors
 import com.unisight.gropos.core.theme.GroPOSRadius
 import com.unisight.gropos.core.theme.GroPOSSpacing
 import com.unisight.gropos.core.components.dialogs.ManagerApprovalDialog
+import com.unisight.gropos.features.ad.presentation.AdOverlay
 import com.unisight.gropos.features.checkout.presentation.components.dialogs.AgeVerificationDialog
 import com.unisight.gropos.features.checkout.presentation.components.dialogs.VoidConfirmationDialog
 import com.unisight.gropos.features.checkout.presentation.components.dialogs.HoldTransactionDialog
@@ -97,6 +100,11 @@ object CheckoutTestTags {
  * - LEFT (70%): Order list with info bar
  * - RIGHT (30%): Totals, Ten-Key, Actions
  * 
+ * Per SCREEN_LAYOUTS.md (Advertisement Overlay):
+ * - Full-screen ad display when transaction is idle (30 seconds for testing)
+ * - Tap anywhere to dismiss instantly
+ * - State preservation: cart/transaction state unchanged when dismissed
+ * 
  * Per code-quality.mdc: State hoisting - receives state and emits events.
  * Per Governance: No math here - all values are pre-formatted strings.
  */
@@ -110,12 +118,28 @@ fun CheckoutContent(
     var barcodeInput by remember { mutableStateOf("") }
     var tenKeyInput by remember { mutableStateOf("") }
     
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .testTag(CheckoutTestTags.SCREEN)
+    // ========================================================================
+    // Advertisement Overlay / Idle Screen State
+    // Per SCREEN_LAYOUTS.md: Show branding/ads after 30 seconds of inactivity
+    // Uses 30 seconds for testing (production would be 60+ seconds)
+    // ========================================================================
+    var isIdle by remember { mutableStateOf(false) }
+    val idleConfig = remember { IdleDetectorConfig.Testing } // 30 seconds for testing
+    
+    // Wrap content in IdleDetector to track inactivity
+    IdleDetector(
+        timeoutMs = idleConfig.timeoutMs,
+        enabled = idleConfig.enabled,
+        isIdle = isIdle,
+        onIdleChange = { newIdleState -> isIdle = newIdleState },
+        onActivity = { /* Optional: could notify ViewModel of user activity */ }
     ) {
-        Row(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .testTag(CheckoutTestTags.SCREEN)
+        ) {
+            Row(modifier = Modifier.fillMaxSize()) {
             // ================================================================
             // LEFT SECTION (70%) - Order List
             // Per UI_DESIGN_SYSTEM.md: LightGray2 background (#E1E3E3)
@@ -376,7 +400,23 @@ fun CheckoutContent(
                 onManagerOverride = { onEvent(CheckoutEvent.AgeVerificationManagerOverride) }
             )
         }
-    }
+        
+        // ====================================================================
+        // Advertisement Overlay / Screensaver
+        // Per SCREEN_LAYOUTS.md (Customer Screen section):
+        // "Full-screen ad display when transaction is idle"
+        // 
+        // Per P3 Feature #1 requirements:
+        // - Non-Blocking: Disappears INSTANTLY on touch
+        // - State Preservation: Cart/transaction state unchanged when dismissed
+        // - Z-index: 100 (on top of all other content)
+        // ====================================================================
+        AdOverlay(
+            isVisible = isIdle,
+            onDismiss = { isIdle = false }
+        )
+        }
+    } // End of IdleDetector
 }
 
 // ============================================================================

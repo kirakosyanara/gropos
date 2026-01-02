@@ -23,6 +23,45 @@ This release marks the feature-complete alpha milestone for GroPOS. All core POS
 ## [Unreleased]
 
 ### Added
+- **Advertisement Overlay / Screensaver (P3 #1)**: Idle Screen Digital Signage
+  - **UI Component (`features/ad/presentation/AdOverlay.kt`):**
+    - Per SCREEN_LAYOUTS.md: "Full-screen ad display when transaction is idle"
+    - Full-screen Box with z-index: 100 (renders above all content)
+    - Background: Vertical gradient (forest green to emerald) consistent with GroPOS branding
+    - Foreground: "Welcome to GroPOS" / "Tap to Start" messaging
+    - Animation: Gentle pulsing effect on tap indicator using `rememberInfiniteTransition`
+    - Breathing alpha animation on text for subtle motion
+    - Promotional banner placeholder: "Fresh Produce Special" (ready for production ad content)
+    - Test tags: `ad_overlay`, `ad_overlay_title`, `ad_overlay_tap_indicator`, `ad_overlay_promo_banner`
+  - **Logic Wrapper (`core/components/IdleDetector.kt`):**
+    - Composable wrapper that tracks user inactivity via `PointerInput`
+    - Uses `awaitEachGesture` with `awaitFirstDown(pass = PointerEventPass.Initial)` to intercept all touch events
+    - Tracks `lastInteractionTime` using `mutableStateOf` with kotlinx-datetime
+    - Uses `LaunchedEffect` to check: `if (now - lastInteraction > timeout) showOverlay = true`
+    - State hoisted: `isIdle` and `onIdleChange` callbacks for parent control
+    - `onActivity` callback for external timer resets
+    - `IdleDetectorConfig` data class with presets:
+      - `Testing`: 30 seconds (for easy verification)
+      - `Production`: 60 seconds (per requirement)
+      - `CustomerDisplay`: 120 seconds
+  - **Wiring (`CheckoutContent.kt`):**
+    - Entire `CheckoutContent` wrapped inside `IdleDetector`
+    - Local `isIdle` state managed with `remember { mutableStateOf(false) }`
+    - `AdOverlay` rendered at the end of the Box with z-index priority
+    - When AdOverlay is clicked → `isIdle = false` → Instant dismiss
+  - **Governance Compliance:**
+    - **Non-Blocking:** Overlay disappears INSTANTLY on touch (no delay)
+    - **State Preservation:** Cart/transaction state unchanged when dismissed
+      - No state clearing on idle or dismiss
+      - All items, quantities, prices preserved exactly
+    - **Configuration:** Set to 30 seconds for testing (documented for 60s+ in production)
+    - **Theme Consistency:** Uses GroPOS brand colors via `AdOverlayColors` object
+  - **Performance:**
+    - Single `LaunchedEffect` per IdleDetector instance
+    - Effect cancelled and recreated only when `lastInteractionTime` changes
+    - Animations use `rememberInfiniteTransition` (no manual coroutine management)
+    - Pointer interception at Initial pass (doesn't block child events)
+
 - **Real-time Clock Display (P3 #3)**: Live Time in Status Bar
   - **Component (`core/components/RealTimeClock.kt`):**
     - Per SCREEN_LAYOUTS.md: "Show current time (hh:mm a) in the top right or center"
