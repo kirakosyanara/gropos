@@ -23,6 +23,37 @@ This release marks the feature-complete alpha milestone for GroPOS. All core POS
 ## [Unreleased]
 
 ### Added
+- **Full Error Dialogs - Critical Alert System (P3 #4)**: Flow-stopping error notifications
+  - **UI Component (`core/components/dialogs/ErrorDialog.kt`):**
+    - Per DIALOGS.md (Error Message Dialog section): Modal dialog for critical errors
+    - **Icon:** `Icons.Filled.Error` in danger red color (72dp)
+    - **Header:** Red background (#FA1B1B) with bold white title
+    - **Body:** Centered message text with proper typography
+    - **Button:** Blue primary button ("Dismiss" or custom action label)
+    - **Z-Index:** High (1000) to sit above all other content
+    - Elevated shadow (24dp) for visual prominence
+    - Test tags: `error_dialog`, `error_dialog_icon`, `error_dialog_title`, 
+      `error_dialog_message`, `error_dialog_dismiss_button`
+  - **State Management (`CheckoutUiState`):**
+    - Added `errorDialog: ErrorDialogState? = null` property
+    - `ErrorDialogState` data class with title, message, and actionLabel
+  - **ViewModel Methods (`CheckoutViewModel`):**
+    - `showCriticalError(title, message, actionLabel)`: Shows critical error dialog
+    - `dismissError()`: Dismisses the error dialog
+  - **Event Wiring (`CheckoutScreen` & `CheckoutContent`):**
+    - Added `CheckoutEvent.DismissError` event
+    - ErrorDialog rendered when `state.errorDialog != null`
+    - `onDismissRequest` properly wired to event handler
+  - **Governance Compliance:**
+    - **UX Rule:** Only use for errors that STOP THE FLOW:
+      - Payment Declined → Use `showCriticalError("Payment Declined", reason)`
+      - Printer Error → Use `showCriticalError("Printer Error", "Out of paper")`
+      - Hardware Failure → Critical dialog
+      - Age Verification Failed (legal) → Dialog preferred over Snackbar
+    - **Non-Critical Errors:** Product Not Found remains as Snackbar (`ScanEvent.Error`)
+    - **Accessibility:** User can always dismiss to return to sales screen
+    - **Dismissal:** `dismissOnClickOutside = false` (requires explicit action)
+
 - **NFC Token Login (P3 #2)**: Hardware Abstraction for Badge Authentication
   - **Domain Layer (`features/auth/domain/hardware/`):**
     - `NfcScanner` interface: Hardware abstraction for NFC/RFID badge readers

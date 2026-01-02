@@ -54,6 +54,7 @@ import com.unisight.gropos.core.components.WhiteBox
 import com.unisight.gropos.core.theme.GroPOSColors
 import com.unisight.gropos.core.theme.GroPOSRadius
 import com.unisight.gropos.core.theme.GroPOSSpacing
+import com.unisight.gropos.core.components.dialogs.ErrorDialog
 import com.unisight.gropos.core.components.dialogs.ManagerApprovalDialog
 import com.unisight.gropos.features.ad.presentation.AdOverlay
 import com.unisight.gropos.features.checkout.presentation.components.dialogs.AgeVerificationDialog
@@ -398,6 +399,19 @@ fun CheckoutContent(
                 onConfirm = { onEvent(CheckoutEvent.AgeVerificationConfirm) },
                 onCancel = { onEvent(CheckoutEvent.AgeVerificationCancel) },
                 onManagerOverride = { onEvent(CheckoutEvent.AgeVerificationManagerOverride) }
+            )
+        }
+        
+        // ====================================================================
+        // Error Dialog - Critical Alert System
+        // Per DIALOGS.md (Error Message Dialog):
+        // - Use for CRITICAL errors that STOP THE FLOW (Payments, Hardware, Legal)
+        // - Minor errors like "Item not found" use Snackbar instead
+        // ====================================================================
+        state.errorDialog?.let { errorState ->
+            ErrorDialog(
+                state = errorState,
+                onDismiss = { onEvent(CheckoutEvent.DismissError) }
             )
         }
         

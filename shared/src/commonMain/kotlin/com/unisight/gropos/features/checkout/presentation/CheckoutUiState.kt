@@ -1,5 +1,6 @@
 package com.unisight.gropos.features.checkout.presentation
 
+import com.unisight.gropos.core.components.dialogs.ErrorDialogState
 import com.unisight.gropos.core.security.ManagerInfo
 import com.unisight.gropos.core.security.RequestAction
 import com.unisight.gropos.features.checkout.presentation.components.ProductLookupState
@@ -305,7 +306,11 @@ data class CheckoutUiState(
     val vendorPayoutFeedback: String? = null,
     
     // Age Verification state (per DIALOGS.md: Age Verification Dialog)
-    val ageVerificationDialogState: AgeVerificationDialogState = AgeVerificationDialogState()
+    val ageVerificationDialogState: AgeVerificationDialogState = AgeVerificationDialogState(),
+    
+    // Error Dialog state (per DIALOGS.md: Error Message Dialog)
+    // Use for CRITICAL errors that stop the flow: Payments, Hardware, Legal
+    val errorDialog: ErrorDialogState? = null
 ) {
     /**
      * Whether the screen is in modification mode.

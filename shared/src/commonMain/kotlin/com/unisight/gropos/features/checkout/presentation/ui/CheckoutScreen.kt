@@ -217,6 +217,11 @@ class CheckoutScreen : Screen {
                     CheckoutEvent.AgeVerificationManagerOverride -> {
                         viewModel.onAgeVerificationManagerOverride()
                     }
+                    
+                    // Error Dialog Events
+                    CheckoutEvent.DismissError -> {
+                        viewModel.dismissError()
+                    }
                 }
             }
         )
@@ -404,4 +409,12 @@ sealed interface CheckoutEvent {
     
     /** Request manager override for age verification */
     data object AgeVerificationManagerOverride : CheckoutEvent
+    
+    // ========================================================================
+    // Error Dialog Events
+    // Per DIALOGS.md (Error Message Dialog): Critical Alert System
+    // ========================================================================
+    
+    /** Dismiss the critical error dialog */
+    data object DismissError : CheckoutEvent
 }

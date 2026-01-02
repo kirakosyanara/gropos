@@ -239,6 +239,51 @@ class CheckoutViewModel(
     }
     
     // ========================================================================
+    // Error Dialog - Critical Alert System
+    // Per DIALOGS.md (Error Message Dialog):
+    // Use for CRITICAL errors that STOP THE FLOW: Payments, Hardware, Legal
+    // Non-critical errors (Product Not Found) should use Snackbar
+    // ========================================================================
+    
+    /**
+     * Shows a critical error dialog.
+     * 
+     * Per DIALOGS.md: Error dialogs are for flow-stopping errors like:
+     * - Payment Declined
+     * - Printer Error
+     * - Hardware Failure
+     * - Age Verification Failed
+     * 
+     * Do NOT use for minor errors - use Snackbar via lastScanEvent instead.
+     * 
+     * @param title Dialog title (displayed in red header)
+     * @param message Error message body text
+     * @param actionLabel Custom action button label (default: "Dismiss")
+     */
+    fun showCriticalError(
+        title: String,
+        message: String,
+        actionLabel: String = "Dismiss"
+    ) {
+        _state.value = _state.value.copy(
+            errorDialog = com.unisight.gropos.core.components.dialogs.ErrorDialogState(
+                title = title,
+                message = message,
+                actionLabel = actionLabel
+            )
+        )
+    }
+    
+    /**
+     * Dismisses the critical error dialog.
+     * 
+     * Called when user clicks the dismiss button or closes the dialog.
+     */
+    fun dismissError() {
+        _state.value = _state.value.copy(errorDialog = null)
+    }
+    
+    // ========================================================================
     // Modification Mode
     // Per SCREEN_LAYOUTS.md: When a line item is selected, the right panel
     // transforms to show modification options.
