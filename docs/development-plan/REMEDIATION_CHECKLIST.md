@@ -214,7 +214,7 @@
 | DangerButton | ✅ Match | Red danger buttons |
 | BackButton | ⚠️ Partial | Need: Consistent back navigation component |
 | RequestStatusBox | ✅ Match | Orange status indicator |
-| Error Dialog | ⚠️ Partial | Current: Snackbar. Need: Full-screen error dialog per spec |
+| Error Dialog | ✅ Match | `ErrorDialog.kt` in `core/components/dialogs/` with red header, danger icon, z-index:1000 (Jan 2026) |
 | Age Verification Dialog | ✅ Match | `AgeVerificationDialog.kt` with DOB input, dynamic age calc, Manager Override (Jan 2026) |
 | Manager Approval Panel | ✅ Match | `ManagerApprovalDialog` in `core/components/dialogs/` (Jan 2026) |
 | Loading Overlay | ✅ Match | Full-screen loading indicator |
@@ -273,7 +273,7 @@
 1. ✅ Advertisement Overlay (Jan 2026) - `IdleDetector.kt` + `AdOverlay.kt`
 2. ✅ NFC Token Login (Jan 2026) - `NfcScanner` interface + `SimulatedNfcScanner` + `ScanBadgeDialog`
 3. ✅ Real-time Clock Display (Jan 2026) - `RealTimeClock.kt` component in Checkout header
-4. ⚠️ Full Error Dialog (vs Snackbar)
+4. ✅ Full Error Dialogs (Jan 2026) - `ErrorDialog.kt` with red header, `showCriticalError()` method, z-index:1000
 
 ---
 
@@ -289,12 +289,12 @@
 | Returns Processing | 8 | 2 | 3 |
 | Till & Cash Operations | 4 | 1 | 5 |
 | Device Registration | 6 | 2 | 2 |
-| UI/UX Components | 9 | 2 | 3 |
+| UI/UX Components | 10 | 1 | 3 |
 | Data Layer | 3 | 1 | 6 |
-| **TOTAL** | **55** | **21** | **67** |
+| **TOTAL** | **56** | **20** | **67** |
 
 ---
 
-*Last Updated: January 2, 2026 (NFC Token Login Complete)*
-*Next Review: P3 Phase Complete - Full Error Dialog Pending*
+*Last Updated: January 2, 2026 (P3 Phase Complete)*
+*Next Review: Post-P3 - API Integration & Hardware Drivers*
 
