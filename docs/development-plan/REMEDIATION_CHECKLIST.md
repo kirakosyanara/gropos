@@ -130,7 +130,7 @@
 |-------------------|--------|-------------------|
 | Order Items Display | ✅ Match | Shows cart items in real-time |
 | Totals Panel | ✅ Match | Shows subtotal, tax, total |
-| Item Ordering (FIFO) | ⚠️ Partial | Current: Same as cashier. Need: Newest at BOTTOM (opposite of cashier) |
+| Item Ordering (FIFO) | ✅ Match | Cashier: Newest at TOP via `derivedStateOf { asReversed() }` (Jan 2026); Customer: FIFO (unchanged per spec) |
 | SNAP Eligible Display | ⚠️ Partial | Need: Add to customer display totals panel |
 | Customer Order Cell | ⚠️ Partial | Need: Full layout with image, qty, CRV, tax indicator |
 | Removed Item Strikethrough | ❌ Missing | Show voided items in red with strikethrough |
@@ -218,7 +218,7 @@
 | Age Verification Dialog | ✅ Match | `AgeVerificationDialog.kt` with DOB input, dynamic age calc, Manager Override (Jan 2026) |
 | Manager Approval Panel | ✅ Match | `ManagerApprovalDialog` in `core/components/dialogs/` (Jan 2026) |
 | Loading Overlay | ✅ Match | Full-screen loading indicator |
-| Time Display | ❌ Missing | Real-time clock in login/lock screens |
+| Time Display | ✅ Match | `RealTimeClock.kt` in `core/components/` - updates every second via LaunchedEffect (Jan 2026) |
 | Station Name Display | ❌ Missing | Show station identifier in headers |
 
 ---
@@ -264,7 +264,7 @@
 
 1. ✅ Hidden Settings Menu (Jan 2026)
 2. ⚠️ Device Registration Flow (Jan 2026) - UI complete, persistence in-memory (P3: persistent storage)
-3. ❌ Customer Display Ordering Fix
+3. ✅ Customer Display Ordering Fix (Jan 2026) - Cashier screen shows newest at TOP via `derivedStateOf { asReversed() }`
 4. ✅ Age Verification Dialog (Jan 2026)
 5. ✅ Vendor Payout Screen (Jan 2026)
 
@@ -272,7 +272,7 @@
 
 1. ❌ Advertisement Overlay
 2. ❌ NFC Token Login
-3. ❌ Real-time Clock Display
+3. ✅ Real-time Clock Display (Jan 2026) - `RealTimeClock.kt` component in Checkout header
 4. ⚠️ Full Error Dialog (vs Snackbar)
 
 ---
@@ -285,16 +285,16 @@
 | Roles & Permissions | 0 | 1 | 12 |
 | Payment Processing | 9 | 2 | 6 |
 | Checkout & Transaction | 11 | 7 | 7 |
-| Customer Display | 2 | 3 | 5 |
+| Customer Display | 3 | 2 | 5 |
 | Returns Processing | 8 | 2 | 3 |
 | Till & Cash Operations | 4 | 1 | 5 |
 | Device Registration | 6 | 2 | 2 |
-| UI/UX Components | 8 | 2 | 4 |
+| UI/UX Components | 9 | 2 | 3 |
 | Data Layer | 3 | 1 | 6 |
-| **TOTAL** | **51** | **22** | **70** |
+| **TOTAL** | **53** | **21** | **69** |
 
 ---
 
-*Last Updated: January 2, 2026 (Vendor Payout Complete)*
-*Next Review: After P0 items complete*
+*Last Updated: January 2, 2026 (Real-time Clock Display Complete)*
+*Next Review: P3 Phase In Progress*
 
