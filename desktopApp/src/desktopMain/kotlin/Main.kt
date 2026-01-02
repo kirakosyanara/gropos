@@ -11,7 +11,9 @@ import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import com.unisight.gropos.App
+import com.unisight.gropos.core.database.seeder.DebugDataSeeder
 import com.unisight.gropos.core.di.appModules
+import com.unisight.gropos.core.di.databaseModule
 import com.unisight.gropos.core.theme.GroPOSTheme
 import com.unisight.gropos.core.util.CurrencyFormatter
 import com.unisight.gropos.features.checkout.domain.repository.CartRepository
@@ -184,19 +186,40 @@ fun main() = application {
 // ============================================================================
 
 /**
- * Initializes Koin dependency injection.
- * Checks if Koin is already started to prevent crashes during development hot reload.
+ * Initializes Koin dependency injection with database support.
+ * 
+ * Per DATABASE_SCHEMA.md: CouchbaseLite replaces in-memory FakeProductRepository.
+ * 
+ * Initialization Order:
+ * 1. Start Koin with databaseModule (provides DatabaseProvider, CouchbaseProductRepository)
+ * 2. Start Koin with appModules (provides all other dependencies)
+ * 3. Run DebugDataSeeder.seedIfEmpty() to populate database on first launch
  * 
  * Key DI Singletons for Multi-Window:
+ * - DatabaseProvider: CouchbaseLite database instance
  * - CartRepository: Single source of truth for cart state
+ * - ProductRepository: CouchbaseProductRepository (replaces Fake)
  * - ScannerRepository: Single source for scanner events
  * - CurrencyFormatter: Shared formatter
  */
 private fun initKoin() {
     try {
         startKoin {
+            // Database module FIRST (provides ProductRepository)
+            modules(databaseModule)
+            // Then app modules (consume ProductRepository)
             modules(appModules())
         }
+        
+        // Seed database with initial products if empty
+        // Per ARCHITECTURE_BLUEPRINT.md: Offline-first requires local data immediately
+        try {
+            val seeder: DebugDataSeeder = GlobalContext.get().get()
+            seeder.seedIfEmpty()
+        } catch (e: Exception) {
+            println("Warning: Could not seed database - ${e.message}")
+        }
+        
     } catch (e: IllegalStateException) {
         // Koin already started (happens during hot reload in development)
         // This is expected behavior, ignore

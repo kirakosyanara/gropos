@@ -3,7 +3,7 @@ package com.unisight.gropos.core.di
 import com.unisight.gropos.core.util.CurrencyFormatter
 import com.unisight.gropos.core.util.UsdCurrencyFormatter
 import com.unisight.gropos.features.checkout.data.CartRepositoryImpl
-import com.unisight.gropos.features.checkout.data.FakeProductRepository
+// FakeProductRepository replaced by CouchbaseProductRepository in platform-specific DatabaseModule
 import com.unisight.gropos.features.checkout.data.FakeScannerRepository
 import com.unisight.gropos.features.checkout.domain.repository.CartRepository
 import com.unisight.gropos.features.checkout.domain.repository.ProductRepository
@@ -55,11 +55,8 @@ val checkoutModule: Module = module {
      */
     single<ScannerRepository> { FakeScannerRepository() }
     
-    /**
-     * Fake product repository for development.
-     * TODO: Replace with CouchbaseLiteProductRepository.
-     */
-    single<ProductRepository> { FakeProductRepository() }
+    // ProductRepository is now provided by platform-specific DatabaseModule
+    // (CouchbaseProductRepository on Desktop/Android)
     
     /**
      * Cart repository - SINGLETON.
