@@ -20,7 +20,11 @@ This release marks the feature-complete alpha milestone for GroPOS. All core POS
 
 ---
 
-## [Unreleased]
+## [v1.0.0-simulator] - 2026-01-02 - Milestone 1: Simulator Edition
+
+**🚀 Milestone 1: Simulator Edition - Feature Complete (Local Mode)**
+
+This release represents the complete POS simulator with all P0 (Critical), P2 (Important), and P3 (Nice-to-Have) features implemented for local/offline operation.
 
 ### Added
 - **Full Error Dialogs - Critical Alert System (P3 #4)**: Flow-stopping error notifications
