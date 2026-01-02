@@ -82,15 +82,18 @@ Created new folders within development-plan:
 | `lottery/API.md` | ✅ Complete | Backend API specification |
 | `lottery/COMPLIANCE.md` | ✅ Complete | Age verification, W-2G, IRS |
 
-### Phase 6: P1 Features (COMPLETE - 5 files)
+### Phase 6: P1 Features (COMPLETE - 8 files)
 
 | File | Status | Description |
 |------|--------|-------------|
 | `features/PAYMENT_PROCESSING.md` | ✅ Complete | Order-independent payments, SNAP allocation |
 | `features/RETURNS.md` | ✅ Complete | Return flow, refund methods |
 | `features/AUTHENTICATION.md` | ✅ Complete | Login, lock, token refresh |
+| `features/DEVICE_REGISTRATION.md` | ✅ Complete | QR code registration, API key provisioning |
 | `features/TRANSACTION_FLOW.md` | ✅ Complete | Full transaction lifecycle |
 | `features/PRODUCT_LOOKUP.md` | ✅ Complete | Barcode scanning, PLU, quick lookup categories |
+| `features/CASHIER_OPERATIONS.md` | ✅ Complete | Session lifecycle, login/logout, breaks |
+| `features/ROLES_AND_PERMISSIONS.md` | ✅ Complete | RBAC, permission strings, manager approval |
 
 ### Phase 7: Architecture (COMPLETE - 5 files)
 
@@ -108,7 +111,7 @@ Created new folders within development-plan:
 |------|--------|-------------|
 | `data/DATA_MODELS.md` | ✅ Complete | All Kotlin data classes |
 | `data/BARCODE_FORMATS.md` | ✅ Complete | UPC, embedded, internal formats |
-| `data/SYNC_MECHANISM.md` | ✅ Complete | Heartbeat, delta sync |
+| `data/SYNC_MECHANISM.md` | ✅ Complete | Complete heartbeat service, temporal loading, pending updates |
 | `data/README.md` | ✅ Complete | Data layer overview |
 
 ### Phase 9: Hardware (COMPLETE - 2 files)
@@ -155,13 +158,16 @@ All completed files include:
 | Payment processing | ✅ Yes | `features/PAYMENT_PROCESSING.md` |
 | Returns processing | ✅ Yes | `features/RETURNS.md` |
 | Authentication | ✅ Yes | `features/AUTHENTICATION.md` |
+| Device registration | ✅ Yes | `features/DEVICE_REGISTRATION.md` |
+| Cashier operations | ✅ Yes | `features/CASHIER_OPERATIONS.md` |
+| Roles & permissions | ✅ Yes | `features/ROLES_AND_PERMISSIONS.md` |
 | Data models | ✅ Yes | `data/DATA_MODELS.md` |
 | All calculations | ✅ Yes | `features/advanced-calculations/*` |
 | Lottery module | ✅ Yes | `features/lottery/*` |
 | UI screens | ✅ Yes | `ui-ux/SCREEN_LAYOUTS.md` |
 | UI components | ✅ Yes | `ui-ux/COMPONENTS.md` |
 | Database schema | ✅ Yes | `reference/DATABASE_SCHEMA.md` |
-| Localization | ✅ Yes | `reference/LOCALIZATION_STRINGS.md` |
+| Localization (i18n) | ✅ Yes | `reference/LOCALIZATION_STRINGS.md` (12 languages) |
 | Desktop hardware | ✅ Yes | `hardware/DESKTOP_HARDWARE.md` |
 | Android hardware | ✅ Yes | `hardware/ANDROID_HARDWARE_GUIDE.md` |
 | API integration | ✅ Yes | `architecture/API_INTEGRATION.md` |
@@ -178,7 +184,7 @@ All completed files include:
 
 | Category | Count |
 |----------|-------|
-| Features | 6 |
+| Features | 8 |
 | Advanced Calculations | 16 |
 | Lottery | 8 |
 | Architecture | 5 |
@@ -202,6 +208,20 @@ All completed files include:
 5. ✅ Consolidated into self-contained files
 
 **A developer can now build the complete GroPOS application using only the development-plan folder.**
+
+### Recent Updates (January 2026)
+
+| Document | Enhancement |
+|----------|-------------|
+| `features/CASHIER_OPERATIONS.md` | **V2.0 Major Enhancement**: Complete station claiming, cashier list fetching (API), till assignment (scan + select), pre-assigned employee detection, inactivity timer, lock/unlock states, release till vs end of shift, full state machine diagram, Kotlin implementation |
+| `ui-ux/SCREEN_LAYOUTS.md` | Complete Login Screen documentation with all states |
+| `ui-ux/SCREEN_LAYOUTS.md` | Complete Lock Screen documentation |
+| `ui-ux/SCREEN_LAYOUTS.md` | New Hidden Settings Menu (Administration Settings) section |
+| `ui-ux/DIALOGS.md` | Till Selection Dialog, enhanced Logout Dialog |
+| `ui-ux/COMPONENTS.md` | TenKey modes usage matrix |
+| `reference/LOCALIZATION_STRINGS.md` | Complete i18n with 12 languages (EN, AR, ES, FA, FR, HI, HY, KO, RU, TL, VI, ZH) |
+| `features/ROLES_AND_PERMISSIONS.md` | Complete RBAC, permission strings, approval flows |
+| `ui-ux/SCREEN_LAYOUTS.md` | Enhanced: Order list display ordering, item modification mode |
 
 ### Remaining (Optional) Enhancements
 

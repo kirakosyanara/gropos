@@ -16,7 +16,7 @@ This folder contains documentation for the GroPOS data layer, including data mod
 |----------|-------------|----------|
 | [DATA_MODELS.md](./DATA_MODELS.md) | All ViewModels and entity definitions | P2 |
 | [BARCODE_FORMATS.md](./BARCODE_FORMATS.md) | UPC, PLU, embedded price/quantity parsing | P2 |
-| [SYNC_MECHANISM.md](./SYNC_MECHANISM.md) | Offline-first sync with backend | P2 |
+| [SYNC_MECHANISM.md](./SYNC_MECHANISM.md) | **Complete heartbeat service**, temporal loading, pending updates, offline sync | P0 |
 
 ---
 

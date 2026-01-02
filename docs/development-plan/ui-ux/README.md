@@ -6,12 +6,18 @@
 
 GroPOS uses Kotlin with Compose Multiplatform for declarative UI. The application follows the MVVM (Model-View-ViewModel) pattern with Koin dependency injection.
 
+This documentation provides a **one-to-one mapping** from the original JavaFX implementation to Kotlin Compose, ensuring precise recreation of all screens.
+
+## 📌 Master Index
+
+**Start Here:** [INDEX.md](./INDEX.md) - Complete inventory of all screens, dialogs, and components with JavaFX → Compose mapping.
+
 ## Documentation Index
 
 ### Design System
 - [UI Design System](./UI_DESIGN_SYSTEM.md) - Complete design system reference
-  - Color palette
-  - Typography
+  - Color palette (CSS → Compose mapping)
+  - Typography (CSS → TextStyle mapping)
   - Spacing system
   - Button styles
   - Form elements
@@ -24,21 +30,34 @@ GroPOS uses Kotlin with Compose Multiplatform for declarative UI. The applicatio
   - Login Screen
   - Home Screen (Transaction)
   - Payment Screen
-  - Customer Screen
   - Lock Screen
   - Functions Panel
-  - Dialogs and Modals
   - Reports
+
+- [Customer Screen](./CUSTOMER_SCREEN.md) - Secondary customer display (NEW)
+  - Landscape layout (16:9)
+  - Portrait layout (9:16)
+  - Unified/Adaptive layout
+  - Advertisement overlays
+
+### Dialogs & Modals
+- [Dialogs](./DIALOGS.md) - Complete dialog specifications (NEW)
+  - Transaction dialogs (Hold, Recall, Discount)
+  - Product dialogs (Lookup, Details, Price Check)
+  - Payment dialogs (Change, EBT Balance)
+  - Return dialogs
+  - Authentication dialogs (Manager Approval, Age Verification)
+  - Till dialogs (Add Cash, Vendor Payout)
+  - Message dialogs (Error, Info, Warnings)
 
 ### Components
 - [Components Reference](./COMPONENTS.md) - Custom Compose components
-  - Ten-Key Component
+  - Ten-Key Component (all variants)
   - Order List Cell
   - Lookup Grid
   - Manager Approval Controller
   - Employee Info
-  - Dialog System
-  - All dialog components
+  - All list item components
 
 ### User Interaction
 - [Keyboard Shortcuts](./KEYBOARD_SHORTCUTS.md) - Keyboard and function key reference

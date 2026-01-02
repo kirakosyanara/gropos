@@ -102,7 +102,7 @@ docs/development-plan/
 │
 ├── 📚 reference/                      # IMPLEMENTATION SPECS
 │   ├── DATABASE_SCHEMA.md             # CouchbaseLite structure
-│   ├── LOCALIZATION_STRINGS.md        # All UI text (i18n)
+│   ├── LOCALIZATION_STRINGS.md        # Multi-language i18n (EN/ES/KO/VI/ZH)
 │   └── TEST_SCENARIOS.md              # 25 test cases
 │
 └── ✅ analysis/                       
