@@ -1,5 +1,6 @@
 package com.unisight.gropos.features.auth.presentation
 
+import com.unisight.gropos.core.AppConstants
 import com.unisight.gropos.features.auth.domain.model.AuthUser
 import com.unisight.gropos.features.cashier.domain.model.Employee
 import com.unisight.gropos.features.cashier.domain.model.Till
@@ -19,7 +20,7 @@ data class LoginUiState(
     // Station/branding info
     val stationName: String = "Register 1",
     val currentTime: String = "",
-    val version: String = "v1.0.0",
+    val version: String = AppConstants.APP_VERSION,
     
     // Employee selection
     val employees: List<EmployeeUiModel> = emptyList(),

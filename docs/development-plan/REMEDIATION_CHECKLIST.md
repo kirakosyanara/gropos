@@ -192,10 +192,10 @@
 | QR Code Generation | ❌ Missing | Generate activation QR code |
 | Activation Code Display | ❌ Missing | Show 8-char manual activation code |
 | Device API Key Storage | ❌ Missing | Store API key after registration |
-| Hidden Settings Menu | ❌ Missing | Create `AdminSettingsDialog` triggered by copyright click |
-| Environment Selection | ❌ Missing | Production/Staging/Development toggle |
-| Database Stats View | ❌ Missing | Show collection record counts |
-| Clear Database Action | ❌ Missing | Wipe and re-download data |
+| Hidden Settings Menu | ✅ Match | `AdminSettingsDialog.kt` + `SecretTriggerFooter` (5 clicks) in `LoginContent.kt` (Jan 2026) |
+| Environment Selection | ✅ Match | Production/Staging/Development radio buttons in `AdminSettingsDialog` (Jan 2026) |
+| Database Stats View | ✅ Match | Collection record counts table in Database tab (Jan 2026) |
+| Clear Database Action | ✅ Match | Wipe button with confirmation dialog per governance (Jan 2026) |
 | Heartbeat Section | ❌ Missing | Show last sync time, pending updates |
 | Hardware Settings | ❌ Missing | COM port configuration for scanner/scale |
 
@@ -262,7 +262,7 @@
 
 ### P2 - Medium Priority (Enhanced Features)
 
-1. ❌ Hidden Settings Menu
+1. ✅ Hidden Settings Menu (Jan 2026)
 2. ❌ Device Registration Flow
 3. ❌ Customer Display Ordering Fix
 4. ❌ Age Verification Dialog
@@ -288,10 +288,10 @@
 | Customer Display | 2 | 3 | 5 |
 | Returns Processing | 8 | 2 | 3 |
 | Till & Cash Operations | 2 | 1 | 7 |
-| Device Registration | 0 | 0 | 10 |
+| Device Registration | 4 | 0 | 6 |
 | UI/UX Components | 7 | 2 | 5 |
 | Data Layer | 3 | 1 | 6 |
-| **TOTAL** | **42** | **19** | **82** |
+| **TOTAL** | **46** | **19** | **78** |
 
 ---
 

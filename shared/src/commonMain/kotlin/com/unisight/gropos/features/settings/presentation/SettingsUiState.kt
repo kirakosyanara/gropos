@@ -1,5 +1,7 @@
 package com.unisight.gropos.features.settings.presentation
 
+import com.unisight.gropos.core.AppConstants
+
 /**
  * UI State for the Admin Settings Dialog.
  * 
@@ -12,7 +14,7 @@ data class SettingsUiState(
     val selectedTab: AdminTab = AdminTab.DEVICE_INFO,
     
     // Device Info
-    val appVersion: String = "1.0.0",
+    val appVersion: String = AppConstants.APP_VERSION,
     val deviceId: String = "",  // GUID from registration
     val ipAddress: String = "Unknown",
     val branchName: String = "",

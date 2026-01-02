@@ -43,6 +43,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.unisight.gropos.core.AppConstants
 import com.unisight.gropos.core.components.OutlineButton
 import com.unisight.gropos.core.components.SuccessButton
 import com.unisight.gropos.core.components.TenKey
@@ -741,7 +742,7 @@ private fun SecretTriggerFooter(
         
         // Copyright text with secret trigger
         Text(
-            text = "$version • © Unisight BIT 2024",
+            text = "$version • ${AppConstants.COPYRIGHT_NOTICE}",
             style = MaterialTheme.typography.bodySmall,
             color = GroPOSColors.White.copy(alpha = 0.7f),
             modifier = Modifier

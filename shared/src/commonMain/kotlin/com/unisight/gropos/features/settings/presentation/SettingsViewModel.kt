@@ -2,6 +2,7 @@ package com.unisight.gropos.features.settings.presentation
 
 import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
+import com.unisight.gropos.core.AppConstants
 import com.unisight.gropos.core.database.DatabaseProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -63,7 +64,7 @@ class SettingsViewModel(
         
         _state.update { 
             it.copy(
-                appVersion = "1.0.0-alpha",
+                appVersion = AppConstants.APP_VERSION,
                 deviceId = deviceId,
                 ipAddress = getLocalIpAddress(),
                 branchName = "Development Branch",
