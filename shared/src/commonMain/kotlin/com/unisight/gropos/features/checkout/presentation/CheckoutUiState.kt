@@ -1,7 +1,5 @@
 package com.unisight.gropos.features.checkout.presentation
 
-import com.unisight.gropos.features.checkout.domain.model.Cart
-import com.unisight.gropos.features.checkout.domain.model.CartItem
 import com.unisight.gropos.features.checkout.presentation.components.ProductLookupState
 
 /**

@@ -106,11 +106,11 @@
 | Barcode Input Field | ✅ Match | Manual barcode entry works |
 | Product Lookup Dialog | ✅ Match | Category and search filtering implemented |
 | Functions Grid | ✅ Match | Lookup, Recall, Functions buttons present |
-| **Modification Mode** | ❌ Missing | Implement right panel transformation when item selected |
-| Quantity Modification | ❌ Missing | Enter new quantity for selected line item |
-| Line Item Discount | ❌ Missing | Apply percentage discount to selected item |
-| Price Change/Override | ❌ Missing | Enter new unit price for selected item |
-| Remove Item (Void Line) | ❌ Missing | Mark item as `isRemoved = true` with strikethrough |
+| **Modification Mode** | ✅ Match | Panel swap implemented when line item clicked (Jan 2026) |
+| Quantity Modification | ✅ Match | TenKey QUANTITY mode with `CartRepository.updateQuantity()` (Jan 2026) |
+| Line Item Discount | ⚠️ Partial | UI exists (DISCOUNT mode), but requires Manager Approval (not implemented) |
+| Price Change/Override | ⚠️ Partial | UI exists (PRICE mode), but requires floor price check (not implemented) |
+| Remove Item (Void Line) | ⚠️ Partial | `CartRepository.voidItem()` works, but items hidden instead of strikethrough |
 | More Information Dialog | ❌ Missing | Show full product details popup |
 | Info Bar - Customer Card | ❌ Missing | Implement customer avatar, name, loyalty search |
 | Info Bar - Weight Display | ❌ Missing | Show current scale weight |
@@ -248,7 +248,7 @@
 
 1. ❌ Lock Screen + Inactivity Timer
 2. ❌ Manager Approval Flow (for discounts, returns)
-3. ❌ Modification Mode (change qty, discount, void line)
+3. ⚠️ Modification Mode (change qty ✅, discount ⚠️, void line ⚠️)
 4. ❌ Employee List + Till Assignment
 5. ❌ Return Item Screen
 
@@ -284,14 +284,14 @@
 | Auth & Session | 0 | 3 | 18 |
 | Roles & Permissions | 0 | 1 | 12 |
 | Payment Processing | 2 | 7 | 8 |
-| Checkout & Transaction | 7 | 4 | 14 |
+| Checkout & Transaction | 9 | 7 | 9 |
 | Customer Display | 2 | 3 | 5 |
 | Returns Processing | 0 | 0 | 13 |
 | Till & Cash Operations | 0 | 1 | 9 |
 | Device Registration | 0 | 0 | 10 |
 | UI/UX Components | 7 | 2 | 5 |
 | Data Layer | 2 | 1 | 7 |
-| **TOTAL** | **20** | **22** | **101** |
+| **TOTAL** | **22** | **25** | **96** |
 
 ---
 
