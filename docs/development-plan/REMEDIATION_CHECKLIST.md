@@ -171,8 +171,8 @@
 |-------------------|--------|-------------------|
 | Cash Pickup Screen | ✅ Match | `CashPickupDialog.kt` with TenKey amount entry, drawer balance display (Jan 2026) |
 | Cash Pickup ViewModel | ✅ Match | `CheckoutViewModel.onCashPickupConfirm()` with validation + manager approval (Jan 2026) |
-| Vendor Payout Screen | ❌ Missing | Create `VendorPayoutScreen` with vendor selection |
-| Vendor List API | ❌ Missing | Fetch vendors from API |
+| Vendor Payout Screen | ✅ Match | `VendorPayoutDialog.kt` with two-step flow (vendor selection → amount input), drawer balance display, signature lines (Jan 2026) |
+| Vendor List API | ✅ Match | `VendorRepository` interface + `FakeVendorRepository` seeded with Coca-Cola, Pepsi, Frito-Lay, Local Bakery (Jan 2026) |
 | Add Cash Dialog | ❌ Missing | Create dialog to add cash to drawer |
 | Open Drawer Function | ❌ Missing | Implement `HardwareManager.printer.openDrawer()` |
 | Price Check Dialog | ❌ Missing | Scan item to see price without adding to cart |
@@ -266,7 +266,7 @@
 2. ⚠️ Device Registration Flow (Jan 2026) - UI complete, persistence in-memory (P3: persistent storage)
 3. ❌ Customer Display Ordering Fix
 4. ✅ Age Verification Dialog (Jan 2026)
-5. ❌ Vendor Payout Screen
+5. ✅ Vendor Payout Screen (Jan 2026)
 
 ### P3 - Low Priority (Polish)
 
@@ -287,14 +287,14 @@
 | Checkout & Transaction | 11 | 7 | 7 |
 | Customer Display | 2 | 3 | 5 |
 | Returns Processing | 8 | 2 | 3 |
-| Till & Cash Operations | 2 | 1 | 7 |
+| Till & Cash Operations | 4 | 1 | 5 |
 | Device Registration | 6 | 2 | 2 |
 | UI/UX Components | 8 | 2 | 4 |
 | Data Layer | 3 | 1 | 6 |
-| **TOTAL** | **49** | **22** | **72** |
+| **TOTAL** | **51** | **22** | **70** |
 
 ---
 
-*Last Updated: January 2, 2026*
+*Last Updated: January 2, 2026 (Vendor Payout Complete)*
 *Next Review: After P0 items complete*
 
