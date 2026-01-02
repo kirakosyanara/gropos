@@ -17,7 +17,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -41,7 +40,6 @@ import com.unisight.gropos.core.components.BackButton
 import com.unisight.gropos.core.components.OutlineButton
 import com.unisight.gropos.core.components.WhiteBox
 import com.unisight.gropos.core.theme.GroPOSColors
-import com.unisight.gropos.core.theme.GroPOSRadius
 import com.unisight.gropos.core.theme.GroPOSSpacing
 import com.unisight.gropos.features.transaction.presentation.TransactionDetailUiModel
 import com.unisight.gropos.features.transaction.presentation.TransactionHistoryUiState
