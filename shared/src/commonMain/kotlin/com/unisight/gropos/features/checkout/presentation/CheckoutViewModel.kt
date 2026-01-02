@@ -15,7 +15,6 @@ import com.unisight.gropos.features.checkout.presentation.components.ProductLook
 import com.unisight.gropos.features.checkout.domain.usecase.ScanResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
-import java.math.RoundingMode
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.launchIn
