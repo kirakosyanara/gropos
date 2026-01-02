@@ -4,11 +4,12 @@ import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
 import com.unisight.gropos.core.util.CurrencyFormatter
 import com.unisight.gropos.features.checkout.domain.model.Cart
-import com.unisight.gropos.features.checkout.domain.model.CartItem
 import com.unisight.gropos.features.checkout.domain.repository.CartRepository
 import com.unisight.gropos.features.payment.domain.model.AppliedPayment
-import com.unisight.gropos.features.payment.domain.model.PaymentStatus
 import com.unisight.gropos.features.payment.domain.model.PaymentType
+import com.unisight.gropos.features.transaction.domain.mapper.toTransaction
+import com.unisight.gropos.features.transaction.domain.model.Transaction
+import com.unisight.gropos.features.transaction.domain.repository.TransactionRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -31,10 +32,14 @@ import java.util.UUID
  * - Supports Cash, Credit, Debit, EBT payments
  * - Handles split tender (multiple payment types)
  * - Tracks SNAP eligible vs non-SNAP totals
+ * 
+ * Per DATABASE_SCHEMA.md:
+ * - Saves completed transactions to LocalTransaction collection
  */
 class PaymentViewModel(
     private val cartRepository: CartRepository,
     private val currencyFormatter: CurrencyFormatter,
+    private val transactionRepository: TransactionRepository,
     private val scope: CoroutineScope? = null
 ) : ScreenModel {
     
@@ -44,6 +49,9 @@ class PaymentViewModel(
     // Internal list of applied payments (for split tender)
     private val appliedPayments = mutableListOf<AppliedPayment>()
     private var totalPaid = BigDecimal.ZERO
+    
+    // Store cart snapshot for transaction creation
+    private var cartSnapshot: Cart? = null
     
     private val effectiveScope: CoroutineScope
         get() = scope ?: screenModelScope
@@ -58,7 +66,10 @@ class PaymentViewModel(
      */
     private fun observeCartChanges() {
         cartRepository.cart
-            .onEach { cart -> updateStateFromCart(cart) }
+            .onEach { cart -> 
+                cartSnapshot = cart
+                updateStateFromCart(cart) 
+            }
             .launchIn(effectiveScope)
     }
     
@@ -211,16 +222,141 @@ class PaymentViewModel(
                 remainingAmount = currencyFormatter.format(newRemainingRaw.coerceAtLeast(BigDecimal.ZERO)),
                 remainingAmountRaw = newRemainingRaw.coerceAtLeast(BigDecimal.ZERO),
                 enteredAmount = "",
-                isComplete = isComplete,
                 showChangeDialog = isComplete && change > BigDecimal.ZERO,
                 changeAmount = currencyFormatter.format(change)
             )
             
-            // Clear cart if complete
+            // Complete transaction if fully paid
             if (isComplete) {
-                cartRepository.clearCart()
+                completeTransaction()
             }
         }
+    }
+    
+    /**
+     * Completes the transaction by:
+     * 1. Converting cart to Transaction
+     * 2. Saving to database
+     * 3. Printing virtual receipt
+     * 4. Clearing cart
+     * 
+     * Per DATABASE_SCHEMA.md: Save to LocalTransaction collection.
+     * Per reliability-stability.mdc: Handle save errors gracefully.
+     */
+    private suspend fun completeTransaction() {
+        val cart = cartSnapshot ?: return
+        
+        // Convert cart to transaction
+        val transaction = cart.toTransaction(
+            appliedPayments = appliedPayments.toList()
+        )
+        
+        // Save transaction to database
+        val saveResult = transactionRepository.saveTransaction(transaction)
+        
+        saveResult.fold(
+            onSuccess = {
+                // Print virtual receipt to console
+                printVirtualReceipt(transaction)
+                
+                // Mark as complete
+                _state.value = _state.value.copy(isComplete = true)
+                
+                // Clear cart
+                cartRepository.clearCart()
+                
+                println("PaymentViewModel: Transaction ${transaction.id} saved successfully")
+            },
+            onFailure = { error ->
+                println("PaymentViewModel: Failed to save transaction - ${error.message}")
+                _state.value = _state.value.copy(
+                    errorMessage = "Failed to save transaction. Please try again.",
+                    isProcessing = false
+                )
+            }
+        )
+    }
+    
+    /**
+     * Prints a virtual receipt to the console.
+     * 
+     * Per requirement: Log the "Receipt" text to the console (simulating a print job).
+     * This simulates what would be sent to a physical receipt printer.
+     */
+    private fun printVirtualReceipt(transaction: Transaction) {
+        val receiptBuilder = StringBuilder()
+        val divider = "=".repeat(40)
+        val thinDivider = "-".repeat(40)
+        
+        receiptBuilder.appendLine()
+        receiptBuilder.appendLine(divider)
+        receiptBuilder.appendLine("         *** VIRTUAL RECEIPT ***")
+        receiptBuilder.appendLine(divider)
+        receiptBuilder.appendLine()
+        receiptBuilder.appendLine("Transaction #: ${transaction.id}")
+        receiptBuilder.appendLine("Date: ${transaction.completedDateTime}")
+        receiptBuilder.appendLine("Station: ${transaction.stationId}")
+        receiptBuilder.appendLine()
+        receiptBuilder.appendLine(thinDivider)
+        receiptBuilder.appendLine("ITEMS:")
+        receiptBuilder.appendLine(thinDivider)
+        
+        transaction.items.forEach { item ->
+            val qty = if (item.quantityUsed.scale() == 0 || item.quantityUsed.remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) == 0) {
+                item.quantityUsed.toInt().toString()
+            } else {
+                item.quantityUsed.setScale(2, RoundingMode.HALF_UP).toString()
+            }
+            val priceStr = currencyFormatter.format(item.priceUsed)
+            val lineTotal = currencyFormatter.format(item.subTotal)
+            val taxFlag = item.taxIndicator
+            
+            receiptBuilder.appendLine("${item.branchProductName}")
+            receiptBuilder.appendLine("  $qty x $priceStr = $lineTotal $taxFlag")
+            
+            if (item.taxTotal > BigDecimal.ZERO) {
+                receiptBuilder.appendLine("    Tax: ${currencyFormatter.format(item.taxTotal)}")
+            }
+            if (item.crvRatePerUnit > BigDecimal.ZERO) {
+                val crvTotal = item.crvRatePerUnit.multiply(item.quantityUsed).setScale(2, RoundingMode.HALF_UP)
+                receiptBuilder.appendLine("    CRV: ${currencyFormatter.format(crvTotal)}")
+            }
+        }
+        
+        receiptBuilder.appendLine()
+        receiptBuilder.appendLine(thinDivider)
+        receiptBuilder.appendLine("TOTALS:")
+        receiptBuilder.appendLine(thinDivider)
+        receiptBuilder.appendLine("Subtotal:       ${currencyFormatter.format(transaction.subTotal)}")
+        
+        if (transaction.discountTotal > BigDecimal.ZERO) {
+            receiptBuilder.appendLine("Discount:      -${currencyFormatter.format(transaction.discountTotal)}")
+        }
+        
+        receiptBuilder.appendLine("Tax:            ${currencyFormatter.format(transaction.taxTotal)}")
+        
+        if (transaction.crvTotal > BigDecimal.ZERO) {
+            receiptBuilder.appendLine("CRV:            ${currencyFormatter.format(transaction.crvTotal)}")
+        }
+        
+        receiptBuilder.appendLine(thinDivider)
+        receiptBuilder.appendLine("GRAND TOTAL:    ${currencyFormatter.format(transaction.grandTotal)}")
+        receiptBuilder.appendLine(thinDivider)
+        
+        receiptBuilder.appendLine()
+        receiptBuilder.appendLine("PAYMENTS:")
+        transaction.payments.forEach { payment ->
+            receiptBuilder.appendLine("  ${payment.paymentMethodName}: ${currencyFormatter.format(payment.value)}")
+        }
+        
+        receiptBuilder.appendLine()
+        receiptBuilder.appendLine(divider)
+        receiptBuilder.appendLine("       Thank you for shopping!")
+        receiptBuilder.appendLine(divider)
+        receiptBuilder.appendLine()
+        
+        // Output to console
+        println(receiptBuilder.toString())
     }
     
     // ========================================================================
@@ -288,4 +424,3 @@ class PaymentViewModel(
         return if (intCount == 1) "1 item" else "$intCount items"
     }
 }
-

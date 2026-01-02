@@ -7,6 +7,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased] - 2026-01-01
 
 ### Added
+- **Transaction Persistence**: Completed transactions are now saved to CouchbaseLite database
+  - Created `Transaction`, `TransactionItem`, `TransactionPayment` domain models (per DATABASE_SCHEMA.md)
+    - Transaction document structure aligns with LocalTransaction collection schema
+    - Supports all monetary fields with BigDecimal precision
+    - Includes items array and payments array per schema
+  - Created `Cart.toTransaction()` mapper function
+    - Converts Cart and AppliedPayments to finalized Transaction
+    - Generates unique UUID for transaction ID and guid
+    - Captures timestamps in ISO-8601 format
+  - Created `TransactionRepository` interface with `saveTransaction()`, `getById()`, `getRecent()`, `getPending()` methods
+  - Created `CouchbaseTransactionRepository` for Desktop and Android
+    - Collection: `LocalTransaction` in `local` scope (per DATABASE_SCHEMA.md)
+    - Creates index on `completedDateTime` for history queries
+    - Full document serialization with items and payments arrays
+    - Error handling: Returns Result.failure instead of crashing
+  - Updated `PaymentViewModel` to save transaction on payment completion
+    - Injects `TransactionRepository` dependency
+    - Converts cart to transaction when balance reaches zero
+    - Only clears cart after successful save
+  - Implemented virtual receipt printer (console output)
+    - Simulates physical receipt printer output
+    - Shows all items, quantities, prices, taxes, CRV
+    - Shows payment methods and change
+    - ASCII-formatted receipt for easy debugging
+  - Updated `DatabaseModule` (Desktop/Android) to provide `CouchbaseTransactionRepository`
+  - Updated `PaymentModule` to inject `TransactionRepository` into `PaymentViewModel`
 - **Offline-First Persistence (CouchbaseLite)**: Replaced in-memory fakes with persistent database
   - Created `expect/actual DatabaseProvider` for multiplatform database initialization
     - Desktop: Uses CouchbaseLite Java SDK, stores in user.dir

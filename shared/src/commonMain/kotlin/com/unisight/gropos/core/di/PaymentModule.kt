@@ -10,6 +10,9 @@ import org.koin.dsl.module
  * Per ARCHITECTURE_BLUEPRINT.md:
  * - PaymentViewModel observes the same CartRepository singleton
  * - Ensures cart totals are synchronized with Checkout screen
+ * 
+ * Per DATABASE_SCHEMA.md:
+ * - TransactionRepository for persisting completed transactions
  */
 val paymentModule: Module = module {
 
@@ -22,7 +25,8 @@ val paymentModule: Module = module {
      * Dependencies:
      * - CartRepository: Shared cart state (singleton)
      * - CurrencyFormatter: For price formatting
+     * - TransactionRepository: For persisting completed transactions
      */
-    factory { PaymentViewModel(get(), get()) }
+    factory { PaymentViewModel(get(), get(), get()) }
 }
 
