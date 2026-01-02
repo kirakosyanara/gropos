@@ -25,7 +25,7 @@
 | Login Screen - Basic PIN Entry | ✅ Match | Multi-digit PIN (up to 8) supported in new state machine flow (Jan 2026) |
 | Login Screen - Employee List | ✅ Match | Implemented via `EmployeeRepository.getEmployees()` with employee grid UI (Jan 2026) |
 | Login Screen - Employee Selection | ✅ Match | `EmployeeCard` with avatar initials, name, role in `LoginContent.kt` (Jan 2026) |
-| Station Claiming Flow | ❌ Missing | Implement `DeviceInfoViewModel`, `BranchDto`, station-employee association |
+| Station Claiming Flow | ⚠️ Partial | `RegistrationScreen` with pairing code; API polling mocked for P2 (Jan 2026) |
 | Till Assignment Dialog | ✅ Match | Created `TillSelectionDialog` with table layout per DIALOGS.md (Jan 2026) |
 | Till Selection/Scan | ⚠️ Partial | Till selection via list implemented; barcode scan pending |
 | Pre-Assigned Employee Detection | ❌ Missing | Check `deviceInfo.employeeId` and auto-select on app start |
@@ -188,11 +188,11 @@
 
 | Feature/Component | Status | Remediation Action |
 |-------------------|--------|-------------------|
-| Registration Screen State | ❌ Missing | Show QR code when device not activated |
-| QR Code Generation | ❌ Missing | Generate activation QR code |
-| Activation Code Display | ❌ Missing | Show 8-char manual activation code |
-| Device API Key Storage | ❌ Missing | Store API key after registration |
-| Hidden Settings Menu | ✅ Match | `AdminSettingsDialog.kt` + `SecretTriggerFooter` (5 clicks) in `LoginContent.kt` (Jan 2026) |
+| Registration Screen State | ✅ Match | `RegistrationScreen.kt` shown on fresh launch when `!isRegistered()` (Jan 2026) |
+| QR Code Generation | ⚠️ Partial | QR placeholder shown; mock `requestQrCode()` in `FakeDeviceRepository` (Jan 2026) |
+| Activation Code Display | ✅ Match | 8-char pairing code `XXXX-XXXX` format in large monospace typography (Jan 2026) |
+| Device API Key Storage | ⚠️ Partial | In-memory storage via `FakeDeviceRepository`; persistent storage TODO for P3 (Jan 2026) |
+| Hidden Settings Menu | ✅ Match | `AdminSettingsDialog.kt` + `SecretTriggerFooter` accessible from both Login AND Registration screens (Jan 2026) |
 | Environment Selection | ✅ Match | Production/Staging/Development radio buttons in `AdminSettingsDialog` (Jan 2026) |
 | Database Stats View | ✅ Match | Collection record counts table in Database tab (Jan 2026) |
 | Clear Database Action | ✅ Match | Wipe button with confirmation dialog per governance (Jan 2026) |
@@ -263,7 +263,7 @@
 ### P2 - Medium Priority (Enhanced Features)
 
 1. ✅ Hidden Settings Menu (Jan 2026)
-2. ❌ Device Registration Flow
+2. ⚠️ Device Registration Flow (Jan 2026) - UI complete, persistence in-memory (P3: persistent storage)
 3. ❌ Customer Display Ordering Fix
 4. ❌ Age Verification Dialog
 5. ❌ Vendor Payout Screen
@@ -281,17 +281,17 @@
 
 | Category | ✅ Match | ⚠️ Partial | ❌ Missing |
 |----------|----------|------------|------------|
-| Auth & Session | 8 | 2 | 11 |
+| Auth & Session | 8 | 3 | 10 |
 | Roles & Permissions | 0 | 1 | 12 |
 | Payment Processing | 9 | 2 | 6 |
 | Checkout & Transaction | 11 | 7 | 7 |
 | Customer Display | 2 | 3 | 5 |
 | Returns Processing | 8 | 2 | 3 |
 | Till & Cash Operations | 2 | 1 | 7 |
-| Device Registration | 4 | 0 | 6 |
+| Device Registration | 6 | 2 | 2 |
 | UI/UX Components | 7 | 2 | 5 |
 | Data Layer | 3 | 1 | 6 |
-| **TOTAL** | **46** | **19** | **78** |
+| **TOTAL** | **48** | **22** | **73** |
 
 ---
 
