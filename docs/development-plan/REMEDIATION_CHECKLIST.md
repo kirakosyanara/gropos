@@ -111,7 +111,7 @@
 | Line Item Discount | ⚠️ Partial | UI exists (DISCOUNT mode), but requires Manager Approval (not implemented) |
 | Price Change/Override | ⚠️ Partial | UI exists (PRICE mode), but requires floor price check (not implemented) |
 | Remove Item (Void Line) | ⚠️ Partial | `CartRepository.voidItem()` works, but items hidden instead of strikethrough |
-| More Information Dialog | ❌ Missing | Show full product details popup |
+| More Information Dialog | ✅ Match | `ProductInfoDialog.kt` shows barcode, prices, tax, SNAP, age (Jan 2026) |
 | Info Bar - Customer Card | ❌ Missing | Implement customer avatar, name, loyalty search |
 | Info Bar - Weight Display | ❌ Missing | Show current scale weight |
 | Info Bar - Quantity Display | ⚠️ Partial | Need: Show preset quantity multiplier |
@@ -133,10 +133,10 @@
 | Item Ordering (FIFO) | ✅ Match | Cashier: Newest at TOP via `derivedStateOf { asReversed() }` (Jan 2026); Customer: FIFO (unchanged per spec) |
 | SNAP Eligible Display | ⚠️ Partial | Need: Add to customer display totals panel |
 | Customer Order Cell | ⚠️ Partial | Need: Full layout with image, qty, CRV, tax indicator |
-| Removed Item Strikethrough | ❌ Missing | Show voided items in red with strikethrough |
+| Removed Item Strikethrough | ✅ Match | `CustomerOrderItem` shows voided items in red with strikethrough (Jan 2026) |
 | Advertisement Overlay | ✅ Match | `AdOverlay.kt` in features/ad/presentation/ with z-index:100, "Tap to Start", pulsing animation (Jan 2026) |
-| Savings Display | ❌ Missing | "Saved $X.XX" in green for discounted items |
-| Store Name Header | ❌ Missing | Show store name in customer display header |
+| Savings Display | ✅ Match | Per-line "Saved $X.XX" in `CustomerOrderItem` (Jan 2026) |
+| Store Name Header | ✅ Match | `CustomerHeader` displays store name prominently (Jan 2026) |
 | Weight Display | ❌ Missing | Show current scale weight |
 
 ---
@@ -284,17 +284,17 @@
 | Auth & Session | 9 | 3 | 9 |
 | Roles & Permissions | 0 | 1 | 12 |
 | Payment Processing | 10 | 2 | 5 |
-| Checkout & Transaction | 12 | 6 | 6 |
-| Customer Display | 4 | 2 | 4 |
+| Checkout & Transaction | 13 | 6 | 5 |
+| Customer Display | 7 | 2 | 1 |
 | Returns Processing | 8 | 2 | 3 |
 | Till & Cash Operations | 9 | 1 | 0 |
 | Device Registration | 6 | 2 | 2 |
 | UI/UX Components | 10 | 1 | 3 |
 | Data Layer | 3 | 1 | 6 |
-| **TOTAL** | **86** | **21** | **33** |
+| **TOTAL** | **90** | **21** | **29** |
 
 ---
 
-*Last Updated: January 2, 2026 (More Missing Features Phase)*
+*Last Updated: January 2, 2026 (Customer Display Enhancements Phase)*
 *Next Review: Post-Merge to main*
 

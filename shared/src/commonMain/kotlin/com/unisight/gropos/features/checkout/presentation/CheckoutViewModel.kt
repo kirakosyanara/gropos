@@ -1958,7 +1958,8 @@ class CheckoutViewModel(
                 currencyFormatter.formatWithSign(cartItem.savingsTotal.negate(), false)
             } else null,
             soldById = cartItem.soldById,
-            rawQuantity = cartItem.quantityUsed.toInt()
+            rawQuantity = cartItem.quantityUsed.toInt(),
+            isVoided = cartItem.isRemoved
         )
     }
     
@@ -2959,5 +2960,35 @@ class CheckoutViewModel(
      */
     fun onClearQuantityPrefix() {
         _state.value = _state.value.copy(quantityPrefix = null)
+    }
+    
+    // ========================================================================
+    // Product Info Dialog
+    // Per REMEDIATION_CHECKLIST: More Information Dialog
+    // ========================================================================
+    
+    /**
+     * Opens the product info dialog for the currently selected item.
+     */
+    fun onOpenProductInfoDialog() {
+        val selectedItem = _state.value.selectedItem ?: return
+        
+        // Find the cart item to get the full product
+        val cartItem = cartRepository.cart.value.findItem(selectedItem.branchProductId) ?: return
+        
+        _state.value = _state.value.copy(
+            showProductInfoDialog = true,
+            productInfoDialogProduct = cartItem.product
+        )
+    }
+    
+    /**
+     * Dismisses the product info dialog.
+     */
+    fun onDismissProductInfoDialog() {
+        _state.value = _state.value.copy(
+            showProductInfoDialog = false,
+            productInfoDialogProduct = null
+        )
     }
 }

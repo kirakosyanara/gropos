@@ -346,6 +346,14 @@ class CheckoutScreen : Screen {
                     CheckoutEvent.ClearQuantityPrefix -> {
                         viewModel.onClearQuantityPrefix()
                     }
+                    
+                    // Product Info Dialog Events
+                    CheckoutEvent.OpenProductInfoDialog -> {
+                        viewModel.onOpenProductInfoDialog()
+                    }
+                    CheckoutEvent.DismissProductInfoDialog -> {
+                        viewModel.onDismissProductInfoDialog()
+                    }
                 }
             }
         )
@@ -689,4 +697,15 @@ sealed interface CheckoutEvent {
     
     /** Clear the quantity prefix */
     data object ClearQuantityPrefix : CheckoutEvent
+    
+    // ========================================================================
+    // Product Info Dialog Events
+    // Per REMEDIATION_CHECKLIST: More Information Dialog
+    // ========================================================================
+    
+    /** Open product info dialog for the selected item */
+    data object OpenProductInfoDialog : CheckoutEvent
+    
+    /** Dismiss the product info dialog */
+    data object DismissProductInfoDialog : CheckoutEvent
 }

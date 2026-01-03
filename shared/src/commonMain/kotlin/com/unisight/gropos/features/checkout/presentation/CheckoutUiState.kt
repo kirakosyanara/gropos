@@ -35,7 +35,8 @@ data class CheckoutItemUiModel(
     val hasSavings: Boolean = false,
     val savingsAmount: String? = null,
     val soldById: String = "Quantity",
-    val rawQuantity: Int = 1
+    val rawQuantity: Int = 1,
+    val isVoided: Boolean = false
 )
 
 /**
@@ -434,7 +435,11 @@ data class CheckoutUiState(
     val showFunctionsPanel: Boolean = false,
     
     // Quantity prefix for multiple scan (per CHECKOUT: QTY Prefix)
-    val quantityPrefix: Int? = null
+    val quantityPrefix: Int? = null,
+    
+    // Product Info Dialog (per REMEDIATION_CHECKLIST: More Information Dialog)
+    val showProductInfoDialog: Boolean = false,
+    val productInfoDialogProduct: com.unisight.gropos.features.checkout.domain.model.Product? = null
 ) {
     /**
      * Whether the screen is in modification mode.

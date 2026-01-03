@@ -266,6 +266,12 @@ private fun CustomerOrderItem(
     item: CheckoutItemUiModel,
     modifier: Modifier = Modifier
 ) {
+    // Per REMEDIATION_CHECKLIST: Show voided items in red with strikethrough
+    val isVoided = item.isVoided
+    val textColor = if (isVoided) GroPOSColors.DangerRed else GroPOSColors.TextPrimary
+    val priceColor = if (isVoided) GroPOSColors.DangerRed else GroPOSColors.PrimaryGreen
+    val qtyBadgeColor = if (isVoided) GroPOSColors.DangerRed else GroPOSColors.PrimaryGreen
+    
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -282,7 +288,7 @@ private fun CustomerOrderItem(
             // Quantity badge
             Surface(
                 shape = RoundedCornerShape(GroPOSRadius.Small),
-                color = GroPOSColors.PrimaryGreen
+                color = qtyBadgeColor
             ) {
                 Text(
                     text = item.quantity,
@@ -293,22 +299,38 @@ private fun CustomerOrderItem(
                 )
             }
             
-            // Product name
+            // Product name and info
             Column {
                 Text(
-                    text = item.productName,
+                    text = if (isVoided) "VOID - ${item.productName}" else item.productName,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Medium,
-                    color = GroPOSColors.TextPrimary
+                    color = textColor,
+                    textDecoration = if (isVoided) androidx.compose.ui.text.style.TextDecoration.LineThrough else null
                 )
                 
-                // SNAP indicator
-                if (item.isSnapEligible) {
-                    Text(
-                        text = "SNAP Eligible",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = GroPOSColors.SnapGreen
-                    )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(GroPOSSpacing.M),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // SNAP indicator
+                    if (item.isSnapEligible && !isVoided) {
+                        Text(
+                            text = "SNAP Eligible",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = GroPOSColors.SnapGreen
+                        )
+                    }
+                    
+                    // Per REMEDIATION_CHECKLIST: "Saved $X.XX" in green for discounted items
+                    if (item.hasSavings && item.savingsAmount != null && !isVoided) {
+                        Text(
+                            text = "Saved ${item.savingsAmount}",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold,
+                            color = GroPOSColors.SavingsRed
+                        )
+                    }
                 }
             }
         }
@@ -318,7 +340,8 @@ private fun CustomerOrderItem(
             text = item.lineTotal,
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
-            color = GroPOSColors.PrimaryGreen
+            color = priceColor,
+            textDecoration = if (isVoided) androidx.compose.ui.text.style.TextDecoration.LineThrough else null
         )
     }
 }

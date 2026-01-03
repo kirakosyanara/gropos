@@ -69,6 +69,7 @@ import com.unisight.gropos.features.checkout.presentation.components.dialogs.Add
 import com.unisight.gropos.features.checkout.presentation.components.dialogs.VendorPayoutDialog
 import com.unisight.gropos.features.checkout.presentation.components.dialogs.EbtBalanceDialog
 import com.unisight.gropos.features.checkout.presentation.components.dialogs.TransactionDiscountDialog
+import com.unisight.gropos.features.checkout.presentation.components.dialogs.ProductInfoDialog
 import com.unisight.gropos.core.components.FunctionAction
 import com.unisight.gropos.core.components.FunctionsPanel
 import com.unisight.gropos.features.checkout.presentation.CheckoutItemUiModel
@@ -449,6 +450,15 @@ fun CheckoutContent(
             onConfirm = { onEvent(CheckoutEvent.TransactionDiscountConfirm) },
             onDismiss = { onEvent(CheckoutEvent.DismissTransactionDiscountDialog) }
         )
+        
+        // Product Info Dialog
+        // Per REMEDIATION_CHECKLIST: More Information Dialog
+        if (state.showProductInfoDialog) {
+            ProductInfoDialog(
+                product = state.productInfoDialogProduct,
+                onDismiss = { onEvent(CheckoutEvent.DismissProductInfoDialog) }
+            )
+        }
         
         // Functions Panel (Full screen overlay)
         // Per FUNCTIONS_MENU.md: Tabbed panel with Recall, Payments, Till functions

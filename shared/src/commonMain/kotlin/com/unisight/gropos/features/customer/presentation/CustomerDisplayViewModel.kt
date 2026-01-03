@@ -68,10 +68,11 @@ class CustomerDisplayViewModel(
      * Maps Cart domain model to CheckoutUiState.
      * 
      * Per Governance: All formatting done here, not in UI.
+     * Per REMEDIATION_CHECKLIST: Show voided items in red with strikethrough
      */
     private fun updateStateFromCart(cart: Cart) {
+        // Include ALL items (including voided) so we can show them with strikethrough
         val items = cart.items
-            .filterNot { it.isRemoved }
             .map { cartItem -> mapToUiModel(cartItem) }
         
         val totals = CheckoutTotalsUiModel(
@@ -94,9 +95,11 @@ class CustomerDisplayViewModel(
     
     /**
      * Maps a CartItem to CheckoutItemUiModel with formatted strings.
+     * 
+     * Per REMEDIATION_CHECKLIST: Include isVoided for strikethrough display.
      */
     private fun mapToUiModel(cartItem: CartItem): CheckoutItemUiModel {
-        val hasSavings = cartItem.savingsTotal > BigDecimal.ZERO
+        val hasSavings = cartItem.savingsTotal > BigDecimal.ZERO && !cartItem.isRemoved
         
         return CheckoutItemUiModel(
             branchProductId = cartItem.branchProductId,
@@ -109,7 +112,10 @@ class CustomerDisplayViewModel(
             hasSavings = hasSavings,
             savingsAmount = if (hasSavings) {
                 currencyFormatter.formatWithSign(cartItem.savingsTotal.negate(), false)
-            } else null
+            } else null,
+            soldById = cartItem.soldById,
+            rawQuantity = cartItem.quantityUsed.toInt(),
+            isVoided = cartItem.isRemoved
         )
     }
     

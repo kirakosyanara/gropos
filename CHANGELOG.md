@@ -7,6 +7,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased] - 2026-01-02
 
 ### Added
+- **Customer Display & UI Enhancements**
+  - **Voided Item Strikethrough** - Show voided items in red with strikethrough
+    - Added `isVoided` property to `CheckoutItemUiModel`
+    - `CustomerOrderItem` displays voided items with red color and strikethrough text
+    - Voided items included in customer display (previously filtered out)
+  - **Savings Display** - "Saved $X.XX" in green for discounted items
+    - Added per-line savings display in `CustomerOrderItem`
+    - Shows when `hasSavings` is true for non-voided items
+  - **Store Name Header** - Already implemented in `CustomerHeader`
+    - Displays store name prominently in customer display header
+  - **More Information Dialog** - Show full product details popup
+    - New `ProductInfoDialog.kt` composable
+    - Displays: Name, barcode, prices, department, tax info, CRV, SNAP eligibility, age restriction
+    - Accessible from modification mode via "More Info" event
+    - `showProductInfoDialog` and `productInfoDialogProduct` states in `CheckoutUiState`
+
 - **Missing Features Implementation (Phase 4 Continuation)**
   - **Price Check Dialog** - Scan item to see price without adding to cart
     - New `PriceCheckDialogState` in `CheckoutUiState`
