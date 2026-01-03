@@ -1880,55 +1880,225 @@ class HeartbeatManager(
 
 ### 12.1 Scenarios That Trigger Re-registration
 
-| Scenario | Trigger | Action |
-|----------|---------|--------|
-| Environment Change | User changes environment (Dev/Staging/Prod) | Delete existing data, restart registration |
-| Database Delete | Admin deletes database via settings | Keep PosSystem, reinitialize other tables |
-| API Key Revocation | Backend revokes device API key | API calls fail with 401, requires new registration |
-| Factory Reset | User performs factory reset | Clear all local data, restart registration |
+| Scenario | Trigger | Action | Data Cleared |
+|----------|---------|--------|--------------|
+| Environment Change | User changes environment (Dev/Staging/Prod) | Clear credentials, restart registration | SecureStorage + Database |
+| Database Delete | Admin deletes database via settings | Keep PosSystem, reinitialize other tables | Database only |
+| API Key Revocation | Backend revokes device API key | API calls fail with 401, requires new registration | SecureStorage |
+| Factory Reset | User performs factory reset | Clear all local data, restart registration | SecureStorage + Database |
+| Manual Unregister | Admin clicks "Unregister Device" in settings | Return to registration screen | SecureStorage + Device info |
 
-### 12.2 Environment Change Implementation
+### 12.2 Unregistration Flow
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                       UNREGISTRATION FLOW                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ┌──────────────────────┐                                                   │
+│  │  Trigger Event       │                                                   │
+│  │  (Env change/Reset)  │                                                   │
+│  └──────────┬───────────┘                                                   │
+│             │                                                               │
+│             ▼                                                               │
+│  ┌──────────────────────────────────────────────────────────────────┐      │
+│  │  Step 1: Clear SecureStorage                                      │      │
+│  │                                                                    │      │
+│  │  secureStorage.clearAll()                                         │      │
+│  │  - Removes: stationId, apiKey, branchId, branchName, environment  │      │
+│  │  - Platform: Java Preferences / EncryptedSharedPreferences        │      │
+│  └──────────────────────────────────────────────────────────────────┘      │
+│             │                                                               │
+│             ▼                                                               │
+│  ┌──────────────────────────────────────────────────────────────────┐      │
+│  │  Step 2: Clear Couchbase Data (if full reset)                    │      │
+│  │                                                                    │      │
+│  │  - Delete Product, Employee, Transaction collections              │      │
+│  │  - Optionally keep PosSystem for device identity                  │      │
+│  └──────────────────────────────────────────────────────────────────┘      │
+│             │                                                               │
+│             ▼                                                               │
+│  ┌──────────────────────────────────────────────────────────────────┐      │
+│  │  Step 3: Clear Token Storage (if employee was logged in)        │      │
+│  │                                                                    │      │
+│  │  tokenStorage.clear()                                             │      │
+│  │  - Removes: accessToken, refreshToken                             │      │
+│  └──────────────────────────────────────────────────────────────────┘      │
+│             │                                                               │
+│             ▼                                                               │
+│  ┌──────────────────────────────────────────────────────────────────┐      │
+│  │  Step 4: Navigate to Registration Screen                         │      │
+│  │                                                                    │      │
+│  │  AppNavigation.resetToRegistration()                              │      │
+│  │  - Device shows QR code for new registration                      │      │
+│  └──────────────────────────────────────────────────────────────────┘      │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 12.3 Implementation
+
+```kotlin
+/**
+ * Unregistration service that clears all device credentials and data.
+ * 
+ * Per DEVICE_REGISTRATION.md Section 12.
+ */
+class UnregistrationService(
+    private val secureStorage: SecureStorage,
+    private val tokenStorage: TokenStorage,
+    private val productRepository: ProductRepository,
+    private val employeeRepository: EmployeeRepository
+) {
+    
+    /**
+     * Unregister device and clear all credentials.
+     * 
+     * @param clearDatabase If true, also clear Couchbase collections
+     * @return Result indicating success or failure
+     */
+    suspend fun unregisterDevice(clearDatabase: Boolean = true): Result<Unit> {
+        return try {
+            withContext(Dispatchers.IO) {
+                // Step 1: Clear secure storage (API key, stationId, branch info)
+                secureStorage.clearAll()
+                println("[Unregistration] SecureStorage cleared")
+                
+                // Step 2: Clear token storage (employee session)
+                tokenStorage.clear()
+                println("[Unregistration] TokenStorage cleared")
+                
+                // Step 3: Optionally clear database
+                if (clearDatabase) {
+                    productRepository.clearAllProducts()
+                    println("[Unregistration] Products cleared")
+                    // Add other repositories as needed
+                }
+                
+                Result.success(Unit)
+            }
+        } catch (e: Exception) {
+            println("[Unregistration] Error: ${e.message}")
+            Result.failure(e)
+        }
+    }
+    
+    /**
+     * Change environment (requires unregistration first).
+     */
+    suspend fun changeEnvironment(newEnvironment: EnvironmentType): Result<Unit> {
+        return try {
+            // Clear existing registration
+            unregisterDevice(clearDatabase = true)
+            
+            // Save new environment
+            secureStorage.saveEnvironment(newEnvironment.name)
+            
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+}
+```
+
+### 12.4 Settings Screen Integration
+
+```kotlin
+@Composable
+fun SettingsScreen(
+    viewModel: SettingsViewModel = koinViewModel(),
+    onUnregistered: () -> Unit  // Navigate back to registration
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        // ... other settings ...
+        
+        // Unregister Device Button
+        Button(
+            onClick = { viewModel.showUnregisterConfirmation() },
+            colors = ButtonDefaults.buttonColors(
+                containerColor = GroPOSColors.DangerRed
+            )
+        ) {
+            Text("Unregister Device")
+        }
+        
+        // Confirmation Dialog
+        if (uiState.showUnregisterConfirmation) {
+            AlertDialog(
+                onDismissRequest = { viewModel.dismissUnregisterConfirmation() },
+                title = { Text("Unregister Device?") },
+                text = { 
+                    Text("This will clear all device credentials and require " +
+                         "a new registration. Are you sure?") 
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            viewModel.unregisterDevice()
+                            onUnregistered()
+                        }
+                    ) {
+                        Text("Unregister")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { viewModel.dismissUnregisterConfirmation() }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+    }
+}
+```
+
+### 12.5 Environment Change Implementation
 
 ```kotlin
 class EnvironmentManager(
-    private val deviceRepository: DeviceRepository,
-    private val dataRepository: DataRepository,
-    private val apiManager: ApiManager,
+    private val secureStorage: SecureStorage,
+    private val unregistrationService: UnregistrationService,
     private val database: Database
 ) {
     
-    suspend fun changeEnvironment(newEnvironment: Environment) {
+    suspend fun changeEnvironment(newEnvironment: EnvironmentType) {
         withContext(Dispatchers.IO) {
-            // Clear API credentials
-            apiManager.clearApiKey()
+            // Step 1: Clear all credentials via UnregistrationService
+            unregistrationService.unregisterDevice(clearDatabase = true)
             
-            // Delete all collections except PosSystem
+            // Step 2: Delete all Couchbase collections except PosSystem
             val collections = database.getCollections("pos")
             collections.forEach { collection ->
-                if (collection.name != PosSystemEntity.COLLECTION_NAME) {
+                if (collection.name != "PosSystem") {
                     database.deleteCollection(collection.name, "pos")
                 }
             }
             
-            // Update environment configuration
-            BuildConfig.setEnvironment(newEnvironment)
+            // Step 3: Save new environment
+            secureStorage.saveEnvironment(newEnvironment.name)
             
-            // Reinitialize data tables
-            dataRepository.initializeTables()
+            // Step 4: App will navigate to Registration on next check
         }
     }
     
     suspend fun factoryReset() {
         withContext(Dispatchers.IO) {
-            // Clear everything including registration
-            apiManager.clearApiKey()
+            // Clear EVERYTHING including PosSystem
+            unregistrationService.unregisterDevice(clearDatabase = true)
             
+            // Delete ALL collections
             val collections = database.getCollections("pos")
             collections.forEach { collection ->
                 database.deleteCollection(collection.name, "pos")
             }
             
-            dataRepository.initializeTables()
+            // Also clear local collections
+            database.getCollections("local").forEach { collection ->
+                database.deleteCollection(collection.name, "local")
+            }
         }
     }
 }
@@ -2201,17 +2371,151 @@ fun ErrorDialog(
 
 | Aspect | Implementation |
 |--------|----------------|
-| **Storage** | Couchbase Lite database (encrypted at rest on device) |
+| **Storage** | Platform-specific SecureStorage (Java Preferences/EncryptedSharedPreferences) |
 | **Transmission** | Always HTTPS with TLS 1.2+ |
 | **Header Only** | Sent as `x-api-key` header, never in URL |
 | **No Logging** | API key is never logged or displayed in UI |
 | **Environment Isolation** | Separate keys per environment (Dev/Staging/Prod) |
+| **Persistence** | Survives app restarts; cleared on unregistration |
 
-### 14.2 Encrypted Storage
+### 14.2 Secure Storage Architecture
+
+The `SecureStorage` interface provides platform-specific credential persistence:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      SECURE STORAGE ARCHITECTURE                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │                    SecureStorage Interface                           │    │
+│  │  (shared/src/commonMain/.../core/storage/SecureStorage.kt)          │    │
+│  ├─────────────────────────────────────────────────────────────────────┤    │
+│  │  + saveStationId(stationId: String)                                 │    │
+│  │  + getStationId(): String?                                          │    │
+│  │  + saveApiKey(apiKey: String)                                       │    │
+│  │  + getApiKey(): String?                                             │    │
+│  │  + saveBranchInfo(branchId: Int, branchName: String)               │    │
+│  │  + getBranchId(): Int?                                              │    │
+│  │  + getBranchName(): String?                                         │    │
+│  │  + saveEnvironment(environment: String)                             │    │
+│  │  + getEnvironment(): String?                                        │    │
+│  │  + clearAll()                                                       │    │
+│  │  + isRegistered(): Boolean                                          │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                              │                                               │
+│              ┌───────────────┴───────────────┐                              │
+│              ▼                               ▼                              │
+│  ┌─────────────────────────┐    ┌─────────────────────────┐                │
+│  │  DesktopSecureStorage   │    │  AndroidSecureStorage   │                │
+│  │  (desktopMain)          │    │  (androidMain)          │                │
+│  ├─────────────────────────┤    ├─────────────────────────┤                │
+│  │  Java Preferences API   │    │  EncryptedSharedPrefs   │                │
+│  │                         │    │                         │                │
+│  │  macOS: ~/Library/      │    │  AES256_GCM encryption  │                │
+│  │    Preferences/...plist │    │                         │                │
+│  │                         │    │  Android Keystore       │                │
+│  │  Linux: ~/.java/        │    │  backed master key      │                │
+│  │    .userPrefs/...       │    │                         │                │
+│  │                         │    │                         │                │
+│  │  Windows: Registry      │    │                         │                │
+│  │    HKCU\Software\...    │    │                         │                │
+│  └─────────────────────────┘    └─────────────────────────┘                │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 14.3 API Key Lifecycle
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         API KEY LIFECYCLE                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  1. CREATION (During Registration)                                          │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │  Backend generates API key → Included in status response →          │    │
+│  │  RegistrationViewModel saves via SecureStorage.saveApiKey()         │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                              │                                               │
+│                              ▼                                               │
+│  2. STORAGE (Persistent)                                                    │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │  Desktop: Java Preferences → Survives app restart                   │    │
+│  │  Android: EncryptedSharedPreferences → Survives app restart         │    │
+│  │  Memory: InMemorySecureStorage → Lost on restart (dev only)         │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                              │                                               │
+│                              ▼                                               │
+│  3. USAGE (API Calls)                                                       │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │  ApiClient.apiKeyProvider() → SecureStorage.getApiKey() →           │    │
+│  │  Injected into every request as x-api-key header                    │    │
+│  │  (Dynamic: reads at request time, not at app startup)               │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                              │                                               │
+│                              ▼                                               │
+│  4. DELETION (Unregistration)                                               │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │  Triggered by: Environment change / Factory reset / Admin revoke    │    │
+│  │  SecureStorage.clearAll() → All credentials deleted                 │    │
+│  │  App returns to Registration screen                                 │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 14.4 Platform-Specific Implementations
+
+#### Desktop (Windows/Linux/macOS)
 
 ```kotlin
-// Android - EncryptedSharedPreferences for sensitive data
-class SecureStorage(context: Context) {
+// shared/src/desktopMain/kotlin/.../core/storage/DesktopSecureStorage.kt
+class DesktopSecureStorage : SecureStorage {
+    
+    // Java Preferences API for persistent storage
+    private val prefs: Preferences = Preferences.userNodeForPackage(
+        DesktopSecureStorage::class.java
+    )
+    
+    override fun saveApiKey(apiKey: String) {
+        prefs.put(KEY_API_KEY, apiKey)
+        prefs.flush()  // Ensure immediate persistence
+    }
+    
+    override fun getApiKey(): String? = prefs.get(KEY_API_KEY, null)
+    
+    override fun clearAll() {
+        prefs.remove(KEY_STATION_ID)
+        prefs.remove(KEY_API_KEY)
+        prefs.remove(KEY_BRANCH_ID)
+        prefs.remove(KEY_BRANCH_NAME)
+        prefs.remove(KEY_ENVIRONMENT)
+        prefs.flush()
+    }
+    
+    companion object {
+        private const val KEY_STATION_ID = "device_station_id"
+        private const val KEY_API_KEY = "device_api_key"
+        private const val KEY_BRANCH_ID = "device_branch_id"
+        private const val KEY_BRANCH_NAME = "device_branch_name"
+        private const val KEY_ENVIRONMENT = "app_environment"
+    }
+}
+```
+
+**Storage Locations:**
+| Platform | Location |
+|----------|----------|
+| macOS | `~/Library/Preferences/com.unisight.gropos.plist` |
+| Linux | `~/.java/.userPrefs/com/unisight/gropos/prefs.xml` |
+| Windows | Registry: `HKEY_CURRENT_USER\Software\JavaSoft\Prefs\com\unisight\gropos` |
+
+#### Android
+
+```kotlin
+// shared/src/androidMain/kotlin/.../core/storage/AndroidSecureStorage.kt
+class AndroidSecureStorage(context: Context) : SecureStorage {
     
     private val masterKey = MasterKey.Builder(context)
         .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
@@ -2219,41 +2523,48 @@ class SecureStorage(context: Context) {
     
     private val sharedPreferences = EncryptedSharedPreferences.create(
         context,
-        "secure_prefs",
+        "gropos_secure_prefs",
         masterKey,
         EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
         EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
     )
     
-    fun saveApiKey(apiKey: String) {
-        sharedPreferences.edit().putString("api_key", apiKey).apply()
+    override fun saveApiKey(apiKey: String) {
+        sharedPreferences.edit().putString(KEY_API_KEY, apiKey).apply()
     }
     
-    fun getApiKey(): String? {
-        return sharedPreferences.getString("api_key", null)
-    }
+    override fun getApiKey(): String? = sharedPreferences.getString(KEY_API_KEY, null)
     
-    fun clearApiKey() {
-        sharedPreferences.edit().remove("api_key").apply()
-    }
-}
-
-// Desktop - Store in Couchbase Lite with encryption config
-class DatabaseManager {
-    
-    fun createDatabase(path: String): Database {
-        val config = DatabaseConfiguration().apply {
-            directory = path
-            // Enable encryption if available
-            encryptionKey = EncryptionKey("your-encryption-key")
-        }
-        
-        return Database("gropos", config)
+    override fun clearAll() {
+        sharedPreferences.edit().clear().apply()
     }
 }
 ```
 
-### 14.3 QR Code Security
+### 14.5 Dependency Injection
+
+```kotlin
+// Desktop: desktopStorageModule (loaded LAST to override InMemory)
+val desktopStorageModule = module {
+    single<SecureStorage>(createdAtStart = true) { DesktopSecureStorage() }
+}
+
+// Android: androidStorageModule
+val androidStorageModule = module {
+    single<SecureStorage> { AndroidSecureStorage(androidContext()) }
+}
+
+// Koin startup (Desktop)
+startKoin {
+    allowOverride(true)  // Allow platform-specific overrides
+    modules(databaseModule)
+    modules(appModules())  // Defines InMemorySecureStorage
+    modules(desktopStorageModule)  // Overrides with persistent storage
+}
+```
+```
+
+### 14.6 QR Code Security
 
 | Feature | Description |
 |---------|-------------|
@@ -2262,7 +2573,7 @@ class DatabaseManager {
 | **Admin Required** | Only authorized admins can complete registration |
 | **Temporary Token** | Initial API calls use temporary bearer token |
 
-### 14.4 Authentication Flow After Registration
+### 14.7 Authentication Flow After Registration
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
