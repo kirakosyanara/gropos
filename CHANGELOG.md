@@ -6,6 +6,48 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-01-02
 
+### Added
+- **Phase 4: Desktop Scale Driver - COMPLETE**
+  - **CasProtocolParser** (commonMain) - CAS PD-II protocol frame parser
+    - 18-byte ASCII frame parsing
+    - Stable/Unstable detection (ST/US flags)
+    - Overweight/Underweight detection (OL flag)
+    - Unit support (lb, kg, oz)
+    - Full TDD test suite (20 test cases)
+  - **DesktopCasScale** (desktopMain) - ScaleService implementation
+    - jSerialComm serial communication
+    - Continuous weight streaming
+    - Cable disconnect detection
+    - Tare/Zero command support
+    - Auto-detect scale port
+  - **HardwareModule** - Added ScaleService registration
+    - Production: DesktopCasScale
+    - Development: SimulatedScaleService
+    - ScaleConfig from environment variables
+
+- **Phase 5: Lottery Module - Presentation Layer - COMPLETE**
+  - **LotterySaleScreen** (Step 14) - Lottery Sales UI
+    - Grid layout for lottery game cards
+    - Category filtering (All, Scratchers, Draw Games)
+    - Cart summary with quantity +/- controls
+    - Total calculation with BigDecimal precision
+    - Checkout flow with sale recording
+    - Navigation from FunctionsPanel "Lotto Pay" button
+    - LotterySaleViewModel with TDD test coverage
+  - **LotteryPayoutScreen** (Step 15) - Lottery Payout UI
+    - Numeric keypad for amount entry
+    - Real-time payout validation via PayoutTierCalculator
+    - PayoutTierBadge component (Approved/LoggedOnly/Rejected)
+    - Manager approval dialog for Tier 2 payouts
+    - LotteryPayoutViewModel with TDD test coverage
+  - **LotteryReportScreen** (Step 16) - Lottery Reports UI
+    - Daily summary display (Sales/Payouts/Net)
+    - Date navigation controls
+    - Scratcher vs Draw game breakdown
+    - LotteryReportViewModel with repository integration
+  - **LotteryModule** - Added all ViewModels to DI
+    - LotterySaleViewModel, LotteryPayoutViewModel, LotteryReportViewModel
+
 ### Changed
 - **Documentation Sync (Post-Implementation Verification)**
   - **PHASE_4_STATUS_REPORT.md** - Updated to reflect actual codebase state
