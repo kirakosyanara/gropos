@@ -268,7 +268,7 @@
 |-------------------|--------|-------------------|
 | ESC/POS Printer | ✅ Match | `DesktopEscPosPrinter` with jSerialComm (Jan 2026) |
 | Serial Scanner | ✅ Match | `DesktopSerialScanner` with jSerialComm (Jan 2026) |
-| CAS Scale | ✅ Match | `DesktopCasScale` with weight parsing (Jan 2026) |
+| CAS Scale | ⚠️ Partial | `ScaleService` interface + `SimulatedScaleService` exist; `DesktopCasScale` pending |
 | Desktop Hardware DI | ✅ Match | `HardwareModule.kt` with port configuration (Jan 2026) |
 | Cash Drawer Control | ✅ Match | Integrated in ESC/POS printer (Jan 2026) |
 
@@ -322,11 +322,13 @@
 | Till & Cash Operations | 9 | 1 | 0 |
 | Device Registration | 9 | 2 | 0 |
 | UI/UX Components | 12 | 0 | 2 |
-| Data Layer | 7 | 1 | 2 |
-| **TOTAL** | **119** | **19** | **2** |
+| Data Layer | 11 | 1 | 0 |
+| Android Hardware | 5 | 0 | 0 |
+| Desktop Hardware | 4 | 1 | 0 |
+| **TOTAL** | **119** | **19** | **17** |
 
 ---
 
-*Last Updated: January 2, 2026 (Final Polish Phase)*
-*Next Review: Post-Merge to main*
+*Last Updated: January 2, 2026 (Documentation Sync - Verified vs Codebase)*
+*Next Review: After Lottery Presentation Layer Complete*
 

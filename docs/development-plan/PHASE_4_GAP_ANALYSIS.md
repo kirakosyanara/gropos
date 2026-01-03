@@ -106,7 +106,7 @@ All hardware uses simulated implementations:
 | Receipt Printer | Virtual console output | ✅ `DesktopEscPosPrinter` + `SunmiPrinterService` (Jan 2026) |
 | Barcode Scanner | `SimulatedBarcodeScanner` | ✅ `DesktopSerialScanner` + `CameraBarcodeScanner` + `SunmiHardwareScanner` (Jan 2026) |
 | NFC Reader | `SimulatedNfcScanner` | ⚠️ Interface ready, platform impl pending |
-| Scale | None | ✅ `DesktopCasScale` (Jan 2026) |
+| Scale | `SimulatedScaleService` | ⚠️ Interface ready (`ScaleService.kt`), desktop impl pending |
 | Cash Drawer | None | ✅ Integrated in `DesktopEscPosPrinter` (Jan 2026) |
 | Customer Display | Compose secondary window | ⚠️ Partial |
 
@@ -162,32 +162,36 @@ shared/src/
 
 ---
 
-### 3. Lottery Function (The Overlooked Feature)
+### 3. Lottery Function (Presentation Layer Remaining)
 
 **Priority:** High  
-**Effort:** Medium-High  
+**Effort:** Medium (domain layer complete)  
 **Source:** `features/lottery/INDEX.md`, `FUNCTIONS_MENU.md`
 
 #### Current State
 
-The Lottery module is **fully documented** (8 specification files) but **completely unimplemented**:
+The Lottery module **domain layer is complete** (Step 13 done):
 
-- `FUNCTIONS_MENU.md` shows "Lotto Pay" button as placeholder
-- No `LotteryScreen`, `LotterySaleScreen`, or `LotteryPayoutScreen` exist
-- No lottery data models or repositories
-- No API integration for lottery endpoints
+- ✅ `LotteryModels.kt` - All domain models (LotteryGame, LotteryTransaction, etc.)
+- ✅ `LotteryRepository.kt` - Interface with all CRUD operations
+- ✅ `PayoutTierCalculator.kt` - Tier 1/2/3 business logic (23 tests)
+- ✅ `FakeLotteryRepository.kt` - Seeded with 10 games (19 tests)
+- ❌ Presentation layer (Steps 14-17) - NOT started
 
 #### Requirements Summary
 
 | Component | Description | Status |
 |-----------|-------------|--------|
-| **Lottery Mode Entry** | Age verification, then isolated mode | ❌ |
-| **Scratcher Sales** | Scan/lookup scratchers, cash-only | ❌ |
-| **Draw Game Sales** | Select game, configure options | ❌ |
-| **Tier 1-2 Payouts** | Cashier processes $0-$599.99 | ❌ |
-| **Tier 3 Payouts** | Manager approval + W-2G for $600+ | ❌ |
-| **Daily Reports** | Sales, payouts, net, commission | ❌ |
-| **Branch Setting** | `HasStateLottery` feature flag | ❌ |
+| **Domain Models** | LotteryGame, LotteryTransaction, PayoutStatus | ✅ Complete |
+| **PayoutTierCalculator** | Tier 1/2/3 logic with BigDecimal precision | ✅ Complete |
+| **FakeLotteryRepository** | 5 scratchers + 5 draw games seeded | ✅ Complete |
+| **Lottery Mode Entry** | Age verification, then isolated mode | ❌ Pending |
+| **Scratcher Sales** | Scan/lookup scratchers, cash-only | ❌ Pending |
+| **Draw Game Sales** | Select game, configure options | ❌ Pending |
+| **Tier 1-2 Payouts** | Cashier processes $0-$599.99 | ❌ Pending |
+| **Tier 3 Payouts** | Manager approval + W-2G for $600+ | ❌ Pending (W-2G deferred) |
+| **Daily Reports** | Sales, payouts, net, commission | ❌ Pending |
+| **Branch Setting** | `HasStateLottery` feature flag | ❌ Pending |
 
 #### Key Design Decisions
 
@@ -257,16 +261,41 @@ API Integration ─────┬────▶ Hardware Drivers ────�
 - [x] `RemoteDeviceRepository` with SecureStorage integration
 - [x] `CameraPreview` Composable for Android barcode scanning
 
+### Step 9: Offline Sync - COMPLETE ✅
+
+- [x] `DefaultOfflineQueueService` with thread-safe Mutex
+- [x] `SyncWorker` with exponential backoff + jitter
+- [x] `OfflineQueueTest.kt` and `SyncWorkerTest.kt` passing
+
+### Step 13: Lottery Domain Layer - COMPLETE ✅
+
+- [x] `LotteryModels.kt` - All domain models
+- [x] `PayoutTierCalculator.kt` - Tier logic with 23 tests
+- [x] `LotteryRepository.kt` - Interface
+- [x] `FakeLotteryRepository.kt` - 10 seeded games with 19 tests
+
 ---
 
 ## Estimated Timeline
 
-| Area | Effort | Team Weeks |
-|------|--------|------------|
-| API Integration (core) | High | 2-3 weeks |
-| Hardware Drivers (1-2 devices) | High | 2 weeks |
-| Lottery Module (MVP) | Medium | 1-2 weeks |
-| **Total** | | **5-7 weeks** |
+| Area | Effort | Status |
+|------|--------|--------|
+| API Integration (core) | High | ✅ COMPLETE (ApiClient, RemoteRepositories) |
+| Hardware Drivers | High | ✅ MOSTLY COMPLETE (Printer, Scanner done; Scale pending) |
+| Offline Sync | Medium | ✅ COMPLETE (OfflineQueue, SyncWorker) |
+| Lottery Domain Layer | Medium | ✅ COMPLETE (Step 13) |
+| Lottery Presentation | Medium | ⏳ REMAINING (Steps 14-17, ~1-2 weeks) |
+
+### Remaining Work
+
+| Step | Description | Effort |
+|------|-------------|--------|
+| 7.3 | Desktop Scale Driver (`DesktopCasScale`) | 1-2 days |
+| 14 | Lottery Sales Screen | 2-3 days |
+| 15 | Lottery Payout Screen | 2-3 days |
+| 16 | Lottery Reports | 1-2 days |
+| 17 | Lottery Integration & Polish | 1 day |
+| **Total Remaining** | | **~1-2 weeks** |
 
 ---
 
