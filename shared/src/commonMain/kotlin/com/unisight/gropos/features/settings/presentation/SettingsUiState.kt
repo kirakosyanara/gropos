@@ -46,12 +46,27 @@ enum class AdminTab(val displayName: String) {
 }
 
 /**
- * Environment types for API targeting
+ * Environment types for API targeting.
+ * 
+ * **Per API_INTEGRATION.md:**
+ * - These URLs must match the Azure API Management endpoints
+ * - Environment selection persists to SecureStorage
+ * - Changing environment requires app restart to reconfigure ApiClient
  */
 enum class EnvironmentType(val displayName: String, val baseUrl: String) {
-    PRODUCTION("Production", "https://api.gropos.com"),
-    STAGING("Staging", "https://staging-api.gropos.com"),
-    DEVELOPMENT("Development", "https://dev-api.gropos.com")
+    PRODUCTION("Production", "https://apim-service-unisight-prod.azure-api.net"),
+    STAGING("Staging", "https://apim-service-unisight-staging.azure-api.net"),
+    DEVELOPMENT("Development", "https://apim-service-unisight-dev.azure-api.net");
+    
+    companion object {
+        /**
+         * Gets the environment type from a stored string value.
+         * Defaults to DEVELOPMENT if not found or invalid.
+         */
+        fun fromString(value: String?): EnvironmentType {
+            return entries.find { it.name == value } ?: DEVELOPMENT
+        }
+    }
 }
 
 /**

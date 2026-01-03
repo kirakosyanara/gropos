@@ -4,6 +4,7 @@ import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
 import com.unisight.gropos.core.AppConstants
 import com.unisight.gropos.core.database.DatabaseProvider
+import com.unisight.gropos.core.storage.SecureStorage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,9 +25,13 @@ import kotlin.uuid.Uuid
  * Per Governance Rules:
  * - "Wipe Database" requires a second confirmation dialog
  * - This menu is strictly for the Login Screen (pre-authentication)
+ * 
+ * **P0 FIX (QA Audit):** Environment selection now persists to SecureStorage
+ * and triggers app restart notification for network reconfiguration.
  */
 class SettingsViewModel(
     private val databaseProvider: DatabaseProvider,
+    private val secureStorage: SecureStorage,
     private val coroutineScope: CoroutineScope? = null
 ) : ScreenModel {
     
@@ -58,18 +63,24 @@ class SettingsViewModel(
     
     @OptIn(ExperimentalUuidApi::class)
     private fun loadDeviceInfo() {
-        // TODO: Load actual device info from database/preferences
-        // For now, generate/use placeholder values
-        val deviceId = Uuid.random().toString()
+        // Load device info from SecureStorage
+        val storedDeviceId = secureStorage.getStationId()
+        val deviceId = storedDeviceId ?: Uuid.random().toString()
+        
+        // Load persisted environment from SecureStorage
+        val storedEnv = secureStorage.getEnvironment()
+        val currentEnv = EnvironmentType.fromString(storedEnv)
+        
+        val branchName = secureStorage.getBranchName() ?: "Unregistered Device"
         
         _state.update { 
             it.copy(
                 appVersion = AppConstants.APP_VERSION,
                 deviceId = deviceId,
                 ipAddress = getLocalIpAddress(),
-                branchName = "Development Branch",
-                currentEnvironment = EnvironmentType.DEVELOPMENT,
-                selectedEnvironment = EnvironmentType.DEVELOPMENT
+                branchName = branchName,
+                currentEnvironment = currentEnv,
+                selectedEnvironment = currentEnv
             )
         }
     }
@@ -143,18 +154,30 @@ class SettingsViewModel(
                 // Update environment if changed
                 val newEnv = _state.value.selectedEnvironment
                 
+                // **P0 FIX (QA Audit):** Persist environment to SecureStorage
+                // This ensures NetworkModule reads the correct base URL on next app start.
+                secureStorage.saveEnvironment(newEnv.name)
+                
+                // Determine if restart message is needed
+                val envChanged = _state.value.currentEnvironment != newEnv
+                val restartMessage = if (envChanged) {
+                    "Database wiped. Environment changed to ${newEnv.displayName}. Please restart the application to apply network changes."
+                } else {
+                    "Database wiped successfully. Restart the application."
+                }
+                
                 _state.update { 
                     it.copy(
                         isWiping = false,
                         currentEnvironment = newEnv,
                         databaseStats = DatabaseStats(), // Reset stats
-                        feedbackMessage = "Database wiped successfully. Restart the application.",
+                        feedbackMessage = restartMessage,
                         isError = false
                     )
                 }
                 
                 // Log audit trail
-                println("[ADMIN] Database wiped. Environment: $newEnv")
+                println("[ADMIN] Database wiped. Environment: $newEnv (persisted to SecureStorage)")
                 
             } catch (e: Exception) {
                 _state.update { 

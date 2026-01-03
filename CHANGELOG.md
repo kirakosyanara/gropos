@@ -4,6 +4,35 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased] - 2026-01-03
+
+### Fixed
+- **P0: Dynamic Environment Switching** (QA Audit Fix - CRITICAL)
+  - **Problem:** Environment selection in Admin Settings dialog did not persist or affect network configuration
+  - **Root Cause Analysis:**
+    1. `SettingsViewModel` updated `selectedEnvironment` in memory only - never called `SecureStorage.saveEnvironment()`
+    2. `SettingsModule` did not inject `SecureStorage` into `SettingsViewModel`
+    3. `NetworkModule` had HARDCODED base URL: `https://api.gropos.io` - ignored all environment settings
+    4. `EnvironmentType` URLs did not match API documentation (Azure API Management endpoints)
+  - **Fixes Applied:**
+    - Updated `EnvironmentType` URLs to match API documentation:
+      - PRODUCTION: `https://apim-service-unisight-prod.azure-api.net`
+      - STAGING: `https://apim-service-unisight-staging.azure-api.net`
+      - DEVELOPMENT: `https://apim-service-unisight-dev.azure-api.net`
+    - Added `EnvironmentType.fromString()` helper for loading from SecureStorage
+    - Updated `SettingsModule` to inject `SecureStorage` into `SettingsViewModel`
+    - Updated `SettingsViewModel`:
+      - Constructor now accepts `SecureStorage` parameter
+      - `loadDeviceInfo()` reads environment from `SecureStorage.getEnvironment()`
+      - `confirmWipeDatabase()` persists environment to `SecureStorage.saveEnvironment()`
+      - Shows restart notification when environment changes
+    - Updated `NetworkModule`:
+      - `ApiClientConfig` now reads environment from `SecureStorage.getEnvironment()`
+      - Defaults to DEVELOPMENT if no environment set
+      - Logs environment selection on initialization
+  - **Note:** Changing environment requires app restart because `ApiClient` is configured at initialization time. UI now shows clear restart message.
+  - Per API_INTEGRATION.md: All environments now correctly target Azure API Management endpoints
+
 ## [1.0.0-rc1] - 2026-01-03
 
 **Release Candidate 1 - Phase 4 & 5 Complete**

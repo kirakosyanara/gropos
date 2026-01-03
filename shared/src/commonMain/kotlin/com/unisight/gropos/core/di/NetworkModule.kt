@@ -8,6 +8,7 @@ import com.unisight.gropos.core.network.ApiClient
 import com.unisight.gropos.core.network.ApiClientConfig
 import com.unisight.gropos.core.storage.InMemorySecureStorage
 import com.unisight.gropos.core.storage.SecureStorage
+import com.unisight.gropos.features.settings.presentation.EnvironmentType
 import org.koin.dsl.module
 
 /**
@@ -62,12 +63,25 @@ val networkModule = module {
      * 
      * Per reliability-stability.mdc: All operations use timeouts.
      * 
-     * TODO: Base URL should be injected from BuildConfig or settings.
+     * **P0 FIX (QA Audit):** Base URL is now read from SecureStorage environment setting.
+     * Defaults to DEVELOPMENT if no environment is set.
+     * 
+     * **CRITICAL:** Changing environment requires app restart because ApiClient
+     * is configured at initialization time. The SettingsViewModel now shows
+     * a restart prompt when environment is changed.
      */
     single {
+        val secureStorage: SecureStorage = get()
+        
+        // Read environment from SecureStorage (defaults to DEVELOPMENT)
+        val storedEnv = secureStorage.getEnvironment()
+        val environment = EnvironmentType.fromString(storedEnv)
+        
+        println("[NetworkModule] Initializing with environment: ${environment.name} -> ${environment.baseUrl}")
+        
         ApiClientConfig(
-            baseUrl = "https://api.gropos.io",
-            apiKey = get<SecureStorage>().getApiKey(),
+            baseUrl = environment.baseUrl,
+            apiKey = secureStorage.getApiKey(),
             clientVersion = "1.0.0",
             requestTimeoutMs = 30_000,
             connectTimeoutMs = 10_000,
