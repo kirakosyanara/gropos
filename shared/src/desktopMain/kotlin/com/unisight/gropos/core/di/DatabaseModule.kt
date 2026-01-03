@@ -14,6 +14,8 @@ import com.unisight.gropos.features.pricing.domain.repository.ConditionalSaleRep
 import com.unisight.gropos.features.pricing.domain.repository.CrvRepository
 import com.unisight.gropos.features.pricing.domain.repository.CustomerGroupRepository
 import com.unisight.gropos.features.pricing.domain.repository.TaxRepository
+import com.unisight.gropos.features.settings.data.CouchbaseBranchSettingsRepository
+import com.unisight.gropos.features.settings.domain.repository.BranchSettingsRepository
 import com.unisight.gropos.features.transaction.data.CouchbaseTransactionRepository
 import com.unisight.gropos.features.transaction.domain.repository.TransactionRepository
 import org.koin.core.module.Module
@@ -152,6 +154,22 @@ val databaseModule: Module = module {
      * Bind CouchbaseVendorPayoutRepository to VendorPayoutRepository interface.
      */
     single<VendorPayoutRepository> { get<CouchbaseVendorPayoutRepository>() }
+    
+    /**
+     * Couchbase branch settings repository.
+     * 
+     * Per COUCHBASE_LOCAL_STORAGE.md: PosBranchSettings collection in "pos" scope.
+     * Used for branch-specific configuration and feature flags.
+     * Includes in-memory caching for performance.
+     * 
+     * SINGLETON scope ensures consistent cache state.
+     */
+    single { CouchbaseBranchSettingsRepository(get()) }
+    
+    /**
+     * Bind CouchbaseBranchSettingsRepository to BranchSettingsRepository interface.
+     */
+    single<BranchSettingsRepository> { get<CouchbaseBranchSettingsRepository>() }
     
     /**
      * Debug data seeder.

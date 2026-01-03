@@ -36,9 +36,9 @@ This document analyzes the integration between the **legacy Couchbase Lite schem
 
 | Category | Status | Count |
 |----------|--------|-------|
-| Fully Connected | ✅ | **12** |
-| Partially Connected | ⚠️ | 3 |
-| Not Implemented | ❌ | 1 |
+| Fully Connected | ✅ | **13** |
+| Partially Connected | ⚠️ | 2 |
+| Not Implemented | ❌ | 0 |
 
 ---
 
@@ -195,6 +195,35 @@ All Desktop repositories now have Android equivalents:
 | `CouchbaseVendorPayoutRepository` | ✅ | ✅ |
 
 **Android DatabaseModule updated with all repository bindings.**
+
+### ✅ Phase 4 Start: System Configuration (COMPLETE)
+
+**Completed on:** 2026-01-03
+
+| Task | Status | Files |
+|------|--------|-------|
+| Create BranchSetting domain model | ✅ Done | `BranchSettings.kt` |
+| Create BranchSettings wrapper | ✅ Done | `BranchSettings.kt` |
+| Create LegacyBranchSettingDto | ✅ Done | `LegacyBranchSettingDto.kt` |
+| Implement CouchbaseBranchSettingsRepository | ✅ Done | Desktop + Android |
+| Wire in both DatabaseModules | ✅ Done | `DatabaseModule.kt` |
+
+**BranchSettingsRepository Features:**
+```kotlin
+// BranchSettingsRepository interface
+suspend fun getAllSettings(): BranchSettings
+suspend fun getSettingByType(type: String): BranchSetting?
+suspend fun getSettingsForBranch(branchId: Int): List<BranchSetting>
+suspend fun saveSetting(setting: BranchSetting): Result<Unit>
+suspend fun refreshSettings()
+```
+
+**Common Setting Types:**
+- `CashPaymentLimit` - Maximum cash payment per transaction
+- `LotteryPayoutTier1/2` - Lottery payout thresholds
+- `ReturnLimitWithoutApproval` - Return limits
+- `TipPromptEnabled` - Tip prompting feature flag
+- `AgeVerificationRequiresIdScan` - Age verification requirement
 ```kotlin
 // Active transactions saved as "{guid}-P"
 suspend fun savePendingTransaction(transaction: Transaction): Result<Unit>
@@ -220,7 +249,7 @@ suspend fun getPendingTransactionsForResume(): List<Transaction>
 | Legacy Collection | New Domain Model | Repository | Status | Notes |
 |-------------------|------------------|------------|--------|-------|
 | `PosSystem` | `DeviceInfo` | `RemoteDeviceRepository` | ⚠️ Partial | Camera/OnePay configs not mapped |
-| `PosBranchSettings` | — | — | ❌ Missing | No branch settings model |
+| `PosBranchSettings` | `BranchSetting` | `CouchbaseBranchSettingsRepository` | ✅ **Connected** | Key-value settings via `LegacyBranchSettingDto` |
 | `Branch` | `DeviceInfo.branchId/branchName` | — | ⚠️ Partial | Only ID/name stored; full branch entity missing |
 
 ### Master Data Collections
@@ -360,7 +389,7 @@ After Phase 1 & 2 implementation, these fields still need attention:
 | ~~`CustomerGroup`~~ | ~~Group-based pricing~~ | ✅ **Implemented** | ✅ Done |
 | ~~`CustomerGroupDepartment`~~ | ~~Department group pricing~~ | ✅ **Implemented** | ✅ Done |
 | ~~`CustomerGroupItem`~~ | ~~Item-specific group pricing~~ | ✅ **Implemented** | ✅ Done |
-| `PosBranchSettings` | Branch configuration | ❌ No branch-level settings | 🟡 Medium |
+| ~~`PosBranchSettings`~~ | ~~Branch configuration~~ | ✅ **Implemented** | ✅ Done |
 | ~~`ConditionalSale`~~ | ~~Age restriction rules~~ | ✅ **Implemented** | ✅ Done |
 | ~~`VendorPayout`~~ | ~~Vendor payment tracking~~ | ✅ **Implemented** | ✅ Done |
 
@@ -408,7 +437,7 @@ After Phase 1 & 2 implementation, these fields still need attention:
 | Task | Priority | Effort | Status |
 |------|----------|--------|--------|
 | Update DeviceInfo for camera config | 🟡 Medium | 3h | 🔲 Pending |
-| Implement PosBranchSettings collection | 🟡 Medium | 4h | 🔲 Pending |
+| Implement PosBranchSettings collection | 🟡 Medium | 4h | ✅ **Done** |
 | Implement Branch collection | 🟢 Low | 3h | 🔲 Pending |
 
 ---
@@ -523,7 +552,7 @@ suspend fun getPendingTransactionsForResume(): List<Transaction>
 | Legacy Collection | Legacy Scope | New Collection | New Scope | Status |
 |-------------------|--------------|----------------|-----------|--------|
 | `PosSystem` | `pos` | — | — (SecureStorage) | ⚠️ Partial |
-| `PosBranchSettings` | `pos` | — | — | ❌ Missing |
+| `PosBranchSettings` | `pos` | `PosBranchSettings` | `pos` | ✅ Complete |
 | `Product` | `pos` | `Product` | `pos` (read) / `base_data` (write) | ✅ Complete |
 | `Category` | `pos` | — | — (Derived from Product) | ✅ Complete |
 | `Tax` | `pos` | — | — (Embedded) | ❌ Standalone missing |
