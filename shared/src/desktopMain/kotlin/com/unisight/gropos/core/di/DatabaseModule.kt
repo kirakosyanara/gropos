@@ -2,6 +2,8 @@ package com.unisight.gropos.core.di
 
 import com.unisight.gropos.core.database.DatabaseProvider
 import com.unisight.gropos.core.database.seeder.DebugDataSeeder
+import com.unisight.gropos.features.device.data.CouchbaseLocalDeviceConfigRepository
+import com.unisight.gropos.features.device.domain.repository.LocalDeviceConfigRepository
 import com.unisight.gropos.features.cashier.data.CouchbaseVendorPayoutRepository
 import com.unisight.gropos.features.cashier.domain.repository.VendorPayoutRepository
 import com.unisight.gropos.features.checkout.data.CouchbaseProductRepository
@@ -14,7 +16,9 @@ import com.unisight.gropos.features.pricing.domain.repository.ConditionalSaleRep
 import com.unisight.gropos.features.pricing.domain.repository.CrvRepository
 import com.unisight.gropos.features.pricing.domain.repository.CustomerGroupRepository
 import com.unisight.gropos.features.pricing.domain.repository.TaxRepository
+import com.unisight.gropos.features.settings.data.CouchbaseBranchRepository
 import com.unisight.gropos.features.settings.data.CouchbaseBranchSettingsRepository
+import com.unisight.gropos.features.settings.domain.repository.BranchRepository
 import com.unisight.gropos.features.settings.domain.repository.BranchSettingsRepository
 import com.unisight.gropos.features.transaction.data.CouchbaseTransactionRepository
 import com.unisight.gropos.features.transaction.domain.repository.TransactionRepository
@@ -170,6 +174,37 @@ val databaseModule: Module = module {
      * Bind CouchbaseBranchSettingsRepository to BranchSettingsRepository interface.
      */
     single<BranchSettingsRepository> { get<CouchbaseBranchSettingsRepository>() }
+    
+    /**
+     * Couchbase branch repository.
+     * 
+     * Per COUCHBASE_LOCAL_STORAGE.md: Branch collection in "pos" scope.
+     * Used for store name, address, and configuration.
+     * Includes in-memory caching and PosSystem integration.
+     * 
+     * SINGLETON scope ensures consistent cache state.
+     */
+    single { CouchbaseBranchRepository(get()) }
+    
+    /**
+     * Bind CouchbaseBranchRepository to BranchRepository interface.
+     */
+    single<BranchRepository> { get<CouchbaseBranchRepository>() }
+    
+    /**
+     * Couchbase local device config repository.
+     * 
+     * Per COUCHBASE_LOCAL_STORAGE.md: PosSystem collection in "pos" scope.
+     * Provides camera config, OnePay config, and device registration info.
+     * 
+     * SINGLETON scope ensures consistent access.
+     */
+    single { CouchbaseLocalDeviceConfigRepository(get()) }
+    
+    /**
+     * Bind CouchbaseLocalDeviceConfigRepository to LocalDeviceConfigRepository interface.
+     */
+    single<LocalDeviceConfigRepository> { get<CouchbaseLocalDeviceConfigRepository>() }
     
     /**
      * Debug data seeder.

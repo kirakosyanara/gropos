@@ -35,6 +35,7 @@ data class DeviceInfo(
  * Hardware configuration for the device.
  * 
  * Per DESKTOP_HARDWARE.md: COM port settings for peripherals.
+ * Per COUCHBASE_LOCAL_STORAGE.md: Camera and OnePay config from PosSystem collection.
  */
 data class HardwareConfig(
     /** COM port for barcode scanner (e.g., "COM3", "/dev/ttyUSB0") */
@@ -56,8 +57,48 @@ data class HardwareConfig(
     val paymentTerminalPort: Int? = null,
     
     /** Whether to use simulated hardware (for development) */
-    val useSimulatedHardware: Boolean = true
-)
+    val useSimulatedHardware: Boolean = true,
+    
+    // ========================================================================
+    // Camera Configuration (from PosSystem collection)
+    // Per COUCHBASE_LOCAL_STORAGE.md: ipAddress, entityId, cameraId
+    // ========================================================================
+    
+    /** Camera device IP address (from PosSystem.ipAddress) */
+    val cameraIp: String? = null,
+    
+    /** Camera entity ID (from PosSystem.entityId) */
+    val cameraEntityId: Int? = null,
+    
+    /** Camera device ID (from PosSystem.cameraId) */
+    val cameraId: Int? = null,
+    
+    // ========================================================================
+    // OnePay Terminal Configuration (from PosSystem collection)
+    // Per COUCHBASE_LOCAL_STORAGE.md: onePayIpAddress, onePayEntityId, onePayId
+    // ========================================================================
+    
+    /** OnePay payment terminal IP address */
+    val onePayIp: String? = null,
+    
+    /** OnePay entity ID */
+    val onePayEntityId: Int? = null,
+    
+    /** OnePay device ID */
+    val onePayId: Int? = null
+) {
+    /**
+     * Whether camera is configured.
+     */
+    val hasCameraConfig: Boolean
+        get() = cameraIp != null && cameraEntityId != null
+    
+    /**
+     * Whether OnePay terminal is configured.
+     */
+    val hasOnePayConfig: Boolean
+        get() = onePayIp != null && onePayEntityId != null
+}
 
 /**
  * Service for managing device/station information.

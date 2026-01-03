@@ -36,8 +36,8 @@ This document analyzes the integration between the **legacy Couchbase Lite schem
 
 | Category | Status | Count |
 |----------|--------|-------|
-| Fully Connected | ✅ | **13** |
-| Partially Connected | ⚠️ | 2 |
+| Fully Connected | ✅ | **15** |
+| Partially Connected | ⚠️ | 0 |
 | Not Implemented | ❌ | 0 |
 
 ---
@@ -224,6 +224,54 @@ suspend fun refreshSettings()
 - `ReturnLimitWithoutApproval` - Return limits
 - `TipPromptEnabled` - Tip prompting feature flag
 - `AgeVerificationRequiresIdScan` - Age verification requirement
+
+### ✅ Phase 4: System Configuration (COMPLETE)
+
+**Completed on:** 2026-01-03
+
+| Task | Status | Files |
+|------|--------|-------|
+| Create Branch domain model | ✅ Done | `Branch.kt` |
+| Create LegacyBranchDto | ✅ Done | `LegacyBranchDto.kt` |
+| Implement CouchbaseBranchRepository | ✅ Done | Desktop + Android |
+| Create LegacyPosSystemDto | ✅ Done | `LegacyPosSystemDto.kt` |
+| Update HardwareConfig with camera fields | ✅ Done | `DeviceInfo.kt` |
+| Create LocalDeviceConfigRepository | ✅ Done | Interface + Couchbase impl |
+| Wire in both DatabaseModules | ✅ Done | `DatabaseModule.kt` |
+
+**BranchRepository Features:**
+```kotlin
+// BranchRepository interface
+suspend fun getAllBranches(): List<Branch>
+suspend fun getBranchById(branchId: Int): Branch?
+suspend fun getCurrentBranch(): Branch?
+suspend fun refreshBranches()
+```
+
+**LocalDeviceConfigRepository Features:**
+```kotlin
+// LocalDeviceConfigRepository interface
+suspend fun getHardwareConfig(environment: String): HardwareConfig?
+suspend fun getBranchId(environment: String): Int?
+suspend fun getBranchName(environment: String): String?
+suspend fun getApiKey(environment: String): String?
+suspend fun getRefreshToken(environment: String): String?
+suspend fun saveHardwareConfig(config: HardwareConfig, environment: String): Result<Unit>
+suspend fun saveRefreshToken(refreshToken: String, environment: String): Result<Unit>
+```
+
+**HardwareConfig Extended Fields:**
+```kotlin
+// Camera Configuration (from PosSystem)
+val cameraIp: String?
+val cameraEntityId: Int?
+val cameraId: Int?
+
+// OnePay Configuration (from PosSystem)
+val onePayIp: String?
+val onePayEntityId: Int?
+val onePayId: Int?
+```
 ```kotlin
 // Active transactions saved as "{guid}-P"
 suspend fun savePendingTransaction(transaction: Transaction): Result<Unit>
@@ -248,9 +296,9 @@ suspend fun getPendingTransactionsForResume(): List<Transaction>
 
 | Legacy Collection | New Domain Model | Repository | Status | Notes |
 |-------------------|------------------|------------|--------|-------|
-| `PosSystem` | `DeviceInfo` | `RemoteDeviceRepository` | ⚠️ Partial | Camera/OnePay configs not mapped |
+| `PosSystem` | `HardwareConfig` | `CouchbaseLocalDeviceConfigRepository` | ✅ **Connected** | Camera/OnePay configs via `LegacyPosSystemDto` |
 | `PosBranchSettings` | `BranchSetting` | `CouchbaseBranchSettingsRepository` | ✅ **Connected** | Key-value settings via `LegacyBranchSettingDto` |
-| `Branch` | `DeviceInfo.branchId/branchName` | — | ⚠️ Partial | Only ID/name stored; full branch entity missing |
+| `Branch` | `Branch` | `CouchbaseBranchRepository` | ✅ **Connected** | Full branch entity via `LegacyBranchDto` |
 
 ### Master Data Collections
 
@@ -436,9 +484,9 @@ After Phase 1 & 2 implementation, these fields still need attention:
 
 | Task | Priority | Effort | Status |
 |------|----------|--------|--------|
-| Update DeviceInfo for camera config | 🟡 Medium | 3h | 🔲 Pending |
+| Update DeviceInfo for camera config | 🟡 Medium | 3h | ✅ **Done** |
 | Implement PosBranchSettings collection | 🟡 Medium | 4h | ✅ **Done** |
-| Implement Branch collection | 🟢 Low | 3h | 🔲 Pending |
+| Implement Branch collection | 🟢 Low | 3h | ✅ **Done** |
 
 ---
 

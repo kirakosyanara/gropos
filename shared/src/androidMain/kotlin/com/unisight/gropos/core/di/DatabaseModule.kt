@@ -14,7 +14,11 @@ import com.unisight.gropos.features.pricing.domain.repository.ConditionalSaleRep
 import com.unisight.gropos.features.pricing.domain.repository.CrvRepository
 import com.unisight.gropos.features.pricing.domain.repository.CustomerGroupRepository
 import com.unisight.gropos.features.pricing.domain.repository.TaxRepository
+import com.unisight.gropos.features.device.data.CouchbaseLocalDeviceConfigRepository
+import com.unisight.gropos.features.device.domain.repository.LocalDeviceConfigRepository
+import com.unisight.gropos.features.settings.data.CouchbaseBranchRepository
 import com.unisight.gropos.features.settings.data.CouchbaseBranchSettingsRepository
+import com.unisight.gropos.features.settings.domain.repository.BranchRepository
 import com.unisight.gropos.features.settings.domain.repository.BranchSettingsRepository
 import com.unisight.gropos.features.transaction.data.CouchbaseTransactionRepository
 import com.unisight.gropos.features.transaction.domain.repository.TransactionRepository
@@ -119,6 +123,24 @@ val databaseModule: Module = module {
      */
     single { CouchbaseBranchSettingsRepository(get()) }
     single<BranchSettingsRepository> { get<CouchbaseBranchSettingsRepository>() }
+    
+    /**
+     * Couchbase branch repository.
+     * 
+     * Per COUCHBASE_LOCAL_STORAGE.md: Branch collection in "pos" scope.
+     * Used for store name, address, and configuration.
+     */
+    single { CouchbaseBranchRepository(get()) }
+    single<BranchRepository> { get<CouchbaseBranchRepository>() }
+    
+    /**
+     * Couchbase local device config repository.
+     * 
+     * Per COUCHBASE_LOCAL_STORAGE.md: PosSystem collection in "pos" scope.
+     * Provides camera config, OnePay config, and device registration info.
+     */
+    single { CouchbaseLocalDeviceConfigRepository(get()) }
+    single<LocalDeviceConfigRepository> { get<CouchbaseLocalDeviceConfigRepository>() }
     
     /**
      * Debug data seeder.
