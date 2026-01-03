@@ -490,7 +490,8 @@ fun CheckoutContent(
                                 onEvent(CheckoutEvent.DismissFunctionsPanel)
                             }
                             FunctionAction.LOTTO_PAY -> {
-                                // TODO: Navigate to Lottery module
+                                // Navigate to Lottery Sales screen
+                                onEvent(CheckoutEvent.NavigateToLottery)
                                 onEvent(CheckoutEvent.DismissFunctionsPanel)
                             }
                             FunctionAction.BALANCE_CHECK -> {
