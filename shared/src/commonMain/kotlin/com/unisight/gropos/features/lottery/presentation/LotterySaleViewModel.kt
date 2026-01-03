@@ -2,6 +2,7 @@ package com.unisight.gropos.features.lottery.presentation
 
 import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
+import com.unisight.gropos.features.cashier.domain.service.CashierSessionManager
 import com.unisight.gropos.features.lottery.domain.model.LotteryGame
 import com.unisight.gropos.features.lottery.domain.model.LotteryGameType
 import com.unisight.gropos.features.lottery.domain.model.LotteryTransaction
@@ -27,13 +28,26 @@ import java.math.BigDecimal
  * - Each game purchase becomes a separate transaction
  * - Cart is cleared after successful sale
  * 
+ * **P0 FIX (QA Audit):**
+ * - staffId now comes from CashierSessionManager (not hardcoded)
+ * - Throws IllegalStateException if no active session
+ * 
  * Per agent-behavior.mdc: No business logic in Composables.
  * Per kotlin-compose.mdc: Expose StateFlow (not LiveData).
  */
 class LotterySaleViewModel(
     private val repository: LotteryRepository,
-    private val staffId: Int
+    private val sessionManager: CashierSessionManager
 ) : ScreenModel {
+    
+    /**
+     * Gets the current staff ID from the active session.
+     * 
+     * @throws IllegalStateException if no session is active
+     */
+    private val staffId: Int
+        get() = sessionManager.currentSession.value?.employeeId
+            ?: throw IllegalStateException("No active session. User must be logged in to process lottery transactions.")
     
     private val _uiState = MutableStateFlow(LotterySaleUiState(isLoading = true))
     val uiState: StateFlow<LotterySaleUiState> = _uiState.asStateFlow()

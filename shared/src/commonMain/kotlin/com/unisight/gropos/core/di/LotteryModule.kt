@@ -1,5 +1,6 @@
 package com.unisight.gropos.core.di
 
+import com.unisight.gropos.features.cashier.domain.service.CashierSessionManager
 import com.unisight.gropos.features.lottery.data.FakeLotteryRepository
 import com.unisight.gropos.features.lottery.domain.repository.LotteryRepository
 import com.unisight.gropos.features.lottery.presentation.LotteryPayoutViewModel
@@ -14,6 +15,10 @@ import org.koin.dsl.module
  * - Provides LotteryRepository (Fake for now, Remote later)
  * - Provides LotterySaleViewModel for sales screen
  * - Provides LotteryPayoutViewModel for payout screen
+ * 
+ * **P0 FIX (QA Audit):**
+ * - staffId now comes from CashierSessionManager instead of hardcoded value
+ * - Ensures lottery transactions are attributed to correct employee
  * 
  * **Current Implementation:**
  * Uses FakeLotteryRepository with seeded games.
@@ -48,13 +53,12 @@ val lotteryModule = module {
      * 
      * Factory scope: New instance per screen.
      * 
-     * Note: staffId should come from AuthRepository/SessionManager in production.
-     * Using hardcoded 100 for development.
+     * **P0 FIX:** staffId now comes from CashierSessionManager.
      */
     factory {
         LotterySaleViewModel(
             repository = get(),
-            staffId = 100 // TODO: Get from session manager
+            sessionManager = get()
         )
     }
     
@@ -63,13 +67,12 @@ val lotteryModule = module {
      * 
      * Factory scope: New instance per screen.
      * 
-     * Note: staffId should come from AuthRepository/SessionManager in production.
-     * Using hardcoded 100 for development.
+     * **P0 FIX:** staffId now comes from CashierSessionManager.
      */
     factory {
         LotteryPayoutViewModel(
             repository = get(),
-            staffId = 100 // TODO: Get from session manager
+            sessionManager = get()
         )
     }
     

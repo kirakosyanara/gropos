@@ -46,6 +46,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Updated `OfflineQueueTest` to use `InMemoryQueuePersistence`
   - Per reliability-stability.mdc: Write-ahead logging pattern ensures no money is lost
 
+- **P0: Lottery Compliance Fix** (QA Audit Fix - CRITICAL)
+  - **Problem:** `LotteryModule` hardcoded `staffId = 100` for lottery transactions
+  - Updated `LotteryModule.kt`:
+    - Inject `CashierSessionManager` into `LotterySaleViewModel` and `LotteryPayoutViewModel`
+    - Removed hardcoded `staffId = 100` parameter
+  - Updated `LotterySaleViewModel`:
+    - Now accepts `CashierSessionManager` instead of `staffId: Int`
+    - Dynamic `staffId` property reads from `sessionManager.currentSession.value?.employeeId`
+    - Throws `IllegalStateException` if no active session (login required)
+  - Updated `LotteryPayoutViewModel`:
+    - Now accepts `CashierSessionManager` instead of `staffId: Int`
+    - Dynamic `staffId` property reads from `sessionManager.currentSession.value?.employeeId`
+    - Throws `IllegalStateException` if no active session (login required)
+  - Per ROLES_AND_PERMISSIONS.md: All lottery transactions now attributed to logged-in employee
+
 ### Added
 - **LegacyDtoTest** - Unit Tests for all Legacy DTOs
   - Tests for LegacyProductDto, LegacyTransactionDto, LegacyTaxDto, LegacyCrvDto
