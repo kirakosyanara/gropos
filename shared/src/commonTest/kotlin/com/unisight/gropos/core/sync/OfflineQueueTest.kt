@@ -10,8 +10,24 @@ import kotlin.test.assertTrue
  * Unit tests for DefaultOfflineQueueService.
  * 
  * Per QA Audit: Offline queue must persist failed transactions.
+ * 
+ * **P0 FIX:** Updated tests to use QueuePersistence (InMemoryQueuePersistence for tests).
  */
 class OfflineQueueTest {
+    
+    /**
+     * Creates a test queue service with in-memory persistence.
+     */
+    private fun createTestQueue(
+        syncHandler: FakeSyncHandler = FakeSyncHandler(),
+        config: OfflineQueueConfig = OfflineQueueConfig()
+    ): DefaultOfflineQueueService {
+        return DefaultOfflineQueueService(
+            syncHandler = syncHandler,
+            persistence = InMemoryQueuePersistence(),
+            config = config
+        )
+    }
     
     // ========================================================================
     // Enqueue Tests
@@ -19,8 +35,7 @@ class OfflineQueueTest {
     
     @Test
     fun `enqueue adds item to queue`() = runTest {
-        val syncHandler = FakeSyncHandler()
-        val queue = DefaultOfflineQueueService(syncHandler)
+        val queue = createTestQueue()
         
         val item = createQueuedItem(type = QueueItemType.TRANSACTION)
         queue.enqueue(item)
@@ -30,8 +45,7 @@ class OfflineQueueTest {
     
     @Test
     fun `enqueue multiple items increases count`() = runTest {
-        val syncHandler = FakeSyncHandler()
-        val queue = DefaultOfflineQueueService(syncHandler)
+        val queue = createTestQueue()
         
         queue.enqueue(createQueuedItem())
         queue.enqueue(createQueuedItem())
@@ -42,8 +56,7 @@ class OfflineQueueTest {
     
     @Test
     fun `enqueueTransaction assigns ID`() = runTest {
-        val syncHandler = FakeSyncHandler()
-        val queue = DefaultOfflineQueueService(syncHandler)
+        val queue = createTestQueue()
         
         val id = queue.enqueueTransaction(payload = """{"txnId": "123"}""")
         
@@ -58,7 +71,7 @@ class OfflineQueueTest {
     @Test
     fun `processQueue syncs all items on success`() = runTest {
         val syncHandler = FakeSyncHandler()
-        val queue = DefaultOfflineQueueService(syncHandler)
+        val queue = createTestQueue(syncHandler)
         
         queue.enqueue(createQueuedItem())
         queue.enqueue(createQueuedItem())
@@ -73,7 +86,7 @@ class OfflineQueueTest {
     @Test
     fun `processQueue returns zero for empty queue`() = runTest {
         val syncHandler = FakeSyncHandler()
-        val queue = DefaultOfflineQueueService(syncHandler)
+        val queue = createTestQueue(syncHandler)
         
         val syncedCount = queue.processQueue()
         
@@ -86,14 +99,14 @@ class OfflineQueueTest {
         val syncHandler = FakeSyncHandler()
         syncHandler.simulateFailure = true
         
-        val queue = DefaultOfflineQueueService(
+        val queue = createTestQueue(
             syncHandler = syncHandler,
             config = OfflineQueueConfig(maxRetries = 5)
         )
         
         queue.enqueue(createQueuedItem())
         
-        // First process - should fail and re-queue
+        // First process - should fail and update attempt count
         queue.processQueue()
         
         assertEquals(1, queue.getPendingCount())
@@ -106,7 +119,7 @@ class OfflineQueueTest {
         val syncHandler = FakeSyncHandler()
         syncHandler.simulateFailure = true
         
-        val queue = DefaultOfflineQueueService(
+        val queue = createTestQueue(
             syncHandler = syncHandler,
             config = OfflineQueueConfig(maxRetries = 3)
         )
@@ -127,7 +140,7 @@ class OfflineQueueTest {
         val syncHandler = FakeSyncHandler()
         syncHandler.simulatePermanentFailure = true
         
-        val queue = DefaultOfflineQueueService(syncHandler)
+        val queue = createTestQueue(syncHandler)
         
         queue.enqueue(createQueuedItem())
         queue.processQueue()
@@ -143,7 +156,7 @@ class OfflineQueueTest {
     @Test
     fun `items processed in FIFO order`() = runTest {
         val syncHandler = FakeSyncHandler()
-        val queue = DefaultOfflineQueueService(syncHandler)
+        val queue = createTestQueue(syncHandler)
         
         queue.enqueue(createQueuedItem(payload = "first"))
         queue.enqueue(createQueuedItem(payload = "second"))
@@ -163,7 +176,7 @@ class OfflineQueueTest {
         val syncHandler = FakeSyncHandler()
         syncHandler.simulatePermanentFailure = true
         
-        val queue = DefaultOfflineQueueService(syncHandler)
+        val queue = createTestQueue(syncHandler)
         
         queue.enqueue(createQueuedItem())
         queue.processQueue()
@@ -179,7 +192,7 @@ class OfflineQueueTest {
         val syncHandler = FakeSyncHandler()
         syncHandler.simulatePermanentFailure = true
         
-        val queue = DefaultOfflineQueueService(syncHandler)
+        val queue = createTestQueue(syncHandler)
         
         queue.enqueue(createQueuedItem())
         queue.processQueue()
@@ -200,8 +213,7 @@ class OfflineQueueTest {
     
     @Test
     fun `pendingCount flow updates on enqueue`() = runTest {
-        val syncHandler = FakeSyncHandler()
-        val queue = DefaultOfflineQueueService(syncHandler)
+        val queue = createTestQueue()
         
         assertEquals(0, queue.pendingCount.value)
         
@@ -214,8 +226,7 @@ class OfflineQueueTest {
     
     @Test
     fun `pendingCount flow updates after process`() = runTest {
-        val syncHandler = FakeSyncHandler()
-        val queue = DefaultOfflineQueueService(syncHandler)
+        val queue = createTestQueue()
         
         queue.enqueue(createQueuedItem())
         queue.enqueue(createQueuedItem())

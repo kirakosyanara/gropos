@@ -7,34 +7,30 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
-import java.util.concurrent.atomic.AtomicLong
 
 /**
- * Default implementation of OfflineQueueService.
+ * Default implementation of OfflineQueueService with persistent storage.
  * 
- * **Per QA Audit Finding (CRITICAL):**
- * This implementation addresses the missing offline queue that was causing
- * data loss when network requests failed.
+ * **P0 FIX (QA Audit - CRITICAL):**
+ * This implementation now uses QueuePersistence for crash-safe storage.
+ * Transaction data is persisted to Couchbase, ensuring no money is lost
+ * if the app crashes before sync.
  * 
  * **Design:**
  * - Thread-safe queue operations using Mutex
  * - FIFO ordering for fair processing
  * - Retry count tracking for backoff decisions
  * - Maximum attempts before abandoning items
+ * - **Persistence:** Items saved to Couchbase on enqueue, deleted on success
  * 
- * **Upgrade Path:**
- * Current implementation uses in-memory storage.
- * For production, replace internal storage with Couchbase:
- * ```kotlin
- * class CouchbaseOfflineQueueService(
- *     private val database: Database
- * ) : OfflineQueueService { ... }
- * ```
+ * **Crash Recovery:**
+ * On app restart, pending items are loaded from persistence and reprocessed.
  * 
  * Per reliability-stability.mdc: Idempotency keys for transaction safety.
  */
 class DefaultOfflineQueueService(
     private val syncHandler: QueueItemSyncHandler,
+    private val persistence: QueuePersistence,
     private val config: OfflineQueueConfig = OfflineQueueConfig()
 ) : OfflineQueueService {
     
@@ -44,18 +40,6 @@ class DefaultOfflineQueueService(
     private val queueMutex = Mutex()
     
     /**
-     * In-memory queue storage.
-     * 
-     * TODO: Replace with Couchbase persistence for production.
-     */
-    private val queue = mutableListOf<QueuedItem>()
-    
-    /**
-     * ID generator for new items.
-     */
-    private val idGenerator = AtomicLong(0)
-    
-    /**
      * Observable pending count for UI binding.
      */
     private val _pendingCount = MutableStateFlow(0)
@@ -63,6 +47,7 @@ class DefaultOfflineQueueService(
     
     /**
      * Items that have exceeded max retries.
+     * Note: Abandoned items are kept in memory only (can be enhanced to persist if needed).
      */
     private val abandonedItems = mutableListOf<AbandonedItem>()
     
@@ -72,17 +57,19 @@ class DefaultOfflineQueueService(
     
     override suspend fun enqueue(item: QueuedItem) {
         queueMutex.withLock {
-            // Assign ID if not already set
+            // Assign ID if not already set and save to persistence
             val itemWithId = if (item.id == 0L) {
-                item.copy(id = idGenerator.incrementAndGet())
+                val newId = persistence.generateId()
+                item.copy(id = newId)
             } else {
                 item
             }
             
-            queue.add(itemWithId)
-            _pendingCount.value = queue.size
+            // P0 FIX: Save to persistent storage BEFORE considering it enqueued
+            persistence.save(itemWithId)
+            _pendingCount.value = persistence.count()
             
-            println("[OFFLINE_QUEUE] Enqueued item ${itemWithId.id} (${itemWithId.type}). Queue size: ${queue.size}")
+            println("[OFFLINE_QUEUE] Enqueued item ${itemWithId.id} (${itemWithId.type}). Queue size: ${_pendingCount.value}")
         }
     }
     
@@ -96,8 +83,9 @@ class DefaultOfflineQueueService(
      * @return The generated item ID
      */
     suspend fun enqueueTransaction(payload: String, type: QueueItemType = QueueItemType.TRANSACTION): Long {
+        val newId = persistence.generateId()
         val item = QueuedItem(
-            id = idGenerator.incrementAndGet(),
+            id = newId,
             type = type,
             payload = payload,
             createdAt = Clock.System.now(),
@@ -110,16 +98,19 @@ class DefaultOfflineQueueService(
     }
     
     override suspend fun getPendingCount(): Int {
-        return queueMutex.withLock { queue.size }
+        return queueMutex.withLock { persistence.count() }
     }
     
     /**
      * Processes all pending items in the queue.
      * 
+     * **P0 FIX:** Items are now read from persistence, not memory.
+     * Items are deleted from persistence ONLY after successful sync.
+     * 
      * **Processing Order:** FIFO (oldest first)
      * 
      * **Failure Handling:**
-     * - Failed items are re-queued with incremented attempt count
+     * - Failed items remain in persistence with incremented attempt count
      * - Items exceeding max retries are moved to abandoned list
      * 
      * @return Number of successfully processed items
@@ -127,9 +118,9 @@ class DefaultOfflineQueueService(
     override suspend fun processQueue(): Int {
         var successCount = 0
         
-        // Take a snapshot of current queue
+        // P0 FIX: Get items from persistent storage (survives crash)
         val itemsToProcess = queueMutex.withLock {
-            queue.toList().also { queue.clear() }
+            persistence.getAll()
         }
         
         if (itemsToProcess.isEmpty()) {
@@ -137,27 +128,32 @@ class DefaultOfflineQueueService(
             return 0
         }
         
-        println("[OFFLINE_QUEUE] Processing ${itemsToProcess.size} items...")
+        println("[OFFLINE_QUEUE] Processing ${itemsToProcess.size} items from persistent storage...")
         
         for (item in itemsToProcess) {
             val result = processItem(item)
             
             when (result) {
                 is ProcessResult.Success -> {
+                    // P0 FIX: Delete from persistence ONLY after successful sync
+                    queueMutex.withLock {
+                        persistence.delete(item.id)
+                    }
                     successCount++
-                    println("[OFFLINE_QUEUE] Item ${item.id} synced successfully")
+                    println("[OFFLINE_QUEUE] Item ${item.id} synced and removed from persistence")
                 }
                 
                 is ProcessResult.Retry -> {
-                    // Re-queue with updated attempt count
+                    // Update attempt count in persistence
                     val updatedItem = item.copy(
                         attempts = item.attempts + 1,
                         lastAttempt = Clock.System.now()
                     )
                     
                     if (updatedItem.attempts >= config.maxRetries) {
-                        // Move to abandoned
+                        // Move to abandoned, delete from persistence
                         queueMutex.withLock {
+                            persistence.delete(item.id)
                             abandonedItems.add(AbandonedItem(
                                 item = updatedItem,
                                 reason = result.reason,
@@ -166,15 +162,18 @@ class DefaultOfflineQueueService(
                         }
                         println("[OFFLINE_QUEUE] Item ${item.id} abandoned after ${updatedItem.attempts} attempts")
                     } else {
-                        // Re-queue for later
-                        enqueue(updatedItem)
-                        println("[OFFLINE_QUEUE] Item ${item.id} re-queued (attempt ${updatedItem.attempts})")
+                        // Update in persistence for later retry
+                        queueMutex.withLock {
+                            persistence.update(updatedItem)
+                        }
+                        println("[OFFLINE_QUEUE] Item ${item.id} updated for retry (attempt ${updatedItem.attempts})")
                     }
                 }
                 
                 is ProcessResult.Abandon -> {
-                    // Permanent failure - don't retry
+                    // Permanent failure - remove from persistence, add to abandoned
                     queueMutex.withLock {
+                        persistence.delete(item.id)
                         abandonedItems.add(AbandonedItem(
                             item = item,
                             reason = result.reason,
@@ -186,8 +185,8 @@ class DefaultOfflineQueueService(
             }
         }
         
-        // Update pending count
-        _pendingCount.value = queueMutex.withLock { queue.size }
+        // Update pending count from persistence
+        _pendingCount.value = queueMutex.withLock { persistence.count() }
         
         println("[OFFLINE_QUEUE] Processed: $successCount/${itemsToProcess.size} successful")
         return successCount
@@ -211,9 +210,11 @@ class DefaultOfflineQueueService(
     
     /**
      * Returns all pending items (for debugging/monitoring).
+     * 
+     * P0 FIX: Now reads from persistent storage.
      */
     suspend fun getAllPending(): List<QueuedItem> {
-        return queueMutex.withLock { queue.toList() }
+        return queueMutex.withLock { persistence.getAll() }
     }
     
     /**
@@ -249,13 +250,26 @@ class DefaultOfflineQueueService(
     
     /**
      * Clears the entire queue (for testing/reset).
+     * 
+     * P0 FIX: Now clears persistent storage as well.
      */
     suspend fun clear() {
         queueMutex.withLock {
-            queue.clear()
+            persistence.clear()
             abandonedItems.clear()
             _pendingCount.value = 0
         }
+    }
+    
+    /**
+     * Initializes the pending count from persistence on startup.
+     * 
+     * Call this during app initialization to restore queue state
+     * after a crash or restart.
+     */
+    suspend fun initialize() {
+        _pendingCount.value = persistence.count()
+        println("[OFFLINE_QUEUE] Initialized with ${_pendingCount.value} pending items from persistence")
     }
 }
 

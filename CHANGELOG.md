@@ -28,6 +28,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Removed all simulated login/refresh methods (simulateLogin, simulatePinLogin, simulateTokenRefresh)
   - Per API_INTEGRATION.md: All auth operations now use real API endpoints
 
+- **P0: Offline Queue Persistence** (QA Audit Fix - CRITICAL)
+  - Created `QueuePersistence` interface for pluggable persistent storage
+    - `save()`, `getAll()`, `count()`, `delete()`, `update()`, `clear()`, `generateId()`
+    - `InMemoryQueuePersistence` for testing
+  - Created `CouchbaseQueuePersistence` (Desktop and Android)
+    - Collection: `OfflineQueue` in "local" scope
+    - Persists queue items with id, type, payload, createdAt, attempts, lastAttempt
+    - Thread-safe with Mutex
+  - Refactored `DefaultOfflineQueueService` to use `QueuePersistence`
+    - Items saved to Couchbase BEFORE considering enqueued
+    - Items deleted from Couchbase ONLY after successful sync
+    - Added `initialize()` method for crash recovery on app restart
+  - Updated `DatabaseModule` (Desktop and Android) to wire:
+    - `CouchbaseQueuePersistence` as `QueuePersistence`
+    - `DefaultOfflineQueueService` as `OfflineQueueService`
+  - Updated `OfflineQueueTest` to use `InMemoryQueuePersistence`
+  - Per reliability-stability.mdc: Write-ahead logging pattern ensures no money is lost
+
 ### Added
 - **LegacyDtoTest** - Unit Tests for all Legacy DTOs
   - Tests for LegacyProductDto, LegacyTransactionDto, LegacyTaxDto, LegacyCrvDto

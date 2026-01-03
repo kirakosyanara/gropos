@@ -77,5 +77,8 @@ object DatabaseConfig {
     // Per COUCHBASE_LOCAL_STORAGE.md: Branch and system configuration collections
     const val COLLECTION_BRANCH = "Branch"
     const val COLLECTION_POS_SYSTEM = "PosSystem"
+    
+    // Per QA Audit P0: Offline queue for crash-safe transaction storage
+    const val COLLECTION_OFFLINE_QUEUE = "OfflineQueue"
 }
 
