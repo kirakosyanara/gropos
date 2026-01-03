@@ -7,6 +7,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased] - 2026-01-03
 
 ### Added
+- **PosBranchSettings Repository** - Phase 4 Start (System Configuration)
+  - Created `BranchSetting` and `BranchSettings` domain models with typed accessors
+  - Created `LegacyBranchSettingDto` for legacy mapping
+  - Implemented `CouchbaseBranchSettingsRepository` for Desktop and Android
+  - Features: in-memory caching with Mutex for thread safety
+  - Common settings: `CashPaymentLimit`, `LotteryPayoutTier1/2`, `ReturnLimitWithoutApproval`
+  - Wired in both `DatabaseModule.kt` files
+  - Updated BACKEND_INTEGRATION_STATUS.md: 13 of 15 collections Connected
+
+- **Android Platform Parity** - Part B Complete
+  - Ported `CouchbaseTaxRepository` to Android
+  - Ported `CouchbaseCrvRepository` to Android
+  - Ported `CouchbaseCustomerGroupRepository` to Android
+  - Ported `CouchbaseConditionalSaleRepository` to Android
+  - Ported `CouchbaseVendorPayoutRepository` to Android
+  - Updated Android `DatabaseModule.kt` with all repository bindings
+  - Full feature parity between Desktop and Android platforms
+
+- **ConditionalSale Repository** - Phase 3C Implementation
+  - Created `ConditionalSale` domain model with `ConditionalSaleType` enum
+  - Created `LegacyConditionalSaleDto` for legacy mapping
+  - Implemented `CouchbaseConditionalSaleRepository` for Desktop and Android
+  - Methods: `getActiveRules()`, `getRulesForProduct()`, `getAgeRestrictionRules()`, `getRequiredAgeForProduct()`
+  - Dynamic age verification rules from database (replaces hardcoded logic)
+
+- **VendorPayout Repository** - Phase 3C Implementation
+  - Created `VendorPayout` domain model with `VendorPayoutType` enum
+  - Created `LegacyVendorPayoutDto` with bidirectional mapping
+  - Implemented `CouchbaseVendorPayoutRepository` for Desktop and Android
+  - Methods: `savePayout()`, `getPayoutsForDateRange()`, `getTodayPayoutTotal()`, `getUnsyncedPayouts()`
+  - Full sync support with `markAsSynced()` method
+
 - **CustomerGroup Repository** - Phase 3A Implementation
   - Created `CustomerGroup`, `CustomerGroupDepartment`, `CustomerGroupItem` domain models
   - Created `LegacyCustomerGroupDto`, `LegacyCustomerGroupDepartmentDto`, `LegacyCustomerGroupItemDto` for legacy mapping
