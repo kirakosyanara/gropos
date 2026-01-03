@@ -7,6 +7,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased] - 2026-01-02
 
 ### Added
+- **API Authentication System**
+  - **ApiAuthService** - Complete authentication service
+    - `employeeGroPOSLogin()` with username/password
+    - `employeePinLogin()` for PIN-based authentication
+    - `refreshToken()` for token refresh
+    - `logout()` for session termination
+    - `setBearerToken()` for manager override
+    - `AuthState` sealed class (Unauthenticated, Authenticating, Authenticated, TokenExpired, Error)
+    - `AuthResponse` model for API responses
+    - `AuthException` for authentication errors
+  - **TokenStorage** - Secure token persistence
+    - `TokenStorage` interface for platform implementations
+    - `InMemoryTokenStorage` for development
+    - `FakeTokenStorage` for testing
+    - Methods: saveAccessToken, saveRefreshToken, clearTokens
+  - **TokenRefreshManager** - Automatic token refresh
+    - `TokenRefreshManager` interface for background refresh
+    - `DefaultTokenRefreshManager` with monitoring loop
+    - `TokenStatus` sealed class (NoToken, Valid, ExpiringSoon, Expired, Refreshing, RefreshFailed)
+    - `TokenRefreshConfig` for configuration
+    - `Manager.setBearerToken()` static helper
+    - `SimulatedTokenRefreshManager` for testing
+
 - **Sync & Pullback Features**
   - **Pullback Flow** - Recall items from previous transaction
     - `PullbackModels.kt` with `PullbackResult`, `PullbackItem`, `PullbackState`, `PullbackConfig`

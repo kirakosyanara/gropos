@@ -31,8 +31,8 @@
 | Pre-Assigned Employee Detection | ✅ Match | `PreAssignedEmployeeDetector` interface + implementations (Jan 2026) |
 | Login State Machine | ✅ Match | Implemented `LoginStage` enum: LOADING→EMPLOYEE_SELECT→PIN_ENTRY→TILL_ASSIGNMENT→SUCCESS (Jan 2026) |
 | NFC Token Authentication | ✅ Match | `NfcScanner` interface + `SimulatedNfcScanner` + `ScanBadgeDialog` (Jan 2026) |
-| API Authentication | ❌ Missing | Implement `employeeGroPOSLogin()` with bearer token storage |
-| Token Refresh | ❌ Missing | Implement refresh token logic and `Manager.setBearerToken()` |
+| API Authentication | ✅ Match | `ApiAuthService.employeeGroPOSLogin()` with bearer token (Jan 2026) |
+| Token Refresh | ✅ Match | `TokenRefreshManager` + `Manager.setBearerToken()` (Jan 2026) |
 | Lock Screen | ✅ Match | `LockScreen.kt`, `LockContent.kt`, `LockViewModel.kt` created (Jan 2026) |
 | Inactivity Timer (5 min) | ✅ Match | `InactivityManager` singleton with 5-min timeout (Jan 2026) |
 | Manual Lock (F4 Key) | ✅ Match | F4 key detected in `App.kt` `onPreviewKeyEvent` (Jan 2026) |
@@ -281,7 +281,7 @@
 
 | Category | ✅ Match | ⚠️ Partial | ❌ Missing |
 |----------|----------|------------|------------|
-| Auth & Session | 10 | 3 | 8 |
+| Auth & Session | 12 | 3 | 6 |
 | Roles & Permissions | 8 | 1 | 4 |
 | Payment Processing | 13 | 2 | 2 |
 | Checkout & Transaction | 14 | 8 | 2 |
@@ -291,10 +291,10 @@
 | Device Registration | 9 | 2 | 0 |
 | UI/UX Components | 11 | 1 | 2 |
 | Data Layer | 7 | 1 | 2 |
-| **TOTAL** | **113** | **23** | **4** |
+| **TOTAL** | **115** | **23** | **2** |
 
 ---
 
-*Last Updated: January 2, 2026 (Sync & Pullback Phase)*
+*Last Updated: January 2, 2026 (API Auth Phase)*
 *Next Review: Post-Merge to main*
 
