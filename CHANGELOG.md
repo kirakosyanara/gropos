@@ -7,6 +7,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased] - 2026-01-02
 
 ### Added
+- **Transaction Search & Audit Features**
+  - **Find Transaction Screen** - Full search UI for returns lookup
+    - New `FindTransactionScreen.kt` with search bar and results table
+    - New `FindTransactionViewModel.kt` with search logic
+    - New `FindTransactionUiState.kt` with state models
+    - Search by receipt number, date range, amount, employee
+  - **Transaction Search API** - `TransactionRepository.searchTransactions()`
+    - New `TransactionSearchCriteria` data class for flexible search
+    - Implemented in `FakeTransactionRepository` and `CouchbaseTransactionRepository`
+    - Supports filtering by receipt number, date range, amount, employee
+  - **Approval Audit Service** - Enhanced audit trail logging
+    - New `ApprovalAuditService` interface in `core/security/`
+    - `InMemoryApprovalAuditService` implementation for development
+    - Methods: `logApproval()`, `getRecentApprovals()`, `getApprovalsForEmployee()`, `getApprovalsForAction()`
+  - **Permission Thresholds** - Role-based action limits
+    - New `PermissionThresholds` data class with configurable limits
+    - Presets for CASHIER, SUPERVISOR, MANAGER, ADMIN roles
+    - New `ThresholdChecker` object with check methods:
+      - `checkLineDiscount()`, `checkTransactionDiscount()`
+      - `checkReturn()`, `checkVoid()`, `checkFloorPriceOverride()`
+      - `checkCashPickup()`, `checkLotteryPayout()`
+    - Returns `ThresholdCheckResult`: Allowed, RequiresApproval, Denied
+
 - **Payment & Permissions Enhancements**
   - **Check Payment** - Full check tender type implementation
     - Added `CheckPayment` and `OnAccountPayment` events to `PaymentEvent`

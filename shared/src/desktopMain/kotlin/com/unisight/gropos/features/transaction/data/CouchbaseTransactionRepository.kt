@@ -18,6 +18,7 @@ import com.unisight.gropos.features.transaction.domain.model.Transaction
 import com.unisight.gropos.features.transaction.domain.model.TransactionItem
 import com.unisight.gropos.features.transaction.domain.model.TransactionPayment
 import com.unisight.gropos.features.transaction.domain.repository.TransactionRepository
+import com.unisight.gropos.features.transaction.domain.repository.TransactionSearchCriteria
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.math.BigDecimal
@@ -226,6 +227,76 @@ class CouchbaseTransactionRepository(
             emptyList()
         } catch (e: Exception) {
             println("CouchbaseTransactionRepository: Error getting pending transactions - ${e.message}")
+            emptyList()
+        }
+    }
+    
+    // ========================================================================
+    // Transaction Search
+    // Per REMEDIATION_CHECKLIST: Find Transaction Screen for returns lookup
+    // ========================================================================
+    
+    /**
+     * Searches transactions by various criteria.
+     * 
+     * Per RETURNS.md: Returns processing requires finding original transaction.
+     */
+    override suspend fun searchTransactions(criteria: TransactionSearchCriteria): List<Transaction> = withContext(Dispatchers.IO) {
+        try {
+            var whereExpression: Expression? = null
+            
+            // Filter by receipt number (partial match on ID)
+            criteria.receiptNumber?.let { receipt ->
+                val idExpression = Expression.property("id").like(Expression.string("%$receipt%"))
+                whereExpression = idExpression
+            }
+            
+            // Filter by date range
+            criteria.startDate?.let { startDate ->
+                val dateExpr = Expression.property("completedDateTime").greaterThanOrEqualTo(Expression.string(startDate))
+                whereExpression = whereExpression?.and(dateExpr) ?: dateExpr
+            }
+            
+            criteria.endDate?.let { endDate ->
+                val dateExpr = Expression.property("completedDateTime").lessThanOrEqualTo(Expression.string(endDate))
+                whereExpression = whereExpression?.and(dateExpr) ?: dateExpr
+            }
+            
+            // Filter by employee
+            criteria.employeeId?.let { empId ->
+                val empExpr = Expression.property("employeeId").equalTo(Expression.intValue(empId))
+                whereExpression = whereExpression?.and(empExpr) ?: empExpr
+            }
+            
+            // Build query
+            val queryBuilder = QueryBuilder
+                .select(SelectResult.all())
+                .from(DataSource.collection(collection))
+            
+            val query = if (whereExpression != null) {
+                queryBuilder
+                    .where(whereExpression!!)
+                    .orderBy(Ordering.property("completedDateTime").descending())
+                    .limit(Expression.intValue(criteria.limit))
+            } else {
+                queryBuilder
+                    .orderBy(Ordering.property("completedDateTime").descending())
+                    .limit(Expression.intValue(criteria.limit))
+            }
+            
+            query.execute().use { resultSet ->
+                val results = resultSet.allResults().mapNotNull { result ->
+                    val dict = result.getDictionary(collection.name)
+                    dict?.let { mapToTransaction(it.toMap()) }
+                }
+                
+                // Filter by amount if specified (post-query filter for BigDecimal comparison)
+                criteria.amount?.let { amount ->
+                    results.filter { it.grandTotal.compareTo(amount) == 0 }
+                } ?: results
+            }
+        } catch (e: Exception) {
+            println("CouchbaseTransactionRepository: Error searching transactions - ${e.message}")
             emptyList()
         }
     }

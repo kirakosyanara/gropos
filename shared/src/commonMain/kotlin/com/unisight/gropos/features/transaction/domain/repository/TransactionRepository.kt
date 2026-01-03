@@ -97,5 +97,46 @@ interface TransactionRepository {
      * @return Result.success(Unit) on success, Result.failure on error
      */
     suspend fun deleteHeldTransaction(id: String): Result<Unit>
+    
+    // ========================================================================
+    // Transaction Search
+    // Per REMEDIATION_CHECKLIST: Find Transaction Screen for returns lookup
+    // ========================================================================
+    
+    /**
+     * Searches transactions by various criteria.
+     * 
+     * Per RETURNS.md: Returns processing requires finding original transaction.
+     * Per Find Transaction Screen: Search by receipt number, date range, or amount.
+     * 
+     * @param criteria The search criteria
+     * @return List of matching transactions
+     */
+    suspend fun searchTransactions(criteria: TransactionSearchCriteria): List<Transaction>
 }
+
+/**
+ * Criteria for transaction search.
+ * 
+ * Per RETURNS.md: Search by receipt number (transaction ID), date, or amount.
+ */
+data class TransactionSearchCriteria(
+    /** Search by transaction/receipt ID (partial match) */
+    val receiptNumber: String? = null,
+    
+    /** Search transactions on or after this date */
+    val startDate: String? = null,
+    
+    /** Search transactions on or before this date */
+    val endDate: String? = null,
+    
+    /** Search by exact amount */
+    val amount: java.math.BigDecimal? = null,
+    
+    /** Search by employee ID */
+    val employeeId: Int? = null,
+    
+    /** Maximum results to return */
+    val limit: Int = 50
+)
 

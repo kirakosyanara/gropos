@@ -3,6 +3,7 @@ package com.unisight.gropos.features.transaction.data
 import com.unisight.gropos.features.transaction.domain.model.HeldTransaction
 import com.unisight.gropos.features.transaction.domain.model.Transaction
 import com.unisight.gropos.features.transaction.domain.repository.TransactionRepository
+import com.unisight.gropos.features.transaction.domain.repository.TransactionSearchCriteria
 
 /**
  * Fake implementation of TransactionRepository for testing.
@@ -48,6 +49,30 @@ class FakeTransactionRepository : TransactionRepository {
     override suspend fun deleteHeldTransaction(id: String): Result<Unit> {
         heldTransactions.removeAll { it.id == id }
         return Result.success(Unit)
+    }
+    
+    override suspend fun searchTransactions(criteria: TransactionSearchCriteria): List<Transaction> {
+        return transactions.filter { transaction ->
+            var matches = true
+            
+            // Filter by receipt number (partial match)
+            criteria.receiptNumber?.let { receipt ->
+                matches = matches && transaction.id.toString().contains(receipt)
+            }
+            
+            // Filter by amount (exact match)
+            criteria.amount?.let { amount ->
+                matches = matches && transaction.grandTotal.compareTo(amount) == 0
+            }
+            
+            // Filter by employee ID
+            criteria.employeeId?.let { empId ->
+                matches = matches && transaction.employeeId == empId
+            }
+            
+            // Date filters would require parsing - simplified for fake implementation
+            matches
+        }.take(criteria.limit)
     }
     
     // Test helpers

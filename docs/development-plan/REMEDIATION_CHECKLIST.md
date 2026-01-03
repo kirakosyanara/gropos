@@ -59,8 +59,8 @@
 | Manager Approval Dialog | ✅ Match | `ManagerApprovalDialog` composable with manager list and PIN entry (Jan 2026) |
 | Self-Approval Logic | ✅ Match | `PermissionManager.canSelfApprove(user, action)` (Jan 2026) |
 | Request Actions Enum | ❌ Missing | Create `RequestAction` enum (CASH_PICKUP, VENDOR_PAYOUT, LINE_DISCOUNT, etc.) |
-| Approval Audit Trail | ❌ Missing | Create `ApprovalAuditEntry` and logging mechanism |
-| Permission Thresholds | ❌ Missing | Implement `PermissionThresholds` (discount limits, return limits) |
+| Approval Audit Trail | ✅ Match | `ApprovalAuditService` + `InMemoryApprovalAuditService` (Jan 2026) |
+| Permission Thresholds | ✅ Match | `PermissionThresholds` + `ThresholdChecker` with role presets (Jan 2026) |
 | Void Transaction Permission Check | ✅ Match | Permission check in `onVoidSelectedLineItem()` and `onVoidTransactionRequest()` (Jan 2026) |
 | Price Override Permission Check | ❌ Missing | Add permission check for floor price override |
 | Discount Permission Check | ❌ Missing | Add permission check for line/transaction discounts |
@@ -147,8 +147,8 @@
 
 | Feature/Component | Status | Remediation Action |
 |-------------------|--------|-------------------|
-| Find Transaction Screen | ❌ Missing | Create `FindTransactionScreen` with receipt/date search |
-| Transaction Search API | ❌ Missing | Implement `transactionRepository.searchTransactions()` |
+| Find Transaction Screen | ✅ Match | `FindTransactionScreen.kt` with search bar, results table (Jan 2026) |
+| Transaction Search API | ✅ Match | `TransactionSearchCriteria` + search in Fake & Couchbase repos (Jan 2026) |
 | Return Item Screen | ✅ Match | `ReturnScreen.kt` with 70/30 split layout (Jan 2026) |
 | Returnable Items Grid | ✅ Match | `LazyVerticalGrid` in `LeftPanel` of `ReturnContent.kt` (Jan 2026) |
 | Add to Return Action | ✅ Match | "+ Add to Return" button on `ReturnableItemCard` (Jan 2026) |
@@ -282,19 +282,19 @@
 | Category | ✅ Match | ⚠️ Partial | ❌ Missing |
 |----------|----------|------------|------------|
 | Auth & Session | 9 | 3 | 9 |
-| Roles & Permissions | 1 | 1 | 11 |
+| Roles & Permissions | 3 | 1 | 9 |
 | Payment Processing | 11 | 2 | 4 |
 | Checkout & Transaction | 13 | 8 | 3 |
 | Customer Display | 7 | 2 | 1 |
-| Returns Processing | 8 | 2 | 3 |
+| Returns Processing | 10 | 2 | 1 |
 | Till & Cash Operations | 9 | 1 | 0 |
 | Device Registration | 6 | 2 | 2 |
 | UI/UX Components | 10 | 1 | 3 |
 | Data Layer | 3 | 1 | 6 |
-| **TOTAL** | **92** | **23** | **25** |
+| **TOTAL** | **96** | **23** | **21** |
 
 ---
 
-*Last Updated: January 2, 2026 (Payment & Permissions Enhancements Phase)*
+*Last Updated: January 2, 2026 (Transaction Search & Audit Phase)*
 *Next Review: Post-Merge to main*
 
