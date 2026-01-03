@@ -232,13 +232,45 @@
 | Product Repository | ✅ Match | CouchbaseLite implementation |
 | Transaction Repository | ✅ Match | Save/retrieve transactions |
 | Employee Repository | ✅ Match | `EmployeeRepository` interface + `FakeEmployeeRepository` (Jan 2026) |
-| Till/Account Repository | ✅ Match | `TillRepository` interface + `FakeTillRepository` (Jan 2026) |
+| Till/Account Repository | ✅ Match | `TillRepository` interface + `FakeTillRepository` + `RemoteTillRepository` (Jan 2026) |
 | Customer Repository | ✅ Match | `Customer` model + `CustomerRepository` + `FakeCustomerRepository` (Jan 2026) |
 | Tax Repository | ⚠️ Partial | Current: In-memory. Need: CouchbaseLite persistence |
 | Heartbeat/Sync Service | ✅ Match | `HeartbeatService` with periodic sync loops (Jan 2026) |
 | Offline Queue | ✅ Match | `OfflineQueueService` interface with `QueuedItem` model (Jan 2026) |
 | Held Transactions Collection | ✅ Match | `HeldTransaction` collection in CouchbaseLite, `TransactionRepository` CRUD (Jan 2026) |
 | Approval Audit Collection | ✅ Match | `ApprovalAuditService` with `ApprovalAuditRecord` (Jan 2026) |
+| Remote Till Repository | ✅ Match | `RemoteTillRepository` with TDD tests + `TillDto` mapper (Jan 2026) |
+| Remote Vendor Repository | ✅ Match | `RemoteVendorRepository` with caching (Jan 2026) |
+| Remote Device Repository | ✅ Match | `RemoteDeviceRepository` + `SecureStorage` for credentials (Jan 2026) |
+| API Client | ✅ Match | `ApiClient.kt` with token refresh + error handling (Jan 2026) |
+
+---
+
+## 11. Android Hardware Integration
+
+**Source:** `ANDROID_HARDWARE_GUIDE.md`
+
+| Feature/Component | Status | Remediation Action |
+|-------------------|--------|-------------------|
+| Sunmi Printer Service | ✅ Match | `SunmiPrinterService` with AIDL binding (Jan 2026) |
+| Camera Barcode Scanner | ✅ Match | `CameraBarcodeScanner` with CameraX + MLKit (Jan 2026) |
+| Sunmi Hardware Scanner | ✅ Match | `SunmiHardwareScanner` with BroadcastReceiver (Jan 2026) |
+| Camera Preview UI | ✅ Match | `CameraPreview` Composable + `CameraScannerDialog` (Jan 2026) |
+| Android Hardware DI | ✅ Match | `HardwareModule.kt` with device detection (Jan 2026) |
+
+---
+
+## 12. Desktop Hardware Integration
+
+**Source:** `DESKTOP_HARDWARE.md`
+
+| Feature/Component | Status | Remediation Action |
+|-------------------|--------|-------------------|
+| ESC/POS Printer | ✅ Match | `DesktopEscPosPrinter` with jSerialComm (Jan 2026) |
+| Serial Scanner | ✅ Match | `DesktopSerialScanner` with jSerialComm (Jan 2026) |
+| CAS Scale | ✅ Match | `DesktopCasScale` with weight parsing (Jan 2026) |
+| Desktop Hardware DI | ✅ Match | `HardwareModule.kt` with port configuration (Jan 2026) |
+| Cash Drawer Control | ✅ Match | Integrated in ESC/POS printer (Jan 2026) |
 
 ---
 
