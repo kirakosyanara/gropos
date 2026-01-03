@@ -170,12 +170,18 @@ The current device registration implementation does not match the architectural 
 
 ### Phase 4: Testing
 
-- [ ] **4.9** Create `DeviceRegistrationFlowTest.kt`
-  - [ ] Test QR code request with correct payload
-  - [ ] Test status polling with Bearer token
-  - [ ] Test successful registration saves to SecureStorage
-  - [ ] Test timeout handling
-  - [ ] Test error handling
+- [x] **4.9** Create `RegistrationViewModelTest.kt` ✅ *Completed 2026-01-03*
+  - [x] Test initial state is LOADING
+  - [x] Test transitions to REGISTERED if already registered
+  - [x] Test generates pairing code and transitions to PENDING
+  - [x] Test stores device GUID from QR response
+  - [x] Test transitions to IN_PROGRESS when admin starts assignment
+  - [x] Test completes registration when status is Registered
+  - [x] Test times out after 10 minutes if still PENDING
+  - [x] Test handles QR request failure gracefully
+  - [x] Test refresh event generates new pairing code
+  - [x] Test retry after timeout generates new QR code
+  - **Total: 10 test cases**
 
 ### Phase 5: Documentation & Cleanup
 
