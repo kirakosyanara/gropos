@@ -6,6 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-01-03
 
+### API Client Dynamic Authentication Fix (P0)
+
+- **Dynamic API Key Provider** ✅
+  - **ROOT CAUSE:** API key was read once at app startup (before registration) and never updated
+  - **FIX:** `ApiClient` now uses `apiKeyProvider: () -> String?` lambda (like `tokenProvider`)
+  - **FIX:** API key is read from `SecureStorage` at **request time** (not initialization)
+  - **FIX:** `version: v1` header now added in `defaultRequest` block (per API.md)
+  - **FIX:** Added `request<T>` method for dynamic auth header injection
+  - **FIX:** `ApiClientConfig` no longer stores static `apiKey` field
+
+- **Repository Updates** ✅
+  - `RemoteEmployeeRepository`: Now uses `apiClient.request<T>` with dynamic headers
+  - `ProductSyncService`: Now uses `apiClient.request<T>` with dynamic headers
+  - Both include `x-api-key` and `version: v1` headers automatically
+
+- **NetworkModule Updates** ✅
+  - `ApiClient` now receives `apiKeyProvider` that reads from `SecureStorage`
+  - API key changes after registration are immediately available
+  - No app restart required after device registration
+
 ### Data Sync Implementation
 
 - **Remote Employee Repository** ✅

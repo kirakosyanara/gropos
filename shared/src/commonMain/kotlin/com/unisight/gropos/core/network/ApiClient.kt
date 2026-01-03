@@ -19,21 +19,29 @@ import kotlinx.serialization.json.Json
 /**
  * Central API client manager for all remote API calls.
  * 
- * **Per API_INTEGRATION.md:**
- * - Manages two clients: deviceClient (API key) and authenticatedClient (Bearer token)
+ * **Per API_INTEGRATION.md & API.md:**
+ * - Manages authenticated requests with dynamic API key and bearer token
  * - Handles content negotiation with JSON
  * - Integrates with TokenRefreshManager for 401 handling
+ * 
+ * **Per API.md Authentication Section:**
+ * - x-api-key: Device-level authentication (from registration)
+ * - version: v1 header required on all requests
+ * - Authorization: Bearer token for user-authenticated requests
  * 
  * **Per reliability-stability.mdc:**
  * - All network operations use timeouts
  * - Errors are wrapped in Result types
  * 
+ * @param config API client configuration (base URL, timeouts)
  * @param tokenProvider Provides the current bearer token for authenticated requests
+ * @param apiKeyProvider Provides the device API key (dynamic, read from SecureStorage)
  * @param onUnauthorized Callback when 401 is received (triggers token refresh)
  */
 class ApiClient(
     private val config: ApiClientConfig,
-    private val tokenProvider: () -> String?,
+    @PublishedApi internal val tokenProvider: () -> String?,
+    @PublishedApi internal val apiKeyProvider: () -> String?,
     private val onUnauthorized: suspend () -> Result<Unit>
 ) {
     
@@ -47,6 +55,12 @@ class ApiClient(
     
     /**
      * HTTP client configured for authenticated requests.
+     * 
+     * **Headers added per API.md:**
+     * - x-api-key: Dynamic device API key (read at request time)
+     * - version: v1 (required by all GroPOS APIs)
+     * - Authorization: Bearer token (if user is logged in)
+     * - Content-Type: application/json
      */
     @PublishedApi
     internal val httpClient: HttpClient by lazy {
@@ -69,19 +83,30 @@ class ApiClient(
                 url(config.baseUrl)
                 contentType(ContentType.Application.Json)
                 
-                // Add bearer token if available
-                tokenProvider()?.let { token ->
-                    header("Authorization", "Bearer $token")
-                }
+                // Per API.md: version header required on all requests
+                header("version", "v1")
                 
-                // Add API key if configured
-                config.apiKey?.let { apiKey ->
-                    header("x-api-key", apiKey)
-                }
-                
-                // Add version header
+                // Add client version for debugging
                 header("X-Client-Version", config.clientVersion)
             }
+        }
+    }
+    
+    /**
+     * Creates request builder with current authentication headers.
+     * Headers are read dynamically at request time to pick up API key after registration.
+     */
+    @PublishedApi
+    internal fun HttpRequestBuilder.addAuthHeaders() {
+        // Per API.md: x-api-key for device-level authentication
+        apiKeyProvider()?.let { apiKey ->
+            header("x-api-key", apiKey)
+            println("[ApiClient] Using x-api-key: ${apiKey.take(8)}...")
+        } ?: println("[ApiClient] WARNING: No API key available!")
+        
+        // Add bearer token if user is logged in
+        tokenProvider()?.let { token ->
+            header("Authorization", "Bearer $token")
         }
     }
     
@@ -91,8 +116,13 @@ class ApiClient(
     /**
      * Executes an authenticated API call with automatic token refresh on 401.
      * 
+     * **Per API.md:**
+     * - Includes x-api-key header (device API key)
+     * - Includes Authorization: Bearer header (user token)
+     * - Includes version: v1 header
+     * 
      * **Token Refresh Flow:**
-     * 1. Attempt request
+     * 1. Attempt request with current headers
      * 2. If 401, call onUnauthorized callback (triggers TokenRefreshManager)
      * 3. Retry request once with new token
      * 4. If still fails, propagate error
@@ -128,7 +158,12 @@ class ApiClient(
     }
     
     /**
-     * Executes a device-level API call (no bearer token, uses API key).
+     * Executes a device-level API call (API key only, no bearer token required).
+     * 
+     * **Per API.md:**
+     * - Includes x-api-key header (device API key from registration)
+     * - Includes version: v1 header
+     * - Used for: employee list, product sync, heartbeat, etc.
      */
     suspend inline fun <reified T> deviceRequest(
         crossinline block: suspend HttpClient.() -> HttpResponse
@@ -140,14 +175,47 @@ class ApiClient(
             Result.failure(ApiException.fromException(e))
         }
     }
+    
+    /**
+     * HTTP client for making requests with dynamic auth headers.
+     * Use this to make GET/POST requests with proper authentication.
+     * 
+     * Example usage:
+     * ```kotlin
+     * val response = apiClient.request {
+     *     get("/employee/cashiers")
+     * }
+     * ```
+     */
+    suspend inline fun <reified T> request(
+        crossinline block: HttpRequestBuilder.() -> Unit
+    ): Result<T> {
+        return try {
+            val response = httpClient.request {
+                // Add dynamic auth headers at request time
+                apiKeyProvider()?.let { header("x-api-key", it) }
+                tokenProvider()?.let { header("Authorization", "Bearer $it") }
+                block()
+            }
+            Result.success(response.body<T>())
+        } catch (e: ClientRequestException) {
+            Result.failure(ApiException.fromClientException(e))
+        } catch (e: Exception) {
+            Result.failure(ApiException.fromException(e))
+        }
+    }
 }
 
 /**
  * Configuration for the API client.
+ * 
+ * **Per API.md:**
+ * - Base URL should be environment-specific (dev/staging/prod)
+ * - API key is NOT stored here - it's provided dynamically via apiKeyProvider
+ * - This ensures API key updates after registration are immediately available
  */
 data class ApiClientConfig(
     val baseUrl: String,
-    val apiKey: String? = null,
     val clientVersion: String = "1.0.0",
     val requestTimeoutMs: Long = 30_000,
     val connectTimeoutMs: Long = 10_000,

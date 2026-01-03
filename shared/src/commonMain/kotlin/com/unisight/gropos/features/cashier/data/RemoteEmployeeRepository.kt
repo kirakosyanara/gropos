@@ -6,14 +6,20 @@ import com.unisight.gropos.features.cashier.data.dto.EmployeeDtoMapper.toDomainL
 import com.unisight.gropos.features.cashier.domain.model.Employee
 import com.unisight.gropos.features.cashier.domain.repository.EmployeeRepository
 import io.ktor.client.request.get
+import io.ktor.http.path
 
 /**
  * Remote implementation of EmployeeRepository using backend API.
  * 
- * Per CASHIER_OPERATIONS.md Section "Fetching Cashier List":
+ * **Per CASHIER_OPERATIONS.md Section "Fetching Cashier List":**
  * - API: GET /employee/cashiers
  * - Auth: x-api-key header (device API key)
  * - Returns scheduled cashiers for this device/branch
+ * 
+ * **Per API.md Authentication Section:**
+ * - x-api-key: Device API key from registration
+ * - version: v1 header required
+ * - Headers are added automatically by ApiClient.request()
  * 
  * This replaces FakeEmployeeRepository for production use.
  */
@@ -28,20 +34,29 @@ class RemoteEmployeeRepository(
     /**
      * Fetch list of scheduled cashiers from the backend.
      * 
-     * Per CASHIER_OPERATIONS.md:
+     * **Per CASHIER_OPERATIONS.md:**
      * - Returns cashiers scheduled for this location
      * - Filtered by role (cashier/register permissions)
      * - Only active (not terminated) employees
+     * 
+     * **Per API.md:**
+     * - Endpoint: GET /employee/cashiers
+     * - Headers: x-api-key, version: v1 (added by ApiClient)
      */
     override suspend fun getEmployees(): Result<List<Employee>> {
         // Return cached if available
         cachedEmployees?.let { 
+            println("[RemoteEmployeeRepository] Returning ${it.size} cached employees")
             return Result.success(it) 
         }
         
+        println("[RemoteEmployeeRepository] Fetching employees from backend...")
+        
         return try {
-            val response = apiClient.authenticatedRequest<List<EmployeeDto>> {
-                get(ENDPOINT_CASHIERS)
+            // Use the new request method which adds x-api-key header dynamically
+            val response = apiClient.request<List<EmployeeDto>> {
+                method = io.ktor.http.HttpMethod.Get
+                url { path(ENDPOINT_CASHIERS) }
             }
             
             response.map { dtos ->
@@ -52,6 +67,7 @@ class RemoteEmployeeRepository(
             }
         } catch (e: Exception) {
             println("[RemoteEmployeeRepository] Failed to fetch employees: ${e.message}")
+            e.printStackTrace()
             Result.failure(e)
         }
     }

@@ -69,6 +69,10 @@ val networkModule = module {
      * **CRITICAL:** Changing environment requires app restart because ApiClient
      * is configured at initialization time. The SettingsViewModel now shows
      * a restart prompt when environment is changed.
+     * 
+     * **P1 FIX (Data Sync):** API key is now provided dynamically via apiKeyProvider,
+     * not stored in config. This ensures the API key from registration is available
+     * immediately without requiring app restart.
      */
     single {
         val secureStorage: SecureStorage = get()
@@ -81,7 +85,6 @@ val networkModule = module {
         
         ApiClientConfig(
             baseUrl = environment.baseUrl,
-            apiKey = secureStorage.getApiKey(),
             clientVersion = "1.0.0",
             requestTimeoutMs = 30_000,
             connectTimeoutMs = 10_000,
@@ -93,6 +96,11 @@ val networkModule = module {
     /**
      * Central ApiClient for all remote API calls.
      * 
+     * **Per API.md Authentication Section:**
+     * - x-api-key: Device API key (dynamic, from SecureStorage)
+     * - version: v1 header (always included)
+     * - Authorization: Bearer token (from TokenStorage)
+     * 
      * **CIRCULAR DEPENDENCY SOLUTION:**
      * ApiClient and ApiAuthService have a circular dependency:
      * - ApiClient needs authService.bearerToken for token provider
@@ -103,18 +111,37 @@ val networkModule = module {
      * 2. Using TokenStorage directly for token access
      * 3. ApiAuthService uses ApiClient but ApiClient doesn't depend on ApiAuthService
      * 
+     * **P1 FIX (Data Sync):**
+     * - apiKeyProvider reads from SecureStorage at REQUEST TIME
+     * - This ensures API key from registration is immediately available
+     * - No app restart required after registration
+     * 
      * Automatically handles:
+     * - Device API key injection (from SecureStorage - dynamic)
      * - Bearer token injection (from TokenStorage)
      * - 401 handling with token refresh
+     * - version: v1 header on all requests
      * - Request/response logging
      * - Timeouts
      */
     single {
         val tokenStorage: TokenStorage = get()
+        val secureStorage: SecureStorage = get()
         
         ApiClient(
             config = get(),
             tokenProvider = { tokenStorage.getAccessToken() },
+            apiKeyProvider = { 
+                // Read API key dynamically at request time
+                // This picks up the key immediately after registration
+                val apiKey = secureStorage.getApiKey()
+                if (apiKey != null) {
+                    println("[NetworkModule] apiKeyProvider returning key: ${apiKey.take(8)}...")
+                } else {
+                    println("[NetworkModule] apiKeyProvider: No API key available yet")
+                }
+                apiKey
+            },
             onUnauthorized = { 
                 // Lazy refresh - get AuthService at call time to avoid circular init
                 val authService: ApiAuthService = get()

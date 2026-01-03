@@ -168,9 +168,9 @@ class NetworkConfigTest {
         // When - simulate what NetworkModule does
         val storedEnv = storage.getEnvironment()
         val environment = EnvironmentType.fromString(storedEnv)
+        // API key is now provided dynamically via apiKeyProvider, not in config
         val config = ApiClientConfig(
             baseUrl = environment.baseUrl,
-            apiKey = storage.getApiKey(),
             clientVersion = "1.0.0"
         )
         
@@ -187,9 +187,9 @@ class NetworkConfigTest {
         // When
         val storedEnv = storage.getEnvironment()
         val environment = EnvironmentType.fromString(storedEnv)
+        // API key is now provided dynamically via apiKeyProvider, not in config
         val config = ApiClientConfig(
             baseUrl = environment.baseUrl,
-            apiKey = storage.getApiKey(),
             clientVersion = "1.0.0"
         )
         
@@ -206,9 +206,9 @@ class NetworkConfigTest {
         // When
         val storedEnv = storage.getEnvironment()
         val environment = EnvironmentType.fromString(storedEnv)
+        // API key is now provided dynamically via apiKeyProvider, not in config
         val config = ApiClientConfig(
             baseUrl = environment.baseUrl,
-            apiKey = storage.getApiKey(),
             clientVersion = "1.0.0"
         )
         
@@ -224,9 +224,9 @@ class NetworkConfigTest {
         // When
         val storedEnv = storage.getEnvironment() // null
         val environment = EnvironmentType.fromString(storedEnv)
+        // API key is now provided dynamically via apiKeyProvider, not in config
         val config = ApiClientConfig(
             baseUrl = environment.baseUrl,
-            apiKey = storage.getApiKey(),
             clientVersion = "1.0.0"
         )
         

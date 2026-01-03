@@ -5,8 +5,8 @@ import com.unisight.gropos.features.checkout.data.dto.ProductApiDto
 import com.unisight.gropos.features.checkout.data.dto.ProductApiDtoMapper.toDomainList
 import com.unisight.gropos.features.checkout.domain.model.Product
 import com.unisight.gropos.features.checkout.domain.repository.ProductRepository
-import io.ktor.client.request.get
-import io.ktor.client.request.parameter
+import io.ktor.http.HttpMethod
+import io.ktor.http.path
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -14,14 +14,18 @@ import kotlinx.coroutines.flow.asStateFlow
 /**
  * Service for synchronizing products from backend API to local Couchbase database.
  * 
- * Per SYNC_MECHANISM.md Section "Initial Data Load":
+ * **Per SYNC_MECHANISM.md Section "Initial Data Load":**
  * - Uses paginated API calls: GET /product?offset=&limit=100
  * - Saves each product to CouchbaseLite
  * - Continues until no more data
  * 
- * Per DEVICE_REGISTRATION.md Section 7:
+ * **Per DEVICE_REGISTRATION.md Section 7:**
  * - Called after successful device registration
  * - Show "Initializing Database Please Wait..." during sync
+ * 
+ * **Per API.md Authentication Section:**
+ * - x-api-key: Device API key from registration (added by ApiClient)
+ * - version: v1 header (added by ApiClient)
  */
 class ProductSyncService(
     private val apiClient: ApiClient,
@@ -117,16 +121,20 @@ class ProductSyncService(
     /**
      * Fetch a single page of products from the API.
      * 
-     * Per SYNC_MECHANISM.md: GET /product?offset=&limit=100
+     * **Per SYNC_MECHANISM.md:** GET /product?offset=&limit=100
+     * **Per API.md:** Headers x-api-key, version: v1 added by ApiClient
      */
     private suspend fun fetchProductPage(offset: String): Result<List<Product>> {
         return try {
-            val response = apiClient.authenticatedRequest<List<ProductApiDto>> {
-                get(ENDPOINT_PRODUCTS) {
+            // Use the new request method which adds x-api-key header dynamically
+            val response = apiClient.request<List<ProductApiDto>> {
+                method = HttpMethod.Get
+                url { 
+                    path(ENDPOINT_PRODUCTS) 
                     if (offset.isNotEmpty()) {
-                        parameter("offset", offset)
+                        parameters.append("offset", offset)
                     }
-                    parameter("limit", PAGE_SIZE)
+                    parameters.append("limit", PAGE_SIZE.toString())
                 }
             }
             
