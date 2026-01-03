@@ -3,7 +3,7 @@ package com.unisight.gropos.core.di
 import com.unisight.gropos.core.security.ManagerApprovalService
 import com.unisight.gropos.core.util.CurrencyFormatter
 import com.unisight.gropos.core.util.UsdCurrencyFormatter
-import com.unisight.gropos.features.cashier.data.FakeVendorRepository
+import com.unisight.gropos.features.cashier.data.RemoteVendorRepository
 import com.unisight.gropos.features.cashier.domain.repository.VendorRepository
 import com.unisight.gropos.features.checkout.data.CartRepositoryImpl
 // FakeProductRepository replaced by CouchbaseProductRepository in platform-specific DatabaseModule
@@ -75,9 +75,11 @@ val checkoutModule: Module = module {
      * Vendor repository for vendor payout operations.
      * 
      * Per FUNCTIONS_MENU.md: Provides list of vendors for payout selection.
-     * TODO: Replace with API-backed implementation for production.
+     * 
+     * **P0 FIX (QA Audit):** Now uses RemoteVendorRepository with real API calls.
+     * Per API_INTEGRATION.md: Uses ApiClient for /vendor endpoint.
      */
-    single<VendorRepository> { FakeVendorRepository() }
+    single<VendorRepository> { RemoteVendorRepository(get()) }
     
     // ========================================================================
     // Domain Layer - Calculation Services

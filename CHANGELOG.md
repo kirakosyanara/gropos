@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-01-03
 
+### Fixed
+- **P0: DI Wiring - Production Repository Integration** (QA Audit Fix)
+  - Created `NetworkModule.kt` providing `ApiClient`, `TokenStorage`, `SecureStorage`, `ApiAuthService`
+  - `AuthModule.kt`: Replaced `FakeTillRepository` with `RemoteTillRepository` (API-backed)
+  - `CheckoutModule.kt`: Replaced `FakeVendorRepository` with `RemoteVendorRepository` (API-backed)
+  - `DeviceModule.kt`: Replaced `FakeDeviceRepository` with `RemoteDeviceRepository` (API + SecureStorage)
+  - `AppModule.kt`: Added `networkModule` as first include for proper dependency resolution
+  - Per API_INTEGRATION.md: All remote repositories now use authenticated API calls
+
 ### Added
 - **LegacyDtoTest** - Unit Tests for all Legacy DTOs
   - Tests for LegacyProductDto, LegacyTransactionDto, LegacyTaxDto, LegacyCrvDto

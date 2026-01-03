@@ -7,8 +7,13 @@ import org.koin.dsl.module
  * 
  * This module should be used to initialize Koin in the app entry points.
  * Per project-structure.mdc: Core module only contains universal code.
+ * 
+ * **P0 FIX (QA Audit):**
+ * - Added networkModule for ApiClient, TokenStorage, SecureStorage
+ * - Remote repositories now receive proper dependencies
  */
 val appModule = module {
+    includes(networkModule)   // MUST be first - provides ApiClient, TokenStorage, SecureStorage
     includes(authModule)
     includes(checkoutModule)
     includes(paymentModule)

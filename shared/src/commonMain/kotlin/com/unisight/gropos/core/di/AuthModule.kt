@@ -8,7 +8,7 @@ import com.unisight.gropos.features.auth.domain.usecase.ValidateLoginUseCase
 import com.unisight.gropos.features.auth.presentation.LockViewModel
 import com.unisight.gropos.features.auth.presentation.LoginViewModel
 import com.unisight.gropos.features.cashier.data.FakeEmployeeRepository
-import com.unisight.gropos.features.cashier.data.FakeTillRepository
+import com.unisight.gropos.features.cashier.data.RemoteTillRepository
 import com.unisight.gropos.features.cashier.domain.repository.EmployeeRepository
 import com.unisight.gropos.features.cashier.domain.repository.TillRepository
 import com.unisight.gropos.features.cashier.domain.service.CashierSessionManager
@@ -23,10 +23,14 @@ import org.koin.dsl.module
  * - Provides employee list for login screen
  * - Provides till management for session assignment
  * 
+ * **P0 FIX (QA Audit):**
+ * - TillRepository now uses RemoteTillRepository (API-backed)
+ * - EmployeeRepository still uses Fake (API endpoint not ready)
+ * 
  * Provides:
  * - AuthRepository (FakeAuthRepository for now)
  * - EmployeeRepository (FakeEmployeeRepository for now)
- * - TillRepository (FakeTillRepository for now)
+ * - TillRepository (RemoteTillRepository - production-ready)
  * - ValidateLoginUseCase
  * - LoginViewModel (with state machine flow)
  * - LockViewModel
@@ -38,12 +42,13 @@ val authModule = module {
     singleOf(::FakeAuthRepository) bind AuthRepository::class
     
     // Data Layer - Employee
-    // TODO: Replace with API-backed implementation
+    // TODO: Replace with API-backed implementation when endpoint is ready
     singleOf(::FakeEmployeeRepository) bind EmployeeRepository::class
     
     // Data Layer - Till
-    // TODO: Replace with Couchbase-backed implementation
-    singleOf(::FakeTillRepository) bind TillRepository::class
+    // P0 FIX: Now uses RemoteTillRepository with real API calls
+    // Per API_INTEGRATION.md: Uses ApiClient for /till endpoints
+    single<TillRepository> { RemoteTillRepository(get()) }
     
     // Hardware Layer - NFC Scanner
     // Per ANDROID_HARDWARE_GUIDE.md: Hardware abstraction for badge authentication
