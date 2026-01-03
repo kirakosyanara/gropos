@@ -15,6 +15,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - `AppModule.kt`: Added `networkModule` as first include for proper dependency resolution
   - Per API_INTEGRATION.md: All remote repositories now use authenticated API calls
 
+- **P0: Real API Authentication** (QA Audit Fix)
+  - Created `AuthDtos.kt` with request/response DTOs for auth endpoints
+    - `LoginRequest`, `CredentialLoginRequest`, `RefreshTokenRequest`
+    - `TokenResponseDto`, `UserProfileDto` with domain mappers
+  - Refactored `DefaultApiAuthService` to use real API calls via `ApiClient`
+    - `employeeGroPOSLogin()`: POST /employee/login with credentials
+    - `employeePinLogin()`: POST /employee/login with PIN
+    - `refreshToken()`: POST /employee/refresh
+    - `logout()`: POST /employee/logout
+    - `fetchUserProfile()`: GET /employee/profile
+  - Removed all simulated login/refresh methods (simulateLogin, simulatePinLogin, simulateTokenRefresh)
+  - Per API_INTEGRATION.md: All auth operations now use real API endpoints
+
 ### Added
 - **LegacyDtoTest** - Unit Tests for all Legacy DTOs
   - Tests for LegacyProductDto, LegacyTransactionDto, LegacyTaxDto, LegacyCrvDto

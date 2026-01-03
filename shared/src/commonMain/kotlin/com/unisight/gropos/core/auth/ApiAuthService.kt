@@ -1,7 +1,11 @@
 package com.unisight.gropos.core.auth
 
+import com.unisight.gropos.core.network.ApiClient
 import com.unisight.gropos.features.auth.domain.model.AuthUser
 import com.unisight.gropos.features.auth.domain.model.UserRole
+import io.ktor.client.request.get
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -132,11 +136,30 @@ data class AuthResponse(
 )
 
 /**
- * Default implementation of ApiAuthService.
+ * Default implementation of ApiAuthService using real API calls.
+ * 
+ * **P0 FIX (QA Audit):** Now uses ApiClient for real API calls instead of simulation.
+ * 
+ * **Per API_INTEGRATION.md:**
+ * - POST /employee/login - Employee authentication
+ * - POST /employee/refresh - Token refresh
+ * - GET /employee/profile - Get user profile
+ * - POST /employee/logout - End session
  */
 class DefaultApiAuthService(
-    private val tokenStorage: TokenStorage
+    private val tokenStorage: TokenStorage,
+    private val apiClient: ApiClient
 ) : ApiAuthService {
+    
+    companion object {
+        private const val ENDPOINT_LOGIN = "/employee/login"
+        private const val ENDPOINT_PROFILE = "/employee/profile"
+        private const val ENDPOINT_REFRESH = "/employee/refresh"
+        private const val ENDPOINT_LOGOUT = "/employee/logout"
+        
+        // Default branch ID (should come from SecureStorage in production)
+        private const val DEFAULT_BRANCH_ID = 1
+    }
     
     private val _authState = MutableStateFlow<AuthState>(AuthState.Unauthenticated)
     override val authState: StateFlow<AuthState> = _authState.asStateFlow()
@@ -151,32 +174,69 @@ class DefaultApiAuthService(
         _authState.value = AuthState.Authenticating
         
         return try {
-            // TODO: Replace with actual API call
-            // val response = apiClient.post("/api/auth/employee/login") { body = LoginRequest(username, password) }
-            
-            // Simulated API response for now
-            val response = simulateLogin(username, password)
-            
-            if (response != null) {
-                // Store tokens securely
-                tokenStorage.saveAccessToken(response.accessToken)
-                response.refreshToken?.let { tokenStorage.saveRefreshToken(it) }
-                
-                val expiresAt = Clock.System.now() + response.expiresIn.seconds
-                
-                _authState.value = AuthState.Authenticated(
-                    user = response.user,
-                    token = response.accessToken,
-                    expiresAt = expiresAt,
-                    refreshToken = response.refreshToken
-                )
-                
-                println("ApiAuthService: Login successful for ${response.user.username}")
-                Result.success(response.user)
-            } else {
-                _authState.value = AuthState.Error("Invalid credentials")
-                Result.failure(AuthException("Invalid username or password"))
+            // Per API_INTEGRATION.md: POST /employee/login with credentials
+            val tokenResult = apiClient.deviceRequest<TokenResponseDto> {
+                post(ENDPOINT_LOGIN) {
+                    setBody(CredentialLoginRequest(
+                        username = username,
+                        password = password,
+                        branchId = DEFAULT_BRANCH_ID
+                    ))
+                }
             }
+            
+            tokenResult.fold(
+                onSuccess = { tokenResponse ->
+                    // Store tokens securely
+                    tokenStorage.saveAccessToken(tokenResponse.accessToken)
+                    tokenResponse.refreshToken?.let { tokenStorage.saveRefreshToken(it) }
+                    
+                    // Fetch user profile
+                    val userResult = fetchUserProfile()
+                    
+                    userResult.fold(
+                        onSuccess = { user ->
+                            val expiresAt = Clock.System.now() + tokenResponse.expiresIn.seconds
+                            
+                            _authState.value = AuthState.Authenticated(
+                                user = user,
+                                token = tokenResponse.accessToken,
+                                expiresAt = expiresAt,
+                                refreshToken = tokenResponse.refreshToken
+                            )
+                            
+                            println("ApiAuthService: Login successful for ${user.username}")
+                            Result.success(user)
+                        },
+                        onFailure = { error ->
+                            // Token received but profile fetch failed - use minimal user
+                            val minimalUser = AuthUser(
+                                id = "unknown",
+                                username = username,
+                                role = UserRole.CASHIER,
+                                permissions = emptyList(),
+                                isManager = false
+                            )
+                            
+                            val expiresAt = Clock.System.now() + tokenResponse.expiresIn.seconds
+                            
+                            _authState.value = AuthState.Authenticated(
+                                user = minimalUser,
+                                token = tokenResponse.accessToken,
+                                expiresAt = expiresAt,
+                                refreshToken = tokenResponse.refreshToken
+                            )
+                            
+                            println("ApiAuthService: Login successful (profile fetch failed)")
+                            Result.success(minimalUser)
+                        }
+                    )
+                },
+                onFailure = { error ->
+                    _authState.value = AuthState.Error(error.message ?: "Login failed")
+                    Result.failure(AuthException(error.message ?: "Invalid username or password"))
+                }
+            )
         } catch (e: Exception) {
             _authState.value = AuthState.Error(e.message ?: "Authentication failed")
             Result.failure(e)
@@ -187,30 +247,68 @@ class DefaultApiAuthService(
         _authState.value = AuthState.Authenticating
         
         return try {
-            // TODO: Replace with actual API call for PIN-based login
-            // Requires device to be pre-registered
-            
-            val response = simulatePinLogin(pin)
-            
-            if (response != null) {
-                tokenStorage.saveAccessToken(response.accessToken)
-                response.refreshToken?.let { tokenStorage.saveRefreshToken(it) }
-                
-                val expiresAt = Clock.System.now() + response.expiresIn.seconds
-                
-                _authState.value = AuthState.Authenticated(
-                    user = response.user,
-                    token = response.accessToken,
-                    expiresAt = expiresAt,
-                    refreshToken = response.refreshToken
-                )
-                
-                println("ApiAuthService: PIN login successful for ${response.user.username}")
-                Result.success(response.user)
-            } else {
-                _authState.value = AuthState.Error("Invalid PIN")
-                Result.failure(AuthException("Invalid PIN"))
+            // Per API_INTEGRATION.md: POST /employee/login with PIN
+            val tokenResult = apiClient.deviceRequest<TokenResponseDto> {
+                post(ENDPOINT_LOGIN) {
+                    setBody(LoginRequest(
+                        pin = pin,
+                        branchId = DEFAULT_BRANCH_ID
+                    ))
+                }
             }
+            
+            tokenResult.fold(
+                onSuccess = { tokenResponse ->
+                    // Store tokens securely
+                    tokenStorage.saveAccessToken(tokenResponse.accessToken)
+                    tokenResponse.refreshToken?.let { tokenStorage.saveRefreshToken(it) }
+                    
+                    // Fetch user profile
+                    val userResult = fetchUserProfile()
+                    
+                    userResult.fold(
+                        onSuccess = { user ->
+                            val expiresAt = Clock.System.now() + tokenResponse.expiresIn.seconds
+                            
+                            _authState.value = AuthState.Authenticated(
+                                user = user,
+                                token = tokenResponse.accessToken,
+                                expiresAt = expiresAt,
+                                refreshToken = tokenResponse.refreshToken
+                            )
+                            
+                            println("ApiAuthService: PIN login successful for ${user.username}")
+                            Result.success(user)
+                        },
+                        onFailure = { error ->
+                            // Token received but profile fetch failed - use minimal user
+                            val minimalUser = AuthUser(
+                                id = "unknown",
+                                username = "Employee",
+                                role = UserRole.CASHIER,
+                                permissions = emptyList(),
+                                isManager = false
+                            )
+                            
+                            val expiresAt = Clock.System.now() + tokenResponse.expiresIn.seconds
+                            
+                            _authState.value = AuthState.Authenticated(
+                                user = minimalUser,
+                                token = tokenResponse.accessToken,
+                                expiresAt = expiresAt,
+                                refreshToken = tokenResponse.refreshToken
+                            )
+                            
+                            println("ApiAuthService: PIN login successful (profile fetch failed)")
+                            Result.success(minimalUser)
+                        }
+                    )
+                },
+                onFailure = { error ->
+                    _authState.value = AuthState.Error(error.message ?: "PIN login failed")
+                    Result.failure(AuthException(error.message ?: "Invalid PIN"))
+                }
+            )
         } catch (e: Exception) {
             _authState.value = AuthState.Error(e.message ?: "PIN authentication failed")
             Result.failure(e)
@@ -220,38 +318,59 @@ class DefaultApiAuthService(
     override suspend fun refreshToken(): Result<Unit> {
         val currentState = _authState.value
         
-        val refreshToken = when (currentState) {
+        val refreshTokenValue = when (currentState) {
             is AuthState.Authenticated -> currentState.refreshToken
             is AuthState.TokenExpired -> currentState.refreshToken
             else -> null
         } ?: return Result.failure(AuthException("No refresh token available"))
         
         return try {
-            // TODO: Replace with actual API call
-            // val response = apiClient.post("/api/auth/refresh") { body = RefreshRequest(refreshToken) }
-            
-            val response = simulateTokenRefresh(refreshToken)
-            
-            if (response != null) {
-                tokenStorage.saveAccessToken(response.accessToken)
-                response.refreshToken?.let { tokenStorage.saveRefreshToken(it) }
-                
-                val expiresAt = Clock.System.now() + response.expiresIn.seconds
-                
-                _authState.value = AuthState.Authenticated(
-                    user = response.user,
-                    token = response.accessToken,
-                    expiresAt = expiresAt,
-                    refreshToken = response.refreshToken
-                )
-                
-                println("ApiAuthService: Token refreshed successfully")
-                Result.success(Unit)
-            } else {
-                _authState.value = AuthState.Unauthenticated
-                tokenStorage.clearTokens()
-                Result.failure(AuthException("Token refresh failed"))
+            // Per API_INTEGRATION.md: POST /employee/refresh
+            val tokenResult = apiClient.deviceRequest<TokenResponseDto> {
+                post(ENDPOINT_REFRESH) {
+                    setBody(RefreshTokenRequest(
+                        token = refreshTokenValue,
+                        clientName = "device"
+                    ))
+                }
             }
+            
+            tokenResult.fold(
+                onSuccess = { tokenResponse ->
+                    tokenStorage.saveAccessToken(tokenResponse.accessToken)
+                    tokenResponse.refreshToken?.let { tokenStorage.saveRefreshToken(it) }
+                    
+                    // Preserve existing user from state
+                    val existingUser = when (currentState) {
+                        is AuthState.Authenticated -> currentState.user
+                        is AuthState.TokenExpired -> currentState.user
+                        else -> AuthUser(
+                            id = "unknown",
+                            username = "Employee",
+                            role = UserRole.CASHIER,
+                            permissions = emptyList(),
+                            isManager = false
+                        )
+                    }
+                    
+                    val expiresAt = Clock.System.now() + tokenResponse.expiresIn.seconds
+                    
+                    _authState.value = AuthState.Authenticated(
+                        user = existingUser,
+                        token = tokenResponse.accessToken,
+                        expiresAt = expiresAt,
+                        refreshToken = tokenResponse.refreshToken ?: refreshTokenValue
+                    )
+                    
+                    println("ApiAuthService: Token refreshed successfully")
+                    Result.success(Unit)
+                },
+                onFailure = { error ->
+                    _authState.value = AuthState.Unauthenticated
+                    tokenStorage.clearTokens()
+                    Result.failure(AuthException("Token refresh failed: ${error.message}"))
+                }
+            )
         } catch (e: Exception) {
             _authState.value = AuthState.Unauthenticated
             tokenStorage.clearTokens()
@@ -261,8 +380,11 @@ class DefaultApiAuthService(
     
     override suspend fun logout(): Result<Unit> {
         return try {
-            // TODO: Call logout API endpoint
-            // apiClient.post("/api/auth/logout")
+            // Per API_INTEGRATION.md: POST /employee/logout
+            // Fire and forget - we clear local state regardless of API response
+            apiClient.authenticatedRequest<Unit> {
+                post(ENDPOINT_LOGOUT)
+            }
             
             tokenStorage.clearTokens()
             _authState.value = AuthState.Unauthenticated
@@ -273,8 +395,20 @@ class DefaultApiAuthService(
             // Still clear local state even if API call fails
             tokenStorage.clearTokens()
             _authState.value = AuthState.Unauthenticated
-            Result.failure(e)
+            println("ApiAuthService: Logout completed (API call failed: ${e.message})")
+            Result.success(Unit) // Return success anyway - user is logged out locally
         }
+    }
+    
+    /**
+     * Fetches the user profile from the API.
+     * 
+     * Per API_INTEGRATION.md: GET /employee/profile
+     */
+    private suspend fun fetchUserProfile(): Result<AuthUser> {
+        return apiClient.authenticatedRequest<UserProfileDto> {
+            get(ENDPOINT_PROFILE)
+        }.map { it.toDomain() }
     }
     
     override fun setBearerToken(token: String, user: AuthUser) {
@@ -303,98 +437,6 @@ class DefaultApiAuthService(
         return state.expiresAt < refreshThreshold
     }
     
-    // ========================================================================
-    // Simulated API Responses (Replace with real API calls)
-    // ========================================================================
-    
-    private suspend fun simulateLogin(username: String, password: String): AuthResponse? {
-        kotlinx.coroutines.delay(500) // Simulate network delay
-        
-        // Simulated users for testing
-        return when {
-            username == "cashier" && password == "1234" -> AuthResponse(
-                accessToken = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.cashier.${System.currentTimeMillis()}",
-                refreshToken = "refresh_cashier_${System.currentTimeMillis()}",
-                expiresIn = 3600,
-                user = AuthUser(
-                    id = "1",
-                    username = "John Smith",
-                    role = UserRole.CASHIER,
-                    permissions = listOf(
-                        "GroPOS.Transactions.Sale",
-                        "GroPOS.Transactions.Discounts.Items.Request"
-                    ),
-                    isManager = false,
-                    jobTitle = "Cashier"
-                )
-            )
-            username == "manager" && password == "5678" -> AuthResponse(
-                accessToken = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.manager.${System.currentTimeMillis()}",
-                refreshToken = "refresh_manager_${System.currentTimeMillis()}",
-                expiresIn = 3600,
-                user = AuthUser(
-                    id = "2",
-                    username = "Jane Manager",
-                    role = UserRole.MANAGER,
-                    permissions = listOf(
-                        "GroPOS.Transactions.Sale",
-                        "GroPOS.Transactions.Void",
-                        "GroPOS.Transactions.Discounts.Items",
-                        "GroPOS.Transactions.Discounts.Total",
-                        "GroPOS.Transactions.Price Override",
-                        "GroPOS.Returns",
-                        "GroPOS.Cash Pickup."
-                    ),
-                    isManager = true,
-                    jobTitle = "Store Manager"
-                )
-            )
-            else -> null
-        }
-    }
-    
-    private suspend fun simulatePinLogin(pin: String): AuthResponse? {
-        kotlinx.coroutines.delay(300)
-        
-        return when (pin) {
-            "1234" -> simulateLogin("cashier", "1234")
-            "5678" -> simulateLogin("manager", "5678")
-            else -> null
-        }
-    }
-    
-    private suspend fun simulateTokenRefresh(refreshToken: String): AuthResponse? {
-        kotlinx.coroutines.delay(200)
-        
-        // Extract user type from refresh token
-        return when {
-            refreshToken.contains("cashier") -> AuthResponse(
-                accessToken = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.cashier.refreshed.${System.currentTimeMillis()}",
-                refreshToken = "refresh_cashier_${System.currentTimeMillis()}",
-                expiresIn = 3600,
-                user = AuthUser(
-                    id = "1",
-                    username = "John Smith",
-                    role = UserRole.CASHIER,
-                    permissions = emptyList(),
-                    isManager = false
-                )
-            )
-            refreshToken.contains("manager") -> AuthResponse(
-                accessToken = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.manager.refreshed.${System.currentTimeMillis()}",
-                refreshToken = "refresh_manager_${System.currentTimeMillis()}",
-                expiresIn = 3600,
-                user = AuthUser(
-                    id = "2",
-                    username = "Jane Manager",
-                    role = UserRole.MANAGER,
-                    permissions = emptyList(),
-                    isManager = true
-                )
-            )
-            else -> null
-        }
-    }
 }
 
 /**

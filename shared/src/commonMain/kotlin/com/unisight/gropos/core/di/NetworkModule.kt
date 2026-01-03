@@ -53,13 +53,6 @@ val networkModule = module {
     // Auth Service
     // ========================================================================
     
-    /**
-     * ApiAuthService for authentication operations.
-     * 
-     * Manages login, logout, and token refresh.
-     */
-    single<ApiAuthService> { DefaultApiAuthService(get()) }
-    
     // ========================================================================
     // API Client
     // ========================================================================
@@ -86,20 +79,48 @@ val networkModule = module {
     /**
      * Central ApiClient for all remote API calls.
      * 
+     * **CIRCULAR DEPENDENCY SOLUTION:**
+     * ApiClient and ApiAuthService have a circular dependency:
+     * - ApiClient needs authService.bearerToken for token provider
+     * - ApiAuthService needs ApiClient for making API calls
+     * 
+     * We break this by:
+     * 1. Creating ApiClient first with lazy token/refresh providers
+     * 2. Using TokenStorage directly for token access
+     * 3. ApiAuthService uses ApiClient but ApiClient doesn't depend on ApiAuthService
+     * 
      * Automatically handles:
-     * - Bearer token injection
+     * - Bearer token injection (from TokenStorage)
      * - 401 handling with token refresh
      * - Request/response logging
      * - Timeouts
      */
     single {
-        val authService: ApiAuthService = get()
+        val tokenStorage: TokenStorage = get()
         
         ApiClient(
             config = get(),
-            tokenProvider = { authService.bearerToken },
-            onUnauthorized = { authService.refreshToken() }
+            tokenProvider = { tokenStorage.getAccessToken() },
+            onUnauthorized = { 
+                // Lazy refresh - get AuthService at call time to avoid circular init
+                val authService: ApiAuthService = get()
+                authService.refreshToken()
+            }
         )
+    }
+    
+    /**
+     * ApiAuthService for authentication operations.
+     * 
+     * Manages login, logout, and token refresh.
+     * 
+     * **P0 FIX (QA Audit):** Now uses ApiClient for real API calls.
+     */
+    single<ApiAuthService> { 
+        DefaultApiAuthService(
+            tokenStorage = get(),
+            apiClient = get()
+        ) 
     }
 }
 
