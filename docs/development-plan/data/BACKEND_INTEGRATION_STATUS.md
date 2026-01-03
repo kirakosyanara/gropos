@@ -3,7 +3,8 @@
 > **Created:** 2026-01-03  
 > **Last Updated:** 2026-01-03  
 > **Branch:** `feature/couchbase-migration-v2`  
-> **Purpose:** Document compatibility between legacy Couchbase schema and new domain models
+> **Purpose:** Document compatibility between legacy Couchbase schema and new domain models  
+> **Status:** ✅ **READY FOR MERGE** - All 15 collections integrated, full platform parity
 
 ---
 
@@ -25,12 +26,16 @@ This document analyzes the integration between the **legacy Couchbase Lite schem
 
 ### Current Status
 
+> 🎉 **READY FOR MERGE** - All phases complete, full Android parity achieved.
+
 | Milestone | Status |
 |-----------|--------|
 | Phase 1: Product Data Compatibility | ✅ **COMPLETE** |
 | Phase 2: Transaction Persistence | ✅ **COMPLETE** |
-| Phase 3: Missing Collections | 🔲 Pending |
-| Phase 4: System Configuration | 🔲 Pending |
+| Phase 3: Missing Collections | ✅ **COMPLETE** |
+| Phase 4: System Configuration | ✅ **COMPLETE** |
+| Android Platform Parity | ✅ **COMPLETE** |
+| Unit Tests for DTOs | ✅ **COMPLETE** |
 
 ### Integration Statistics
 
@@ -224,6 +229,31 @@ suspend fun refreshSettings()
 - `ReturnLimitWithoutApproval` - Return limits
 - `TipPromptEnabled` - Tip prompting feature flag
 - `AgeVerificationRequiresIdScan` - Age verification requirement
+
+---
+
+## ✅ Unit Tests Created
+
+**File:** `shared/src/commonTest/kotlin/com/unisight/gropos/features/data/LegacyDtoTest.kt`
+
+All Legacy DTOs have unit tests covering:
+- JSON parsing (fromMap)
+- Field mapping validation
+- Type transformations (enum->domain, Double->BigDecimal)
+- Nullable field handling
+- toDomain() mapper functions
+
+| DTO | Tests |
+|-----|-------|
+| `LegacyProductDto` | 3 tests (parse, toDomain, null handling) |
+| `LegacyTransactionDto` | 2 tests (parse, status mapping) |
+| `LegacyTaxDto` | 2 tests (parse, toDomain) |
+| `LegacyCrvDto` | 1 test (parse) |
+| `LegacyCustomerGroupDto` | 2 tests (parse, status mapping) |
+| `LegacyConditionalSaleDto` | 2 tests (parse, age derivation) |
+| `LegacyBranchDto` | 2 tests (parse, address formatting) |
+| `LegacyBranchSettingDto` | 2 tests (parse, typed accessors) |
+| `LegacyPosSystemDto` | 2 tests (parse, hardware config extraction) |
 
 ### ✅ Phase 4: System Configuration (COMPLETE)
 
