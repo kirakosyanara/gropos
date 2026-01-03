@@ -28,7 +28,7 @@
 | Station Claiming Flow | ⚠️ Partial | `RegistrationScreen` with pairing code; API polling mocked for P2 (Jan 2026) |
 | Till Assignment Dialog | ✅ Match | Created `TillSelectionDialog` with table layout per DIALOGS.md (Jan 2026) |
 | Till Selection/Scan | ⚠️ Partial | Till selection via list implemented; barcode scan pending |
-| Pre-Assigned Employee Detection | ❌ Missing | Check `deviceInfo.employeeId` and auto-select on app start |
+| Pre-Assigned Employee Detection | ✅ Match | `PreAssignedEmployeeDetector` interface + implementations (Jan 2026) |
 | Login State Machine | ✅ Match | Implemented `LoginStage` enum: LOADING→EMPLOYEE_SELECT→PIN_ENTRY→TILL_ASSIGNMENT→SUCCESS (Jan 2026) |
 | NFC Token Authentication | ✅ Match | `NfcScanner` interface + `SimulatedNfcScanner` + `ScanBadgeDialog` (Jan 2026) |
 | API Authentication | ❌ Missing | Implement `employeeGroPOSLogin()` with bearer token storage |
@@ -52,8 +52,8 @@
 | Feature/Component | Status | Remediation Action |
 |-------------------|--------|-------------------|
 | User Role Model | ⚠️ Partial | Current: Basic `UserRole` enum. Need: Full role hierarchy (Cashier, Shift Lead, Supervisor, Manager, Admin) |
-| Permission Strings | ❌ Missing | Implement permission string format: `{App}.{Category}.{Action}` |
-| User Profile with Permissions | ❌ Missing | Extend `AuthUser` with `permissions: List<String>` from API |
+| Permission Strings | ✅ Match | `PermissionStrings.kt` with structured constants (Jan 2026) |
+| User Profile with Permissions | ✅ Match | `AuthUser.permissions: List<String>` already exists (Jan 2026) |
 | Permission Check Function | ✅ Match | `PermissionManager.checkPermission()` returning GRANTED/REQUIRES_APPROVAL/SELF_APPROVAL_ALLOWED/DENIED (Jan 2026) |
 | Manager Approval Service | ✅ Match | `ManagerApprovalService` with `getApprovers()` and `validateApproval()` (Jan 2026) |
 | Manager Approval Dialog | ✅ Match | `ManagerApprovalDialog` composable with manager list and PIN entry (Jan 2026) |
@@ -62,8 +62,8 @@
 | Approval Audit Trail | ✅ Match | `ApprovalAuditService` + `InMemoryApprovalAuditService` (Jan 2026) |
 | Permission Thresholds | ✅ Match | `PermissionThresholds` + `ThresholdChecker` with role presets (Jan 2026) |
 | Void Transaction Permission Check | ✅ Match | Permission check in `onVoidSelectedLineItem()` and `onVoidTransactionRequest()` (Jan 2026) |
-| Price Override Permission Check | ❌ Missing | Add permission check for floor price override |
-| Discount Permission Check | ❌ Missing | Add permission check for line/transaction discounts |
+| Price Override Permission Check | ✅ Match | `PermissionChecker.checkPriceOverridePermission()` (Jan 2026) |
+| Discount Permission Check | ✅ Match | `PermissionChecker.checkLineDiscountPermission/checkTransactionDiscountPermission()` (Jan 2026) |
 
 ---
 
@@ -281,8 +281,8 @@
 
 | Category | ✅ Match | ⚠️ Partial | ❌ Missing |
 |----------|----------|------------|------------|
-| Auth & Session | 9 | 3 | 9 |
-| Roles & Permissions | 3 | 1 | 9 |
+| Auth & Session | 10 | 3 | 8 |
+| Roles & Permissions | 7 | 1 | 5 |
 | Payment Processing | 13 | 2 | 2 |
 | Checkout & Transaction | 13 | 8 | 3 |
 | Customer Display | 8 | 2 | 0 |
@@ -291,10 +291,10 @@
 | Device Registration | 9 | 2 | 0 |
 | UI/UX Components | 11 | 1 | 2 |
 | Data Layer | 4 | 1 | 5 |
-| **TOTAL** | **103** | **23** | **14** |
+| **TOTAL** | **108** | **23** | **9** |
 
 ---
 
-*Last Updated: January 2, 2026 (Payment & Settings Phase)*
+*Last Updated: January 2, 2026 (Permission System & Auth Phase)*
 *Next Review: Post-Merge to main*
 

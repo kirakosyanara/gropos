@@ -7,6 +7,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased] - 2026-01-02
 
 ### Added
+- **Permission System & Auth Features**
+  - **Permission Strings** - Standard format `{App}.{Category}.{Action}`
+    - New `PermissionStrings.kt` with structured permission constants
+    - Categories: Transactions, Returns, Cash, Lottery, Vendor, Store, Settings
+    - Modifiers: `.Request` for approval, `.Self Approval` for managers
+    - `PermissionComponents` for parsing permission strings
+  - **Permission Checker** - Comprehensive permission checks
+    - New `PermissionChecker.kt` with business logic checks
+    - `checkLineDiscountPermission()` with threshold integration
+    - `checkTransactionDiscountPermission()` with threshold integration
+    - `checkPriceOverridePermission()` including floor price checks
+    - `checkFloorPriceOverridePermission()` for selling below cost
+    - `checkReturnPermission()` with amount thresholds
+    - `checkVoidPermission()` with amount thresholds
+    - Result types: `DiscountPermissionResult`, `PriceOverridePermissionResult`, etc.
+  - **Pre-Assigned Employee Detection**
+    - New `PreAssignedEmployeeDetector` interface
+    - `DefaultPreAssignedEmployeeDetector` using DeviceService
+    - `SimulatedPreAssignedEmployeeDetector` for testing
+    - `PreAssignedEmployeeInfo` model with name, job title, image
+
 - **Payment & Settings Features**
   - **PaymentService Singleton** - Centralized payment processing
     - New `PaymentService` interface with card, cash, check, EBT, on-account methods
