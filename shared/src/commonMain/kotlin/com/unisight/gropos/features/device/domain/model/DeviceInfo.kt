@@ -21,22 +21,36 @@ data class DeviceInfo(
 )
 
 /**
- * Registration state machine per DEVICE_REGISTRATION.md
+ * Registration state machine per DEVICE_REGISTRATION.md Section 3.
+ * 
+ * **H1 FIX:** Added LOADING and TIMEOUT states per documentation.
  */
 enum class RegistrationState {
-    /** No API key, need to show QR/pairing code */
+    /**
+     * Initial state, checking local database for existing registration.
+     * H1 FIX: Added per DEVICE_REGISTRATION.md
+     */
+    LOADING,
+    
+    /** No API key found, need to show QR/pairing code */
     UNREGISTERED,
     
     /** QR/pairing code displayed, waiting for admin to scan/enter */
     PENDING,
     
-    /** Admin has scanned/entered code, assigning branch */
+    /** Admin has scanned/entered code, assigning branch in admin portal */
     IN_PROGRESS,
     
-    /** API key received, ready for login */
+    /** API key received and saved, ready for login */
     REGISTERED,
     
-    /** Registration failed due to error */
+    /**
+     * QR code expired (default: 10 minutes, extended: 60 minutes for IN_PROGRESS).
+     * H1 FIX: Added per DEVICE_REGISTRATION.md
+     */
+    TIMEOUT,
+    
+    /** Registration failed due to error (network, server, etc.) */
     ERROR
 }
 

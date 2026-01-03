@@ -147,12 +147,12 @@ The current device registration implementation does not match the architectural 
 
 ### Phase 2: Domain Layer Fixes
 
-- [ ] **4.5** Update `RegistrationState` enum
-  - [ ] Add `LOADING` state
-  - [ ] Add `TIMEOUT` state
+- [x] **4.5** Update `RegistrationState` enum ✅ *Completed 2026-01-03*
+  - [x] Add `LOADING` state (initial state, checking local database)
+  - [x] Add `TIMEOUT` state (QR expired: 10min default, 60min for IN_PROGRESS)
 
-- [ ] **4.6** Update `DeviceInfo` model
-  - [ ] Ensure `stationId` is populated from `assignedGuid`
+- [x] **4.6** Update `DeviceInfo` model ✅ *Completed 2026-01-03*
+  - [x] Ensure `stationId` is populated from `assignedGuid` (done in 4.2 toDeviceInfo fix)
 
 ### Phase 3: Presentation Layer Fixes
 
