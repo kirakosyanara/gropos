@@ -2,6 +2,7 @@ package com.unisight.gropos.features.device.presentation
 
 import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
+import com.unisight.gropos.core.sync.InitialSyncService
 import com.unisight.gropos.features.device.data.FakeDeviceRepository
 import com.unisight.gropos.features.device.domain.model.DeviceInfo
 import com.unisight.gropos.features.device.domain.model.RegistrationState
@@ -35,11 +36,17 @@ import kotlinx.datetime.toLocalDateTime
  * - 60 minute extended timeout when IN_PROGRESS
  * - Proper cancellation on dispose
  * 
+ * **DATA SYNC IMPLEMENTATION:**
+ * - Triggers InitialSyncService after successful registration
+ * - Syncs employees and data from backend before navigating to login
+ * 
  * @param deviceRepository Repository for device registration operations
+ * @param initialSyncService Service for syncing data after registration
  * @param coroutineScope Scope for launching coroutines (injectable for tests)
  */
 class RegistrationViewModel(
     private val deviceRepository: DeviceRepository,
+    private val initialSyncService: InitialSyncService? = null,
     private val coroutineScope: CoroutineScope? = null
 ) : ScreenModel {
     
@@ -317,19 +324,68 @@ class RegistrationViewModel(
         val saveResult = deviceRepository.registerDevice(deviceInfo)
         
         saveResult.onSuccess {
+            // Trigger initial data sync
+            println("[REGISTRATION] Registration complete, starting data sync...")
+            performInitialSync(deviceInfo, deviceGuid)
+        }.onFailure { error ->
+            _state.update {
+                it.copy(
+                    registrationState = RegistrationState.ERROR,
+                    errorMessage = "Failed to save credentials: ${error.message}"
+                )
+            }
+        }
+    }
+    
+    /**
+     * Perform initial data sync after registration.
+     * 
+     * Per DEVICE_REGISTRATION.md Section 7:
+     * - Show "Initializing Database Please Wait..." 
+     * - Load employees, products, taxes from backend
+     * - Navigate to login on completion
+     */
+    private suspend fun performInitialSync(deviceInfo: DeviceInfo, deviceGuid: String) {
+        _state.update {
+            it.copy(
+                registrationState = RegistrationState.IN_PROGRESS,
+                branchName = "Syncing data..."
+            )
+        }
+        
+        if (initialSyncService != null) {
+            val syncResult = initialSyncService.performInitialSync()
+            
+            syncResult.onSuccess {
+                println("[REGISTRATION] Data sync complete!")
+                _state.update {
+                    it.copy(
+                        registrationState = RegistrationState.REGISTERED,
+                        branchName = deviceInfo.branchName,
+                        stationName = "Station ${deviceGuid.take(8)}",
+                        errorMessage = null
+                    )
+                }
+            }.onFailure { error ->
+                println("[REGISTRATION] Data sync failed: ${error.message}")
+                // Still transition to REGISTERED - sync can be retried later
+                _state.update {
+                    it.copy(
+                        registrationState = RegistrationState.REGISTERED,
+                        branchName = deviceInfo.branchName,
+                        stationName = "Station ${deviceGuid.take(8)}",
+                        errorMessage = "Data sync incomplete: ${error.message}"
+                    )
+                }
+            }
+        } else {
+            // No sync service available (e.g., in tests)
             _state.update {
                 it.copy(
                     registrationState = RegistrationState.REGISTERED,
                     branchName = deviceInfo.branchName,
                     stationName = "Station ${deviceGuid.take(8)}",
                     errorMessage = null
-                )
-            }
-        }.onFailure { error ->
-            _state.update {
-                it.copy(
-                    registrationState = RegistrationState.ERROR,
-                    errorMessage = "Failed to save credentials: ${error.message}"
                 )
             }
         }

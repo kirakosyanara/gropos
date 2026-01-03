@@ -6,6 +6,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-01-03
 
+### Data Sync Implementation
+
+- **Remote Employee Repository** ✅
+  - Created `EmployeeDto` matching `GET /employee/cashiers` API response
+  - Implemented `EmployeeDtoMapper` with role parsing (Admin, Manager, Supervisor, Cashier)
+  - Created `RemoteEmployeeRepository` calling backend API with API key auth
+  - Updated `AuthModule.kt` to use `RemoteEmployeeRepository` instead of `FakeEmployeeRepository`
+  - Added 15 unit tests for DTO serialization and domain mapping
+  - Login screen now displays real employees from backend (not hardcoded test data)
+
+- **Initial Sync Service** ✅
+  - Created `InitialSyncService` for post-registration data sync
+  - Syncs employees after device registration completes
+  - `SyncState` enum: IDLE, SYNCING, COMPLETED, ERROR
+  - `SyncProgress` data class with status message and percentage
+  - Integrated into `RegistrationViewModel` to trigger after successful registration
+  - Shows "Syncing data..." during sync, then transitions to Login screen
+
+- **DI Module Updates** ✅
+  - `DeviceModule`: Added `InitialSyncService` singleton
+  - `DeviceModule`: Updated `RegistrationViewModel` factory to include sync service
+  - `AuthModule`: Replaced `FakeEmployeeRepository` with `RemoteEmployeeRepository`
+
 ### Security & Registration Fixes
 
 - **QR Code Display and Activation Code Fix** ✅
