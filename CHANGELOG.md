@@ -28,6 +28,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
     - Correct JSON serialization of request/response DTOs
     - Field presence/absence per API specification
     - Default values and optional field handling
+  
+- **Device Registration Flow Remediation (Phase 2: Domain Layer)** ✅
+  - **H1 FIX:** Added `LOADING` and `TIMEOUT` states to `RegistrationState` enum
+    - `LOADING`: Initial state while checking local database
+    - `TIMEOUT`: QR code expired (10min default, 60min for IN_PROGRESS)
+
+- **Device Registration Flow Remediation (Phase 3: Presentation Layer)** ✅
+  - **C3 FIX:** Implemented full status polling mechanism in `RegistrationViewModel`
+    - 10 second polling interval (POLL_INTERVAL_MS)
+    - 10 minute default timeout (DEFAULT_TIMEOUT_MS)
+    - 60 minute extended timeout for IN_PROGRESS state (EXTENDED_TIMEOUT_MS)
+    - Proper job cancellation on dispose
+    - `checkInitialState()` starts with LOADING state
+    - `handleRegistrationComplete()` saves credentials to SecureStorage
+    - Added `RetryAfterTimeout` event for timeout recovery
+
+- **Device Registration Test Coverage** ✅
+  - Created `RegistrationViewModelTest.kt` with 10 test cases:
+    - Initial state transitions (LOADING, REGISTERED, PENDING)
+    - QR code generation and GUID storage
+    - Status polling with state transitions (PENDING → IN_PROGRESS → REGISTERED)
+    - Timeout after 10 minutes
+    - Error handling and retry flow
 
 ### Fixed
 - **P0: Dynamic Environment Switching** (QA Audit Fix - CRITICAL)
