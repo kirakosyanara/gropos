@@ -1,6 +1,7 @@
 # GroPOS v1.0 Remediation Checklist
 
 **Generated:** January 2026  
+**Last Updated:** January 3, 2026 (Phase 4 & 5 Complete)  
 **Purpose:** Gap analysis between documented specifications and current codebase implementation  
 **Audit Scope:** `shared/src/commonMain/kotlin/`, `desktopApp/src/desktopMain/kotlin/`
 
@@ -257,6 +258,8 @@
 | Sunmi Hardware Scanner | ✅ Match | `SunmiHardwareScanner` with BroadcastReceiver (Jan 2026) |
 | Camera Preview UI | ✅ Match | `CameraPreview` Composable + `CameraScannerDialog` (Jan 2026) |
 | Android Hardware DI | ✅ Match | `HardwareModule.kt` with device detection (Jan 2026) |
+| NFC Scanner | ⚠️ Partial | Interface ready (`NfcScanner.kt`), Android NfcAdapter pending |
+| Sunmi Payment Terminal | ⚠️ Partial | Interface ready (`PaymentTerminal.kt`), Sunmi SDK pending |
 
 ---
 
@@ -268,9 +271,12 @@
 |-------------------|--------|-------------------|
 | ESC/POS Printer | ✅ Match | `DesktopEscPosPrinter` with jSerialComm (Jan 2026) |
 | Serial Scanner | ✅ Match | `DesktopSerialScanner` with jSerialComm (Jan 2026) |
-| CAS Scale | ⚠️ Partial | `ScaleService` interface + `SimulatedScaleService` exist; `DesktopCasScale` pending |
+| CAS Scale | ✅ Match | `DesktopCasScale` with CAS PD-II protocol (451 lines) (Jan 2026) |
+| CAS Protocol Parser | ✅ Match | `CasProtocolParser` with 18-byte ASCII frame support (Jan 2026) |
 | Desktop Hardware DI | ✅ Match | `HardwareModule.kt` with port configuration (Jan 2026) |
 | Cash Drawer Control | ✅ Match | Integrated in ESC/POS printer (Jan 2026) |
+| NFC Scanner | ⚠️ Partial | Interface ready (`NfcScanner.kt`), Desktop PCSC pending |
+| PAX Payment Terminal | ⚠️ Partial | Interface ready (`PaymentTerminal.kt`), PosLink SDK pending |
 
 ---
 
@@ -309,6 +315,28 @@
 
 ---
 
+## 13. Lottery Module
+
+**Source:** `features/lottery/INDEX.md`, `FUNCTIONS_MENU.md`
+
+| Feature/Component | Status | Remediation Action |
+|-------------------|--------|-------------------|
+| Lottery Domain Models | ✅ Match | `LotteryModels.kt` with LotteryGame, LotteryTransaction, PayoutStatus (Jan 2026) |
+| Lottery Repository Interface | ✅ Match | `LotteryRepository.kt` with all CRUD operations (Jan 2026) |
+| Fake Lottery Repository | ✅ Match | `FakeLotteryRepository.kt` seeded with 10 games (Jan 2026) |
+| Payout Tier Calculator | ✅ Match | `PayoutTierCalculator.kt` with Tier 1/2/3 logic (23 tests) (Jan 2026) |
+| Lottery Sale Screen | ✅ Match | `LotterySaleScreen.kt` with game grid, cart, filter chips (Jan 2026) |
+| Lottery Sale ViewModel | ✅ Match | `LotterySaleViewModel.kt` (287 lines) with cart management (Jan 2026) |
+| Lottery Payout Screen | ✅ Match | `LotteryPayoutScreen.kt` with numeric keypad, tier badges (Jan 2026) |
+| Lottery Payout ViewModel | ✅ Match | `LotteryPayoutViewModel.kt` (185 lines) with validation (Jan 2026) |
+| Lottery Report Screen | ✅ Match | `LotteryReportScreen.kt` with summary cards, transaction list (Jan 2026) |
+| Lottery Report ViewModel | ✅ Match | `LotteryReportViewModel.kt` with daily summary (Jan 2026) |
+| Lottery DI Module | ✅ Match | `LotteryModule.kt` included in `AppModule.kt` (Jan 2026) |
+| Lotto Pay Navigation | ✅ Match | `FunctionAction.LOTTO_PAY` → `LotterySaleScreen()` (Jan 2026) |
+| Lottery Tests | ✅ Match | 73 lottery-related tests (domain + presentation) (Jan 2026) |
+
+---
+
 ## Summary Statistics
 
 | Category | ✅ Match | ⚠️ Partial | ❌ Missing |
@@ -323,12 +351,14 @@
 | Device Registration | 9 | 2 | 0 |
 | UI/UX Components | 12 | 0 | 2 |
 | Data Layer | 11 | 1 | 0 |
-| Android Hardware | 5 | 0 | 0 |
-| Desktop Hardware | 4 | 1 | 0 |
-| **TOTAL** | **119** | **19** | **17** |
+| Android Hardware | 5 | 2 | 0 |
+| Desktop Hardware | 6 | 2 | 0 |
+| Lottery Module | 13 | 0 | 0 |
+| **TOTAL** | **134** | **22** | **17** |
 
 ---
 
-*Last Updated: January 2, 2026 (Documentation Sync - Verified vs Codebase)*
-*Next Review: After Lottery Presentation Layer Complete*
+*Last Updated: January 3, 2026 (Phase 4 & 5 Complete - Full Audit)*  
+*Test Coverage: 327 total tests, 73 lottery-specific*  
+*Status: Phase 4 & 5 COMPLETE ✅*
 
