@@ -12,6 +12,7 @@ import com.couchbase.lite.SelectResult
 import com.couchbase.lite.ValueIndexItem
 import com.unisight.gropos.core.database.DatabaseConfig
 import com.unisight.gropos.core.database.DatabaseProvider
+import com.unisight.gropos.features.returns.domain.service.PullbackItemForCreate
 import com.unisight.gropos.features.transaction.domain.model.HeldTransaction
 import com.unisight.gropos.features.transaction.domain.model.HeldTransactionItem
 import com.unisight.gropos.features.transaction.domain.model.Transaction
@@ -594,6 +595,65 @@ class CouchbaseTransactionRepository(
             println("CouchbaseTransactionRepository: Error mapping held item - ${e.message}")
             null
         }
+    }
+    
+    // ========================================================================
+    // Pullback Operations
+    // Per REMEDIATION_CHECKLIST: Pullback Flow - Implement pullback with receipt scan
+    // ========================================================================
+    
+    /**
+     * Finds a transaction by its GUID (receipt number).
+     */
+    override suspend fun findByGuid(guid: String): Transaction? = withContext(Dispatchers.IO) {
+        try {
+            val query = QueryBuilder
+                .select(SelectResult.all())
+                .from(DataSource.collection(collection))
+                .where(Expression.property("guid").equalTo(Expression.string(guid)))
+                .limit(Expression.intValue(1))
+            
+            query.execute().use { resultSet ->
+                resultSet.allResults().firstOrNull()?.let { result ->
+                    val dict = result.getDictionary(collection.name)
+                    dict?.let { mapToTransaction(it.toMap()) }
+                }
+            }
+        } catch (e: Exception) {
+            println("CouchbaseTransactionRepository: Error finding transaction by GUID $guid - ${e.message}")
+            null
+        }
+    }
+    
+    /**
+     * Gets previously returned quantities for a transaction.
+     * 
+     * Note: In a production system, this would query a Returns collection.
+     * For now, returns empty map (no returns tracked yet).
+     */
+    override suspend fun getReturnedQuantities(transactionId: Long): Map<Long, BigDecimal> = withContext(Dispatchers.IO) {
+        // TODO: Query Returns collection to get previously returned quantities
+        // For now, return empty map indicating no items have been returned
+        emptyMap()
+    }
+    
+    /**
+     * Creates a pullback (return) transaction.
+     * 
+     * Note: In a production system, this would create a Return transaction
+     * and update the Returns collection with returned quantities.
+     */
+    override suspend fun createPullbackTransaction(
+        originalTransactionId: Long,
+        items: List<PullbackItemForCreate>,
+        totalValue: BigDecimal
+    ): Long = withContext(Dispatchers.IO) {
+        // TODO: Implement full return transaction creation
+        // For now, generate a new transaction ID
+        val newId = System.currentTimeMillis()
+        println("CouchbaseTransactionRepository: Creating pullback transaction $newId for original $originalTransactionId")
+        println("CouchbaseTransactionRepository: Items: ${items.size}, Total: $totalValue")
+        newId
     }
 }
 

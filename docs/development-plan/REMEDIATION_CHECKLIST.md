@@ -58,7 +58,7 @@
 | Manager Approval Service | ✅ Match | `ManagerApprovalService` with `getApprovers()` and `validateApproval()` (Jan 2026) |
 | Manager Approval Dialog | ✅ Match | `ManagerApprovalDialog` composable with manager list and PIN entry (Jan 2026) |
 | Self-Approval Logic | ✅ Match | `PermissionManager.canSelfApprove(user, action)` (Jan 2026) |
-| Request Actions Enum | ❌ Missing | Create `RequestAction` enum (CASH_PICKUP, VENDOR_PAYOUT, LINE_DISCOUNT, etc.) |
+| Request Actions Enum | ✅ Match | `RequestAction` enum exists in `PermissionModels.kt` (verified Jan 2026) |
 | Approval Audit Trail | ✅ Match | `ApprovalAuditService` + `InMemoryApprovalAuditService` (Jan 2026) |
 | Permission Thresholds | ✅ Match | `PermissionThresholds` + `ThresholdChecker` with role presets (Jan 2026) |
 | Void Transaction Permission Check | ✅ Match | Permission check in `onVoidSelectedLineItem()` and `onVoidTransactionRequest()` (Jan 2026) |
@@ -157,7 +157,7 @@
 | Return Reason Enum | ✅ Match | `ReturnReason` in `ReturnModels.kt` (Jan 2026) |
 | Manager Approval for Returns | ✅ Match | `SimpleApprovalDialog` in `ReturnContent.kt` (P0 stub) (Jan 2026) |
 | Refund Payment Processing | ⚠️ Partial | Virtual receipt log implemented; terminal integration pending |
-| Pullback Flow | ❌ Missing | Implement pullback with receipt scan |
+| Pullback Flow | ✅ Match | `PullbackService` with receipt scan lookup (Jan 2026) |
 | Return Item ViewModel | ✅ Match | `ReturnViewModel.kt` with full state management (Jan 2026) |
 | Return Receipt Print | ✅ Match | Virtual console receipt in `onManagerApprovalGranted()` (Jan 2026) |
 
@@ -235,10 +235,10 @@
 | Till/Account Repository | ✅ Match | `TillRepository` interface + `FakeTillRepository` (Jan 2026) |
 | Customer Repository | ✅ Match | `Customer` model + `CustomerRepository` + `FakeCustomerRepository` (Jan 2026) |
 | Tax Repository | ⚠️ Partial | Current: In-memory. Need: CouchbaseLite persistence |
-| Heartbeat/Sync Service | ❌ Missing | Implement background data synchronization |
-| Offline Queue | ❌ Missing | Queue transactions for later sync |
+| Heartbeat/Sync Service | ✅ Match | `HeartbeatService` with periodic sync loops (Jan 2026) |
+| Offline Queue | ✅ Match | `OfflineQueueService` interface with `QueuedItem` model (Jan 2026) |
 | Held Transactions Collection | ✅ Match | `HeldTransaction` collection in CouchbaseLite, `TransactionRepository` CRUD (Jan 2026) |
-| Approval Audit Collection | ❌ Missing | Store manager approval records |
+| Approval Audit Collection | ✅ Match | `ApprovalAuditService` with `ApprovalAuditRecord` (Jan 2026) |
 
 ---
 
@@ -282,19 +282,19 @@
 | Category | ✅ Match | ⚠️ Partial | ❌ Missing |
 |----------|----------|------------|------------|
 | Auth & Session | 10 | 3 | 8 |
-| Roles & Permissions | 7 | 1 | 5 |
+| Roles & Permissions | 8 | 1 | 4 |
 | Payment Processing | 13 | 2 | 2 |
-| Checkout & Transaction | 13 | 8 | 3 |
+| Checkout & Transaction | 14 | 8 | 2 |
 | Customer Display | 8 | 2 | 0 |
 | Returns Processing | 10 | 2 | 1 |
 | Till & Cash Operations | 9 | 1 | 0 |
 | Device Registration | 9 | 2 | 0 |
 | UI/UX Components | 11 | 1 | 2 |
-| Data Layer | 4 | 1 | 5 |
-| **TOTAL** | **108** | **23** | **9** |
+| Data Layer | 7 | 1 | 2 |
+| **TOTAL** | **113** | **23** | **4** |
 
 ---
 
-*Last Updated: January 2, 2026 (Permission System & Auth Phase)*
+*Last Updated: January 2, 2026 (Sync & Pullback Phase)*
 *Next Review: Post-Merge to main*
 

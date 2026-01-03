@@ -7,6 +7,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased] - 2026-01-02
 
 ### Added
+- **Sync & Pullback Features**
+  - **Pullback Flow** - Recall items from previous transaction
+    - `PullbackModels.kt` with `PullbackResult`, `PullbackItem`, `PullbackState`, `PullbackConfig`
+    - `PullbackService` interface with `findTransactionForPullback()`, `checkPullbackEligibility()`
+    - `DefaultPullbackService` and `SimulatedPullbackService` implementations
+    - Transaction repository extensions: `findByGuid()`, `getReturnedQuantities()`, `createPullbackTransaction()`
+  - **Heartbeat/Sync Service** - Background data synchronization
+    - `HeartbeatService` interface for periodic server connectivity
+    - `HeartbeatStatus` model with online status, last sync time, pending items
+    - `DefaultHeartbeatService` with heartbeat loop and sync loop
+    - `SyncEngine` and `OfflineQueueService` interfaces
+    - `SimulatedHeartbeatService` for testing
+  - **Approval Audit Collection** - Manager approval tracking
+    - `ApprovalAuditService` interface for recording approvals
+    - `ApprovalAuditRecord` model with action, manager, employee, values
+    - `InMemoryApprovalAuditService` implementation
+    - `ApprovalAuditFactory` for common scenarios (price override, discount, void, return, cash pickup)
+
 - **Permission System & Auth Features**
   - **Permission Strings** - Standard format `{App}.{Category}.{Action}`
     - New `PermissionStrings.kt` with structured permission constants

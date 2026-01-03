@@ -113,6 +113,43 @@ interface TransactionRepository {
      * @return List of matching transactions
      */
     suspend fun searchTransactions(criteria: TransactionSearchCriteria): List<Transaction>
+    
+    // ========================================================================
+    // Pullback Operations
+    // Per REMEDIATION_CHECKLIST: Pullback Flow - Implement pullback with receipt scan
+    // ========================================================================
+    
+    /**
+     * Finds a transaction by its GUID (receipt number).
+     * 
+     * Per RETURNS.md: Pullback requires finding transaction by scanned receipt.
+     * 
+     * @param guid The transaction GUID
+     * @return The transaction if found, null otherwise
+     */
+    suspend fun findByGuid(guid: String): Transaction?
+    
+    /**
+     * Gets previously returned quantities for a transaction.
+     * 
+     * @param transactionId The original transaction ID
+     * @return Map of item ID to returned quantity
+     */
+    suspend fun getReturnedQuantities(transactionId: Long): Map<Long, java.math.BigDecimal>
+    
+    /**
+     * Creates a pullback (return) transaction.
+     * 
+     * @param originalTransactionId The original transaction ID
+     * @param items The items being pulled back
+     * @param totalValue The total value of the pullback
+     * @return The new transaction ID
+     */
+    suspend fun createPullbackTransaction(
+        originalTransactionId: Long,
+        items: List<com.unisight.gropos.features.returns.domain.service.PullbackItemForCreate>,
+        totalValue: java.math.BigDecimal
+    ): Long
 }
 
 /**
