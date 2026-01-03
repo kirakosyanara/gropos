@@ -7,6 +7,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased] - 2026-01-03
 
 ### Added
+- **LegacyDtoTest** - Unit Tests for all Legacy DTOs
+  - Tests for LegacyProductDto, LegacyTransactionDto, LegacyTaxDto, LegacyCrvDto
+  - Tests for LegacyCustomerGroupDto, LegacyConditionalSaleDto, LegacyBranchDto
+  - Tests for LegacyBranchSettingDto, LegacyPosSystemDto
+  - Validates JSON parsing, field mapping, type transformations
+
+- **Branch Repository** - Phase 4 System Configuration
+  - Created `Branch` domain model with address formatting
+  - Created `LegacyBranchDto` for legacy mapping
+  - Implemented `CouchbaseBranchRepository` for Desktop and Android
+  - Features: getAllBranches, getBranchById, getCurrentBranch with caching
+
+- **LocalDeviceConfigRepository** - Phase 4 System Configuration
+  - Created `LegacyPosSystemDto` with toHardwareConfig mapper
+  - Updated `HardwareConfig` with camera fields (cameraIp, cameraEntityId, cameraId)
+  - Updated `HardwareConfig` with OnePay fields (onePayIp, onePayEntityId, onePayId)
+  - Implemented `CouchbaseLocalDeviceConfigRepository` for Desktop and Android
+
 - **PosBranchSettings Repository** - Phase 4 Start (System Configuration)
   - Created `BranchSetting` and `BranchSettings` domain models with typed accessors
   - Created `LegacyBranchSettingDto` for legacy mapping
