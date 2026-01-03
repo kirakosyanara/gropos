@@ -43,5 +43,21 @@ interface PaymentTerminal {
      * Should abort any pending terminal operation.
      */
     suspend fun cancelTransaction()
+    
+    /**
+     * Void a previously approved payment.
+     * 
+     * Per PAYMENT_PROCESSING.md: Void reverses a payment before batch settlement.
+     * 
+     * This is used when:
+     * - Customer changes their mind after payment
+     * - Error in transaction amount
+     * - Return/refund before batch closes
+     * 
+     * @param transactionId The transaction ID from the original payment
+     * @param amount The original payment amount to void
+     * @return VoidResult indicating success or failure
+     */
+    suspend fun processVoid(transactionId: String, amount: BigDecimal): VoidResult
 }
 

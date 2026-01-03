@@ -84,7 +84,7 @@
 | SNAP Eligibility Display | ✅ Match | Shows "SNAP Eligible" amount in PayScreen summary |
 | Payment Terminal Integration | ✅ Match | `PaymentTerminal` interface + `SimulatedPaymentTerminal` (Jan 2026) |
 | Payment Response Mapping | ✅ Match | `PaymentResult` sealed class: Approved/Declined/Error/Cancelled (Jan 2026) |
-| Void Payment | ❌ Missing | Implement `processVoid()` for reversing payments |
+| Void Payment | ✅ Match | `PaymentTerminal.processVoid()` + `VoidResult` sealed class (Jan 2026) |
 | Payment Progress Overlay | ✅ Match | `PaymentTerminalDialog` with spinner, amount, cancel button (Jan 2026) |
 | Check Payment | ❌ Missing | Implement check tender type |
 | On Account Payment | ❌ Missing | Implement customer account charging |
@@ -115,7 +115,7 @@
 | Info Bar - Customer Card | ❌ Missing | Implement customer avatar, name, loyalty search |
 | Info Bar - Weight Display | ❌ Missing | Show current scale weight |
 | Info Bar - Quantity Display | ⚠️ Partial | Need: Show preset quantity multiplier |
-| QTY Prefix for Multiple | ❌ Missing | Enter qty → press QTY → scan = single line with qty |
+| QTY Prefix for Multiple | ✅ Match | `quantityPrefix` state in CheckoutUiState, SetQuantityPrefix event (Jan 2026) |
 | Hold Transaction | ✅ Match | `HoldTransactionDialog` with optional note, `TransactionRepository.holdTransaction()` (Jan 2026) |
 | Void Transaction | ✅ Match | `VoidConfirmationDialog`, permission check, audit log (Jan 2026) |
 | Savings Display | ⚠️ Partial | Current: In totals. Need: "You saved $X.XX" per line item |
@@ -177,8 +177,8 @@
 | Open Drawer Function | ✅ Match | `CheckoutViewModel.onOpenDrawer()` with audit logging (Jan 2026) |
 | Price Check Dialog | ✅ Match | `PriceCheckDialog.kt` shows product name, price, SNAP eligibility (Jan 2026) |
 | Print Last Receipt | ⚠️ Partial | Current: Virtual printer to console. Need: Actual receipt reprint |
-| EBT Balance Check Dialog | ❌ Missing | Create dialog for EBT balance inquiry |
-| Transaction Discount | ❌ Missing | Apply percentage discount to entire order |
+| EBT Balance Check Dialog | ✅ Match | `EbtBalanceDialog.kt` with food stamp & cash balances (Jan 2026) |
+| Transaction Discount | ✅ Match | `TransactionDiscountDialog.kt` with percentage input, manager approval (Jan 2026) |
 
 ---
 
@@ -283,18 +283,18 @@
 |----------|----------|------------|------------|
 | Auth & Session | 9 | 3 | 9 |
 | Roles & Permissions | 0 | 1 | 12 |
-| Payment Processing | 9 | 2 | 6 |
-| Checkout & Transaction | 11 | 7 | 7 |
+| Payment Processing | 10 | 2 | 5 |
+| Checkout & Transaction | 12 | 6 | 6 |
 | Customer Display | 4 | 2 | 4 |
 | Returns Processing | 8 | 2 | 3 |
-| Till & Cash Operations | 7 | 1 | 2 |
+| Till & Cash Operations | 9 | 1 | 0 |
 | Device Registration | 6 | 2 | 2 |
 | UI/UX Components | 10 | 1 | 3 |
 | Data Layer | 3 | 1 | 6 |
-| **TOTAL** | **82** | **23** | **37** |
+| **TOTAL** | **86** | **21** | **33** |
 
 ---
 
-*Last Updated: January 2, 2026 (Missing Features Phase)*
-*Next Review: Post-Phase 4 - Merge to main*
+*Last Updated: January 2, 2026 (More Missing Features Phase)*
+*Next Review: Post-Merge to main*
 

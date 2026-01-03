@@ -87,5 +87,14 @@ class CartRepositoryImpl : CartRepository {
      * Gets the current cart value (non-reactive snapshot).
      */
     override fun getCurrentCart(): Cart = _cart.value
+    
+    /**
+     * Applies a percentage discount to all items in the cart.
+     */
+    override suspend fun applyTransactionDiscount(discountPercent: BigDecimal) {
+        _cart.update { currentCart ->
+            currentCart.applyTransactionDiscount(discountPercent)
+        }
+    }
 }
 

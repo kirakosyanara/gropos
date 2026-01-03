@@ -58,3 +58,50 @@ sealed class PaymentResult {
     data object Cancelled : PaymentResult()
 }
 
+/**
+ * Sealed class representing the result of a void transaction.
+ * 
+ * Per PAYMENT_PROCESSING.md: Void reverses a payment before batch settlement.
+ */
+sealed class VoidResult {
+    
+    /**
+     * Void was successful.
+     * 
+     * @param transactionId The voided transaction ID
+     * @param voidAuthCode Authorization code for the void
+     */
+    data class Success(
+        val transactionId: String,
+        val voidAuthCode: String
+    ) : VoidResult()
+    
+    /**
+     * Void was declined by the processor.
+     * 
+     * @param reason Human-readable reason for the decline
+     *               (e.g., "Already Voided", "Batch Closed")
+     */
+    data class Declined(
+        val reason: String
+    ) : VoidResult()
+    
+    /**
+     * An error occurred during void processing.
+     * 
+     * @param message Description of the error
+     */
+    data class Error(
+        val message: String
+    ) : VoidResult()
+    
+    /**
+     * Transaction not found for voiding.
+     * 
+     * @param transactionId The transaction ID that was not found
+     */
+    data class NotFound(
+        val transactionId: String
+    ) : VoidResult()
+}
+

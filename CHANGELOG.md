@@ -25,10 +25,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
     - `showFunctionsPanel` state for panel visibility
     - Wired all Till tab actions: Open Drawer, Price Check, Add Cash
     - Wired Payment tab actions: Vendor Payout, Cash Pickup
+  
+  - **Void Payment Support** - Reverse payments before batch settlement
+    - Added `processVoid(transactionId, amount)` method to `PaymentTerminal` interface
+    - New `VoidResult` sealed class: `Success`, `Declined`, `Error`, `NotFound`
+    - `SimulatedPaymentTerminal` tracks approved transactions for voiding
+    - Transaction history maintained for audit
+  
+  - **EBT Balance Check Dialog** - Check customer's EBT balance before payment
+    - New `EbtBalanceDialogState` in `CheckoutUiState`
+    - `EbtBalanceDialog` composable showing food stamp and cash balances
+    - Simulated balance inquiry with processing state
+    - Audit logging for all balance inquiries
+  
+  - **Transaction Discount Dialog** - Apply percentage discount to entire order
+    - New `TransactionDiscountDialogState` in `CheckoutUiState`
+    - `TransactionDiscountDialog` composable with percentage input and preview
+    - Manager approval required for discounts
+    - `Cart.applyTransactionDiscount()` applies discount to all items
+    - `CartRepository.applyTransactionDiscount()` interface method added
+  
+  - **QTY Prefix for Multiple Scan** - Enter qty → press QTY → scan = single line with qty
+    - `quantityPrefix` state in `CheckoutUiState`
+    - `SetQuantityPrefix` and `ClearQuantityPrefix` events
+    - ViewModel methods for quantity prefix handling
 
 ### Changed
 - **CheckoutContent**: `onFunctionsClick` now opens the full FunctionsPanel dialog
 - **CheckoutScreen**: Added event handlers for all new dialog events
+- **PaymentTerminal**: Enhanced with `processVoid()` method for void transactions
+- **Cart**: Added `applyTransactionDiscount()` for transaction-level discounts
+- **CartItem**: Uses `transactionDiscountAmountPerUnit` in tax and subtotal calculations
 
 ---
 

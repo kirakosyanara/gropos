@@ -185,6 +185,27 @@ data class Cart(
         }
     }
     
+    /**
+     * Applies a percentage discount to all items in the cart.
+     * 
+     * Per FUNCTIONS_MENU.md: Transaction Discount applies to entire order.
+     * The discount is applied as a transaction-level discount on each item.
+     * 
+     * @param discountPercent The discount as a decimal (e.g., 0.10 for 10%)
+     * @return New Cart instance with the discount applied
+     */
+    fun applyTransactionDiscount(discountPercent: BigDecimal): Cart {
+        return copy(items = items.map { item ->
+            if (!item.isRemoved) {
+                // Calculate discount per unit based on effective price
+                val discountPerUnit = item.effectivePrice.multiply(discountPercent)
+                item.copy(transactionDiscountAmountPerUnit = discountPerUnit)
+            } else {
+                item
+            }
+        })
+    }
+    
     companion object {
         /**
          * Creates an empty cart.

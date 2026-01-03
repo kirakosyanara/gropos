@@ -307,6 +307,45 @@ class CheckoutScreen : Screen {
                     CheckoutEvent.DismissVendorPayoutFeedback -> {
                         viewModel.onDismissVendorPayoutFeedback()
                     }
+                    
+                    // EBT Balance Check Events
+                    CheckoutEvent.OpenEbtBalanceDialog -> {
+                        viewModel.onOpenEbtBalanceDialog()
+                    }
+                    CheckoutEvent.DismissEbtBalanceDialog -> {
+                        viewModel.onDismissEbtBalanceDialog()
+                    }
+                    CheckoutEvent.EbtBalanceInquiry -> {
+                        viewModel.onEbtBalanceInquiry()
+                    }
+                    
+                    // Transaction Discount Events
+                    CheckoutEvent.OpenTransactionDiscountDialog -> {
+                        viewModel.onOpenTransactionDiscountDialog()
+                    }
+                    CheckoutEvent.DismissTransactionDiscountDialog -> {
+                        viewModel.onDismissTransactionDiscountDialog()
+                    }
+                    is CheckoutEvent.TransactionDiscountDigitPress -> {
+                        viewModel.onTransactionDiscountDigitPress(event.digit)
+                    }
+                    CheckoutEvent.TransactionDiscountClear -> {
+                        viewModel.onTransactionDiscountClear()
+                    }
+                    CheckoutEvent.TransactionDiscountBackspace -> {
+                        viewModel.onTransactionDiscountBackspace()
+                    }
+                    CheckoutEvent.TransactionDiscountConfirm -> {
+                        viewModel.onTransactionDiscountConfirm()
+                    }
+                    
+                    // QTY Prefix Events
+                    is CheckoutEvent.SetQuantityPrefix -> {
+                        viewModel.onSetQuantityPrefix(event.quantity)
+                    }
+                    CheckoutEvent.ClearQuantityPrefix -> {
+                        viewModel.onClearQuantityPrefix()
+                    }
                 }
             }
         )
@@ -602,4 +641,52 @@ sealed interface CheckoutEvent {
     
     /** Dismiss vendor payout feedback */
     data object DismissVendorPayoutFeedback : CheckoutEvent
+    
+    // ========================================================================
+    // EBT Balance Check Events
+    // Per FUNCTIONS_MENU.md: Check customer's EBT balance
+    // ========================================================================
+    
+    /** Open the EBT balance check dialog */
+    data object OpenEbtBalanceDialog : CheckoutEvent
+    
+    /** Dismiss the EBT balance check dialog */
+    data object DismissEbtBalanceDialog : CheckoutEvent
+    
+    /** Start the EBT balance inquiry */
+    data object EbtBalanceInquiry : CheckoutEvent
+    
+    // ========================================================================
+    // Transaction Discount Events
+    // Per FUNCTIONS_MENU.md: Apply percentage discount to entire order
+    // ========================================================================
+    
+    /** Open the transaction discount dialog */
+    data object OpenTransactionDiscountDialog : CheckoutEvent
+    
+    /** Dismiss the transaction discount dialog */
+    data object DismissTransactionDiscountDialog : CheckoutEvent
+    
+    /** Digit pressed in transaction discount dialog */
+    data class TransactionDiscountDigitPress(val digit: String) : CheckoutEvent
+    
+    /** Clear pressed in transaction discount dialog */
+    data object TransactionDiscountClear : CheckoutEvent
+    
+    /** Backspace pressed in transaction discount dialog */
+    data object TransactionDiscountBackspace : CheckoutEvent
+    
+    /** Confirm the transaction discount */
+    data object TransactionDiscountConfirm : CheckoutEvent
+    
+    // ========================================================================
+    // QTY Prefix Events
+    // Per CHECKOUT: Enter qty → press QTY → scan = single line with qty
+    // ========================================================================
+    
+    /** Set quantity prefix for next scan */
+    data class SetQuantityPrefix(val quantity: Int) : CheckoutEvent
+    
+    /** Clear the quantity prefix */
+    data object ClearQuantityPrefix : CheckoutEvent
 }

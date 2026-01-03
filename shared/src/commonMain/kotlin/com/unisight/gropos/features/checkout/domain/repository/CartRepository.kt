@@ -80,5 +80,14 @@ interface CartRepository {
      * Prefer observing [cart] StateFlow for reactive updates.
      */
     fun getCurrentCart(): Cart
+    
+    /**
+     * Applies a percentage discount to all items in the cart.
+     * 
+     * Per FUNCTIONS_MENU.md: Transaction Discount applies to entire order.
+     * 
+     * @param discountPercent The discount as a decimal (e.g., 0.10 for 10%)
+     */
+    suspend fun applyTransactionDiscount(discountPercent: BigDecimal)
 }
 

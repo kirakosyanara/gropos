@@ -2672,4 +2672,292 @@ class CheckoutViewModel(
             )
         }
     }
+    
+    // ========================================================================
+    // EBT Balance Check
+    // Per FUNCTIONS_MENU.md: Check customer's EBT balance
+    // ========================================================================
+    
+    /**
+     * Opens the EBT balance check dialog.
+     */
+    fun onOpenEbtBalanceDialog() {
+        _state.value = _state.value.copy(
+            ebtBalanceDialogState = EbtBalanceDialogState(isVisible = true),
+            showFunctionsPanel = false
+        )
+    }
+    
+    /**
+     * Dismisses the EBT balance check dialog.
+     */
+    fun onDismissEbtBalanceDialog() {
+        _state.value = _state.value.copy(
+            ebtBalanceDialogState = EbtBalanceDialogState()
+        )
+    }
+    
+    /**
+     * Initiates EBT balance inquiry.
+     * 
+     * Per FUNCTIONS_MENU.md:
+     * - Requires card swipe/insertion
+     * - Shows food stamp and cash balances
+     */
+    fun onEbtBalanceInquiry() {
+        _state.value = _state.value.copy(
+            ebtBalanceDialogState = _state.value.ebtBalanceDialogState.copy(
+                isProcessing = true,
+                errorMessage = null
+            )
+        )
+        
+        effectiveScope.launch {
+            try {
+                // Simulate EBT balance inquiry (would use PaymentTerminal in real implementation)
+                kotlinx.coroutines.delay(2000)
+                
+                // Simulated balance response
+                val foodStampBalance = BigDecimal("156.78")
+                val cashBalance = BigDecimal("45.32")
+                
+                _state.value = _state.value.copy(
+                    ebtBalanceDialogState = _state.value.ebtBalanceDialogState.copy(
+                        isProcessing = false,
+                        foodStampBalance = currencyFormatter.format(foodStampBalance),
+                        cashBalance = currencyFormatter.format(cashBalance),
+                        hasResult = true
+                    )
+                )
+                
+                // Log for audit
+                println("[AUDIT] EBT BALANCE INQUIRY")
+                println("  Food Stamp Balance: ${currencyFormatter.format(foodStampBalance)}")
+                println("  Cash Balance: ${currencyFormatter.format(cashBalance)}")
+                println("  Employee: ${currentUser?.username ?: "Unknown"}")
+                println("  Timestamp: ${LocalDateTime.now()}")
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(
+                    ebtBalanceDialogState = _state.value.ebtBalanceDialogState.copy(
+                        isProcessing = false,
+                        errorMessage = e.message ?: "Balance inquiry failed"
+                    )
+                )
+            }
+        }
+    }
+    
+    // ========================================================================
+    // Transaction Discount
+    // Per FUNCTIONS_MENU.md: Apply percentage discount to entire order
+    // ========================================================================
+    
+    /**
+     * Opens the transaction discount dialog.
+     */
+    fun onOpenTransactionDiscountDialog() {
+        val cart = cartRepository.cart.value
+        val currentTotal = cart.grandTotal
+        
+        _state.value = _state.value.copy(
+            transactionDiscountDialogState = TransactionDiscountDialogState(
+                isVisible = true,
+                currentTotal = currencyFormatter.format(currentTotal)
+            ),
+            showFunctionsPanel = false
+        )
+    }
+    
+    /**
+     * Dismisses the transaction discount dialog.
+     */
+    fun onDismissTransactionDiscountDialog() {
+        _state.value = _state.value.copy(
+            transactionDiscountDialogState = TransactionDiscountDialogState()
+        )
+    }
+    
+    /**
+     * Handles digit press in Transaction Discount dialog.
+     */
+    fun onTransactionDiscountDigitPress(digit: String) {
+        val currentInput = _state.value.transactionDiscountDialogState.inputValue
+        val newInput = currentInput + digit
+        
+        // Limit to 100%
+        val percent = newInput.toIntOrNull() ?: 0
+        if (percent <= 100) {
+            updateTransactionDiscountPreview(newInput)
+        }
+    }
+    
+    /**
+     * Clears the Transaction Discount input.
+     */
+    fun onTransactionDiscountClear() {
+        _state.value = _state.value.copy(
+            transactionDiscountDialogState = _state.value.transactionDiscountDialogState.copy(
+                inputValue = "",
+                discountedTotal = null,
+                errorMessage = null
+            )
+        )
+    }
+    
+    /**
+     * Handles backspace in Transaction Discount dialog.
+     */
+    fun onTransactionDiscountBackspace() {
+        val currentInput = _state.value.transactionDiscountDialogState.inputValue
+        if (currentInput.isNotEmpty()) {
+            updateTransactionDiscountPreview(currentInput.dropLast(1))
+        }
+    }
+    
+    /**
+     * Updates the discount preview based on input.
+     */
+    private fun updateTransactionDiscountPreview(inputValue: String) {
+        val percent = inputValue.toIntOrNull() ?: 0
+        val cart = cartRepository.cart.value
+        val currentTotal = cart.grandTotal
+        
+        val discountAmount = currentTotal.multiply(BigDecimal(percent)).divide(BigDecimal(100))
+        val discountedTotal = currentTotal.subtract(discountAmount)
+        
+        _state.value = _state.value.copy(
+            transactionDiscountDialogState = _state.value.transactionDiscountDialogState.copy(
+                inputValue = inputValue,
+                discountedTotal = currencyFormatter.format(discountedTotal),
+                errorMessage = null
+            )
+        )
+    }
+    
+    /**
+     * Confirms the transaction discount.
+     * 
+     * Per FUNCTIONS_MENU.md: Requires Manager approval.
+     */
+    fun onTransactionDiscountConfirm() {
+        val inputValue = _state.value.transactionDiscountDialogState.inputValue
+        if (inputValue.isBlank()) {
+            _state.value = _state.value.copy(
+                transactionDiscountDialogState = _state.value.transactionDiscountDialogState.copy(
+                    errorMessage = "Please enter a discount percentage"
+                )
+            )
+            return
+        }
+        
+        val percent = inputValue.toIntOrNull() ?: 0
+        if (percent <= 0 || percent > 100) {
+            _state.value = _state.value.copy(
+                transactionDiscountDialogState = _state.value.transactionDiscountDialogState.copy(
+                    errorMessage = "Please enter a valid percentage (1-100)"
+                )
+            )
+            return
+        }
+        
+        val user = currentUser ?: return
+        
+        // Check permission for transaction discount
+        val permissionResult = PermissionManager.checkPermission(user, RequestAction.LINE_DISCOUNT)
+        
+        when (permissionResult) {
+            PermissionCheckResult.GRANTED,
+            PermissionCheckResult.SELF_APPROVAL_ALLOWED -> {
+                // Execute directly
+                executeTransactionDiscount(percent, "Self")
+            }
+            PermissionCheckResult.REQUIRES_APPROVAL -> {
+                // Require manager approval
+                _state.value = _state.value.copy(
+                    transactionDiscountDialogState = _state.value.transactionDiscountDialogState.copy(
+                        approvalPending = true
+                    )
+                )
+                showManagerApprovalForTransactionDiscount(percent)
+            }
+            PermissionCheckResult.DENIED -> {
+                _state.value = _state.value.copy(
+                    transactionDiscountDialogState = _state.value.transactionDiscountDialogState.copy(
+                        errorMessage = "You do not have permission for transaction discounts"
+                    )
+                )
+            }
+        }
+    }
+    
+    /**
+     * Shows manager approval for transaction discount.
+     */
+    private fun showManagerApprovalForTransactionDiscount(percent: Int) {
+        val user = currentUser ?: return
+        
+        effectiveScope.launch {
+            val managers = managerApprovalService.getApprovers(RequestAction.LINE_DISCOUNT, user)
+            
+            _state.value = _state.value.copy(
+                managerApprovalState = ManagerApprovalDialogState(
+                    isVisible = true,
+                    action = RequestAction.LINE_DISCOUNT,
+                    managers = managers,
+                    isProcessing = false,
+                    errorMessage = null
+                )
+            )
+        }
+    }
+    
+    /**
+     * Executes the transaction discount.
+     */
+    private fun executeTransactionDiscount(percent: Int, approverId: String) {
+        effectiveScope.launch {
+            val cart = cartRepository.cart.value
+            val currentTotal = cart.grandTotal
+            val discountAmount = currentTotal.multiply(BigDecimal(percent)).divide(BigDecimal(100))
+            
+            // Apply discount to all items proportionally
+            cartRepository.applyTransactionDiscount(BigDecimal(percent).divide(BigDecimal(100)))
+            
+            // Log audit event
+            println("[AUDIT] TRANSACTION DISCOUNT APPLIED")
+            println("  Percent: $percent%")
+            println("  Original Total: ${currencyFormatter.format(currentTotal)}")
+            println("  Discount Amount: ${currencyFormatter.format(discountAmount)}")
+            println("  Approved By: $approverId")
+            println("  Employee: ${currentUser?.username ?: "Unknown"}")
+            println("  Timestamp: ${LocalDateTime.now()}")
+            
+            // Show feedback
+            _state.value = _state.value.copy(
+                transactionDiscountDialogState = TransactionDiscountDialogState(),
+                lastScanEvent = ScanEvent.ProductAdded("$percent% discount applied")
+            )
+        }
+    }
+    
+    // ========================================================================
+    // QTY Prefix for Multiple Scan
+    // Per CHECKOUT: Enter qty → press QTY → scan = single line with qty
+    // ========================================================================
+    
+    /**
+     * Sets the quantity prefix for the next scan.
+     */
+    fun onSetQuantityPrefix(quantity: Int) {
+        if (quantity in 1..99) {
+            _state.value = _state.value.copy(quantityPrefix = quantity)
+        }
+    }
+    
+    /**
+     * Clears the quantity prefix.
+     */
+    fun onClearQuantityPrefix() {
+        _state.value = _state.value.copy(quantityPrefix = null)
+    }
 }

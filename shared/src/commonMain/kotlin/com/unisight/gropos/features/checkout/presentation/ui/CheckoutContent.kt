@@ -67,6 +67,8 @@ import com.unisight.gropos.features.auth.presentation.components.dialogs.LogoutO
 import com.unisight.gropos.features.checkout.presentation.components.dialogs.PriceCheckDialog
 import com.unisight.gropos.features.checkout.presentation.components.dialogs.AddCashDialog
 import com.unisight.gropos.features.checkout.presentation.components.dialogs.VendorPayoutDialog
+import com.unisight.gropos.features.checkout.presentation.components.dialogs.EbtBalanceDialog
+import com.unisight.gropos.features.checkout.presentation.components.dialogs.TransactionDiscountDialog
 import com.unisight.gropos.core.components.FunctionAction
 import com.unisight.gropos.core.components.FunctionsPanel
 import com.unisight.gropos.features.checkout.presentation.CheckoutItemUiModel
@@ -429,6 +431,25 @@ fun CheckoutContent(
             onDismiss = { onEvent(CheckoutEvent.DismissAddCashDialog) }
         )
         
+        // EBT Balance Check Dialog
+        // Per FUNCTIONS_MENU.md: Check customer's EBT balance
+        EbtBalanceDialog(
+            state = state.ebtBalanceDialogState,
+            onInquiry = { onEvent(CheckoutEvent.EbtBalanceInquiry) },
+            onDismiss = { onEvent(CheckoutEvent.DismissEbtBalanceDialog) }
+        )
+        
+        // Transaction Discount Dialog
+        // Per FUNCTIONS_MENU.md: Apply percentage discount to entire order
+        TransactionDiscountDialog(
+            state = state.transactionDiscountDialogState,
+            onDigitPress = { digit -> onEvent(CheckoutEvent.TransactionDiscountDigitPress(digit)) },
+            onClear = { onEvent(CheckoutEvent.TransactionDiscountClear) },
+            onBackspace = { onEvent(CheckoutEvent.TransactionDiscountBackspace) },
+            onConfirm = { onEvent(CheckoutEvent.TransactionDiscountConfirm) },
+            onDismiss = { onEvent(CheckoutEvent.DismissTransactionDiscountDialog) }
+        )
+        
         // Functions Panel (Full screen overlay)
         // Per FUNCTIONS_MENU.md: Tabbed panel with Recall, Payments, Till functions
         if (state.showFunctionsPanel) {
@@ -461,6 +482,12 @@ fun CheckoutContent(
                             FunctionAction.LOTTO_PAY -> {
                                 // TODO: Navigate to Lottery module
                                 onEvent(CheckoutEvent.DismissFunctionsPanel)
+                            }
+                            FunctionAction.BALANCE_CHECK -> {
+                                onEvent(CheckoutEvent.OpenEbtBalanceDialog)
+                            }
+                            FunctionAction.TRANSACTION_DISCOUNT -> {
+                                onEvent(CheckoutEvent.OpenTransactionDiscountDialog)
                             }
                             FunctionAction.BACK -> {
                                 onEvent(CheckoutEvent.DismissFunctionsPanel)

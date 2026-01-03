@@ -310,6 +310,56 @@ data class AddCashDialogState(
 )
 
 /**
+ * State for the EBT Balance Check Dialog.
+ * 
+ * Per FUNCTIONS_MENU.md (EBT Balance section):
+ * - Check customer's EBT balance before payment
+ * - Requires card swipe/insertion
+ * - Shows food stamp and cash balances
+ * 
+ * @property isVisible Whether the dialog is showing
+ * @property isProcessing Whether balance inquiry is in progress
+ * @property foodStampBalance SNAP/Food Stamp balance (formatted)
+ * @property cashBalance EBT Cash balance (formatted)
+ * @property errorMessage Error message if inquiry failed
+ * @property hasResult Whether a balance result has been received
+ */
+data class EbtBalanceDialogState(
+    val isVisible: Boolean = false,
+    val isProcessing: Boolean = false,
+    val foodStampBalance: String? = null,
+    val cashBalance: String? = null,
+    val errorMessage: String? = null,
+    val hasResult: Boolean = false
+)
+
+/**
+ * State for the Transaction Discount Dialog.
+ * 
+ * Per FUNCTIONS_MENU.md (Discount section):
+ * - Apply percentage discount to entire order
+ * - Requires Manager approval
+ * - Shows before/after totals
+ * 
+ * @property isVisible Whether the dialog is showing
+ * @property inputValue Current input value (percentage)
+ * @property currentTotal Current order total (formatted)
+ * @property discountedTotal Discounted total preview (formatted)
+ * @property errorMessage Validation error message
+ * @property isProcessing Whether discount is being applied
+ * @property approvalPending Whether manager approval is pending
+ */
+data class TransactionDiscountDialogState(
+    val isVisible: Boolean = false,
+    val inputValue: String = "",
+    val currentTotal: String = "$0.00",
+    val discountedTotal: String? = null,
+    val errorMessage: String? = null,
+    val isProcessing: Boolean = false,
+    val approvalPending: Boolean = false
+)
+
+/**
  * UI State for the Checkout screen.
  * 
  * Per kotlin-standards.mdc: Use sealed interface for strict typing.
@@ -374,8 +424,17 @@ data class CheckoutUiState(
     // Add Cash state (per FUNCTIONS_MENU.md: Add Cash)
     val addCashDialogState: AddCashDialogState = AddCashDialogState(),
     
+    // EBT Balance Check state (per FUNCTIONS_MENU.md: EBT Balance)
+    val ebtBalanceDialogState: EbtBalanceDialogState = EbtBalanceDialogState(),
+    
+    // Transaction Discount state (per FUNCTIONS_MENU.md: Discount)
+    val transactionDiscountDialogState: TransactionDiscountDialogState = TransactionDiscountDialogState(),
+    
     // Functions Panel state
-    val showFunctionsPanel: Boolean = false
+    val showFunctionsPanel: Boolean = false,
+    
+    // Quantity prefix for multiple scan (per CHECKOUT: QTY Prefix)
+    val quantityPrefix: Int? = null
 ) {
     /**
      * Whether the screen is in modification mode.
