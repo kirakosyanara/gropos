@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-01-03
 
+### Persistent Secure Storage (P0)
+
+- **DesktopSecureStorage Implementation** ✅
+  - **ROOT CAUSE:** `InMemorySecureStorage` lost API key on app restart
+  - **FIX:** Created `DesktopSecureStorage` using Java Preferences API
+  - **FIX:** Added `desktopStorageModule` to override `InMemorySecureStorage`
+  - **FIX:** Updated `Main.kt` to load `desktopStorageModule` with `allowOverride(true)`
+  - API key, stationId, branchInfo now persist across app restarts
+  - Storage location: `~/Library/Preferences/com.unisight.gropos.plist` (macOS)
+  - TODO: Add encryption for production
+
 ### API Client Dynamic Authentication Fix (P0)
 
 - **Dynamic API Key Provider** ✅

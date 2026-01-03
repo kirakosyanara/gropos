@@ -14,6 +14,7 @@ import com.unisight.gropos.App
 import com.unisight.gropos.core.database.seeder.DebugDataSeeder
 import com.unisight.gropos.core.di.appModules
 import com.unisight.gropos.core.di.databaseModule
+import com.unisight.gropos.core.di.desktopStorageModule
 import com.unisight.gropos.core.theme.GroPOSTheme
 import com.unisight.gropos.core.util.CurrencyFormatter
 import com.unisight.gropos.features.checkout.domain.repository.CartRepository
@@ -205,10 +206,15 @@ fun main() = application {
 private fun initKoin() {
     try {
         startKoin {
+            // Allow overriding (for platform-specific implementations)
+            allowOverride(true)
             // Database module FIRST (provides ProductRepository)
             modules(databaseModule)
-            // Then app modules (consume ProductRepository)
+            // Then app modules (consume ProductRepository, defines InMemorySecureStorage)
             modules(appModules())
+            // Desktop-specific storage LAST (overrides InMemorySecureStorage with persistent storage)
+            // Per DEVICE_REGISTRATION.md: API key must persist across app restarts
+            modules(desktopStorageModule)
         }
         
         // Seed database with initial products if empty

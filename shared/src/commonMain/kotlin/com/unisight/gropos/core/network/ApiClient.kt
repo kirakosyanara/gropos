@@ -190,17 +190,34 @@ class ApiClient(
     suspend inline fun <reified T> request(
         crossinline block: HttpRequestBuilder.() -> Unit
     ): Result<T> {
+        val apiKey = apiKeyProvider()
+        val token = tokenProvider()
+        
+        println("[ApiClient.request] Making request...")
+        println("[ApiClient.request] API Key available: ${apiKey != null} (${apiKey?.take(8) ?: "null"}...)")
+        println("[ApiClient.request] Bearer Token available: ${token != null}")
+        
         return try {
             val response = httpClient.request {
                 // Add dynamic auth headers at request time
-                apiKeyProvider()?.let { header("x-api-key", it) }
-                tokenProvider()?.let { header("Authorization", "Bearer $it") }
+                apiKey?.let { 
+                    header("x-api-key", it)
+                    println("[ApiClient.request] Added x-api-key header")
+                }
+                token?.let { 
+                    header("Authorization", "Bearer $it")
+                    println("[ApiClient.request] Added Authorization header")
+                }
                 block()
+                println("[ApiClient.request] Request URL: ${url.buildString()}")
             }
+            println("[ApiClient.request] Response status: ${response.status}")
             Result.success(response.body<T>())
         } catch (e: ClientRequestException) {
+            println("[ApiClient.request] Client error: ${e.response.status} - ${e.message}")
             Result.failure(ApiException.fromClientException(e))
         } catch (e: Exception) {
+            println("[ApiClient.request] Exception: ${e.message}")
             Result.failure(ApiException.fromException(e))
         }
     }
