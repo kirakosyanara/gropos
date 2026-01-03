@@ -61,5 +61,21 @@ object DatabaseConfig {
     
     // Per TRANSACTION_FLOW.md: Held transactions for suspend/resume
     const val COLLECTION_HELD_TRANSACTION = "HeldTransaction"
+    
+    // Per COUCHBASE_LOCAL_STORAGE.md: Customer group pricing collections
+    const val COLLECTION_CUSTOMER_GROUP = "CustomerGroup"
+    const val COLLECTION_CUSTOMER_GROUP_DEPARTMENT = "CustomerGroupDepartment"
+    const val COLLECTION_CUSTOMER_GROUP_ITEM = "CustomerGroupItem"
+    
+    // Per COUCHBASE_LOCAL_STORAGE.md: Conditional sale and vendor payout collections
+    const val COLLECTION_CONDITIONAL_SALE = "ConditionalSale"
+    const val COLLECTION_VENDOR_PAYOUT = "VendorPayout"
+    
+    // Per COUCHBASE_LOCAL_STORAGE.md: Branch settings collection
+    const val COLLECTION_POS_BRANCH_SETTINGS = "PosBranchSettings"
+    
+    // Per COUCHBASE_LOCAL_STORAGE.md: Branch and system configuration collections
+    const val COLLECTION_BRANCH = "Branch"
+    const val COLLECTION_POS_SYSTEM = "PosSystem"
 }
 

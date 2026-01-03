@@ -6,7 +6,115 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-01-03
 
+### Added
+- **LegacyDtoTest** - Unit Tests for all Legacy DTOs
+  - Tests for LegacyProductDto, LegacyTransactionDto, LegacyTaxDto, LegacyCrvDto
+  - Tests for LegacyCustomerGroupDto, LegacyConditionalSaleDto, LegacyBranchDto
+  - Tests for LegacyBranchSettingDto, LegacyPosSystemDto
+  - Validates JSON parsing, field mapping, type transformations
+
+- **Branch Repository** - Phase 4 System Configuration
+  - Created `Branch` domain model with address formatting
+  - Created `LegacyBranchDto` for legacy mapping
+  - Implemented `CouchbaseBranchRepository` for Desktop and Android
+  - Features: getAllBranches, getBranchById, getCurrentBranch with caching
+
+- **LocalDeviceConfigRepository** - Phase 4 System Configuration
+  - Created `LegacyPosSystemDto` with toHardwareConfig mapper
+  - Updated `HardwareConfig` with camera fields (cameraIp, cameraEntityId, cameraId)
+  - Updated `HardwareConfig` with OnePay fields (onePayIp, onePayEntityId, onePayId)
+  - Implemented `CouchbaseLocalDeviceConfigRepository` for Desktop and Android
+
+- **PosBranchSettings Repository** - Phase 4 Start (System Configuration)
+  - Created `BranchSetting` and `BranchSettings` domain models with typed accessors
+  - Created `LegacyBranchSettingDto` for legacy mapping
+  - Implemented `CouchbaseBranchSettingsRepository` for Desktop and Android
+  - Features: in-memory caching with Mutex for thread safety
+  - Common settings: `CashPaymentLimit`, `LotteryPayoutTier1/2`, `ReturnLimitWithoutApproval`
+  - Wired in both `DatabaseModule.kt` files
+  - Updated BACKEND_INTEGRATION_STATUS.md: 13 of 15 collections Connected
+
+- **Android Platform Parity** - Part B Complete
+  - Ported `CouchbaseTaxRepository` to Android
+  - Ported `CouchbaseCrvRepository` to Android
+  - Ported `CouchbaseCustomerGroupRepository` to Android
+  - Ported `CouchbaseConditionalSaleRepository` to Android
+  - Ported `CouchbaseVendorPayoutRepository` to Android
+  - Updated Android `DatabaseModule.kt` with all repository bindings
+  - Full feature parity between Desktop and Android platforms
+
+- **ConditionalSale Repository** - Phase 3C Implementation
+  - Created `ConditionalSale` domain model with `ConditionalSaleType` enum
+  - Created `LegacyConditionalSaleDto` for legacy mapping
+  - Implemented `CouchbaseConditionalSaleRepository` for Desktop and Android
+  - Methods: `getActiveRules()`, `getRulesForProduct()`, `getAgeRestrictionRules()`, `getRequiredAgeForProduct()`
+  - Dynamic age verification rules from database (replaces hardcoded logic)
+
+- **VendorPayout Repository** - Phase 3C Implementation
+  - Created `VendorPayout` domain model with `VendorPayoutType` enum
+  - Created `LegacyVendorPayoutDto` with bidirectional mapping
+  - Implemented `CouchbaseVendorPayoutRepository` for Desktop and Android
+  - Methods: `savePayout()`, `getPayoutsForDateRange()`, `getTodayPayoutTotal()`, `getUnsyncedPayouts()`
+  - Full sync support with `markAsSynced()` method
+
+- **CustomerGroup Repository** - Phase 3A Implementation
+  - Created `CustomerGroup`, `CustomerGroupDepartment`, `CustomerGroupItem` domain models
+  - Created `LegacyCustomerGroupDto`, `LegacyCustomerGroupDepartmentDto`, `LegacyCustomerGroupItemDto` for legacy mapping
+  - Implemented `CouchbaseCustomerGroupRepository` for Desktop (reads from legacy `pos` scope)
+  - Repository interface with: `getActiveGroups()`, `getGroupById()`, `getGroupByName()`, 
+    `getDepartmentDiscounts()`, `getDepartmentDiscount()`, `getItemDiscounts()`, `getItemDiscount()`, `hasGroupPricing()`
+  - Wired in `DatabaseModule.kt` (Desktop) with interface binding
+  - Updated BACKEND_INTEGRATION_STATUS.md: CustomerGroup collections now ✅ Connected
+
+- **Tax and CRV Repositories** - Phase 3B Implementation
+  - Created `Tax` and `Crv` domain models with calculation methods
+  - Created `LegacyTaxDto` and `LegacyCrvDto` for legacy mapping
+  - Implemented `CouchbaseTaxRepository` for Desktop (reads from legacy `pos` scope)
+    - Methods: `getAllTaxes()`, `getTaxById()`, `getTaxByName()`, `getTaxesByIds()`
+  - Implemented `CouchbaseCrvRepository` for Desktop (reads from legacy `pos` scope)
+    - Methods: `getAllCrvRates()`, `getCrvById()`, `getDefaultSmallContainerCrv()`, `getDefaultLargeContainerCrv()`
+  - Wired in `DatabaseModule.kt` (Desktop) with interface bindings
+  - Updated BACKEND_INTEGRATION_STATUS.md: Tax and CRV collections now ✅ Connected
+
+- **Backend Integration Status Document** (`docs/data/BACKEND_INTEGRATION_STATUS.md`)
+  - Comprehensive gap analysis between legacy Couchbase schema and new domain models
+  - Connection Matrix: 8 collections fully/partially connected, 8 missing implementations
+  - Field Mapping Reference: 27 fields requiring rename mappings, 15 fields missing
+  - Missing Data Report: Critical fields (brand, unitSize, qtyLimitPerCustomer)
+  - Implementation Priorities: Phased approach for migration (4 weeks)
+  - Technical Recommendations: DTO strategy, pending document pattern
+
+- **Legacy Product DTO** (`LegacyProductDto.kt`)
+  - Maps legacy Couchbase Product JSON to domain model
+  - Handles field renames: name→productName, categoryId→category, foodStampable→isSnapEligible
+  - Transforms: statusId (enum)→isActive (boolean), ageRestrictionId→ageRestriction (Int)
+  - Includes `fromMap()` parser and `toDomain()` mapper
+
+- **Legacy Transaction DTO** (`LegacyTransactionDto.kt`)
+  - Maps legacy LocalTransaction JSON to domain Transaction
+  - Field mappings: employee→employeeName, startDate→startDateTime, savingsTotal→discountTotal
+  - Includes item and payment DTOs with bidirectional mapping
+
+- **CouchbaseTransactionRepository** (Desktop)
+  - Full implementation of TransactionRepository using CouchbaseLite
+  - **Pending Document Pattern**: Active transactions saved as `{guid}-P`, finalized on completion
+  - Resume crashed transactions on startup via `-P` suffix detection
+  - Supports Hold/Recall, Search, and Pullback operations
+  - Uses legacy `pos` scope for backend compatibility
+
 ### Changed
+- **Product Domain Model** (`Product.kt`)
+  - Added missing legacy fields: brand, unitSize, qtyLimitPerCustomer, receiptName
+  - Added: returnPolicyId, primaryImageUrl, createdDate, updatedDate
+  - Added computed properties: displayNameForReceipt, hasQuantityLimit
+
+- **CouchbaseProductRepository** (Desktop & Android)
+  - Now uses LegacyProductDto for proper field mapping
+  - Reads from legacy `pos` scope (where backend syncs data)
+  - Writes using legacy field names for backend compatibility
+  - Supports both legacy and new document formats
+
+
 - **Documentation Audit (January 3, 2026)** - Full codebase verification
   - Updated PHASE_4_STATUS_REPORT.md: Progress 80% → 100% Complete
   - Updated PHASE_4_GAP_ANALYSIS.md: All success criteria checked

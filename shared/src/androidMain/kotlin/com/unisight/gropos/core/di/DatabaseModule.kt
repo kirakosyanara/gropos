@@ -2,8 +2,24 @@ package com.unisight.gropos.core.di
 
 import com.unisight.gropos.core.database.DatabaseProvider
 import com.unisight.gropos.core.database.seeder.DebugDataSeeder
+import com.unisight.gropos.features.cashier.data.CouchbaseVendorPayoutRepository
+import com.unisight.gropos.features.cashier.domain.repository.VendorPayoutRepository
 import com.unisight.gropos.features.checkout.data.CouchbaseProductRepository
 import com.unisight.gropos.features.checkout.domain.repository.ProductRepository
+import com.unisight.gropos.features.pricing.data.CouchbaseConditionalSaleRepository
+import com.unisight.gropos.features.pricing.data.CouchbaseCrvRepository
+import com.unisight.gropos.features.pricing.data.CouchbaseCustomerGroupRepository
+import com.unisight.gropos.features.pricing.data.CouchbaseTaxRepository
+import com.unisight.gropos.features.pricing.domain.repository.ConditionalSaleRepository
+import com.unisight.gropos.features.pricing.domain.repository.CrvRepository
+import com.unisight.gropos.features.pricing.domain.repository.CustomerGroupRepository
+import com.unisight.gropos.features.pricing.domain.repository.TaxRepository
+import com.unisight.gropos.features.device.data.CouchbaseLocalDeviceConfigRepository
+import com.unisight.gropos.features.device.domain.repository.LocalDeviceConfigRepository
+import com.unisight.gropos.features.settings.data.CouchbaseBranchRepository
+import com.unisight.gropos.features.settings.data.CouchbaseBranchSettingsRepository
+import com.unisight.gropos.features.settings.domain.repository.BranchRepository
+import com.unisight.gropos.features.settings.domain.repository.BranchSettingsRepository
 import com.unisight.gropos.features.transaction.data.CouchbaseTransactionRepository
 import com.unisight.gropos.features.transaction.domain.repository.TransactionRepository
 import org.koin.core.module.Module
@@ -55,6 +71,76 @@ val databaseModule: Module = module {
      * Bind CouchbaseTransactionRepository to TransactionRepository interface.
      */
     single<TransactionRepository> { get<CouchbaseTransactionRepository>() }
+    
+    /**
+     * Couchbase customer group repository.
+     * 
+     * Per COUCHBASE_LOCAL_STORAGE.md: CustomerGroup collections in "pos" scope.
+     * Used for employee discounts and group-based pricing.
+     */
+    single { CouchbaseCustomerGroupRepository(get()) }
+    single<CustomerGroupRepository> { get<CouchbaseCustomerGroupRepository>() }
+    
+    /**
+     * Couchbase tax repository.
+     * 
+     * Per COUCHBASE_LOCAL_STORAGE.md: Tax collection in "pos" scope.
+     */
+    single { CouchbaseTaxRepository(get()) }
+    single<TaxRepository> { get<CouchbaseTaxRepository>() }
+    
+    /**
+     * Couchbase CRV repository.
+     * 
+     * Per COUCHBASE_LOCAL_STORAGE.md: CRV collection in "pos" scope.
+     */
+    single { CouchbaseCrvRepository(get()) }
+    single<CrvRepository> { get<CouchbaseCrvRepository>() }
+    
+    /**
+     * Couchbase conditional sale repository.
+     * 
+     * Per COUCHBASE_LOCAL_STORAGE.md: ConditionalSale collection in "pos" scope.
+     * Used for age restrictions and conditional sale rules.
+     */
+    single { CouchbaseConditionalSaleRepository(get()) }
+    single<ConditionalSaleRepository> { get<CouchbaseConditionalSaleRepository>() }
+    
+    /**
+     * Couchbase vendor payout repository.
+     * 
+     * Per COUCHBASE_LOCAL_STORAGE.md: VendorPayout collection in "pos" scope.
+     * Used for tracking vendor payments from till.
+     */
+    single { CouchbaseVendorPayoutRepository(get()) }
+    single<VendorPayoutRepository> { get<CouchbaseVendorPayoutRepository>() }
+    
+    /**
+     * Couchbase branch settings repository.
+     * 
+     * Per COUCHBASE_LOCAL_STORAGE.md: PosBranchSettings collection in "pos" scope.
+     * Used for branch-specific configuration and feature flags.
+     */
+    single { CouchbaseBranchSettingsRepository(get()) }
+    single<BranchSettingsRepository> { get<CouchbaseBranchSettingsRepository>() }
+    
+    /**
+     * Couchbase branch repository.
+     * 
+     * Per COUCHBASE_LOCAL_STORAGE.md: Branch collection in "pos" scope.
+     * Used for store name, address, and configuration.
+     */
+    single { CouchbaseBranchRepository(get()) }
+    single<BranchRepository> { get<CouchbaseBranchRepository>() }
+    
+    /**
+     * Couchbase local device config repository.
+     * 
+     * Per COUCHBASE_LOCAL_STORAGE.md: PosSystem collection in "pos" scope.
+     * Provides camera config, OnePay config, and device registration info.
+     */
+    single { CouchbaseLocalDeviceConfigRepository(get()) }
+    single<LocalDeviceConfigRepository> { get<CouchbaseLocalDeviceConfigRepository>() }
     
     /**
      * Debug data seeder.
