@@ -81,6 +81,13 @@ val networkModule = module {
         val storedEnv = secureStorage.getEnvironment()
         val environment = EnvironmentType.fromString(storedEnv)
         
+        // **P0 FIX:** If no environment is stored, save the default immediately.
+        // This ensures all components see a consistent value from the start.
+        if (storedEnv == null) {
+            println("[NetworkModule] No environment saved - saving default: ${environment.name}")
+            secureStorage.saveEnvironment(environment.name)
+        }
+        
         println("[NetworkModule] Initializing with environment: ${environment.name} -> ${environment.baseUrl}")
         
         ApiClientConfig(

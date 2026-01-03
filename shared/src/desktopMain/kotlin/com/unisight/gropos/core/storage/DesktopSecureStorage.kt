@@ -25,6 +25,7 @@ class DesktopSecureStorage : SecureStorage {
     
     init {
         println("[DesktopSecureStorage] Initialized with node: ${prefs.absolutePath()}")
+        println("[DesktopSecureStorage] Current environment: ${prefs.get(KEY_ENVIRONMENT, "NOT SET")}")
         println("[DesktopSecureStorage] isRegistered: ${isRegistered()}")
         if (isRegistered()) {
             println("[DesktopSecureStorage] Found existing registration:")
@@ -79,7 +80,9 @@ class DesktopSecureStorage : SecureStorage {
     }
     
     override fun getEnvironment(): String? {
-        return prefs.get(KEY_ENVIRONMENT, null)
+        val env = prefs.get(KEY_ENVIRONMENT, null)
+        println("[DesktopSecureStorage] getEnvironment() -> $env")
+        return env
     }
     
     override fun clearAll() {
@@ -93,11 +96,13 @@ class DesktopSecureStorage : SecureStorage {
     }
     
     companion object {
-        private const val KEY_STATION_ID = "device_station_id"
-        private const val KEY_API_KEY = "device_api_key"
-        private const val KEY_BRANCH_ID = "device_branch_id"
-        private const val KEY_BRANCH_NAME = "device_branch_name"
-        private const val KEY_ENVIRONMENT = "app_environment"
+        // Keys must match InMemorySecureStorage for consistency
+        // This allows seamless switching between implementations during testing
+        private const val KEY_STATION_ID = "stationId"
+        private const val KEY_API_KEY = "apiKey"
+        private const val KEY_BRANCH_ID = "branchId"
+        private const val KEY_BRANCH_NAME = "branchName"
+        private const val KEY_ENVIRONMENT = "environment"
     }
 }
 

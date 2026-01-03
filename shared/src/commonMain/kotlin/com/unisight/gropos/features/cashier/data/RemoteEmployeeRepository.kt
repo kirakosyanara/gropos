@@ -51,6 +51,7 @@ class RemoteEmployeeRepository(
         }
         
         println("[RemoteEmployeeRepository] Fetching employees from backend...")
+        println("[RemoteEmployeeRepository] Endpoint: $ENDPOINT_CASHIERS")
         
         return try {
             // Use the new request method which adds x-api-key header dynamically
@@ -59,14 +60,22 @@ class RemoteEmployeeRepository(
                 url { path(ENDPOINT_CASHIERS) }
             }
             
-            response.map { dtos ->
-                val employees = dtos.toDomainList()
-                cachedEmployees = employees
-                println("[RemoteEmployeeRepository] Fetched ${employees.size} employees from backend")
-                employees
-            }
+            response.fold(
+                onSuccess = { dtos ->
+                    val employees = dtos.toDomainList()
+                    cachedEmployees = employees
+                    println("[RemoteEmployeeRepository] SUCCESS: Fetched ${employees.size} employees from backend")
+                    Result.success(employees)
+                },
+                onFailure = { error ->
+                    println("[RemoteEmployeeRepository] API ERROR: ${error.message}")
+                    println("[RemoteEmployeeRepository] Error type: ${error::class.simpleName}")
+                    Result.failure(error)
+                }
+            )
         } catch (e: Exception) {
-            println("[RemoteEmployeeRepository] Failed to fetch employees: ${e.message}")
+            println("[RemoteEmployeeRepository] EXCEPTION: ${e.message}")
+            println("[RemoteEmployeeRepository] Exception type: ${e::class.simpleName}")
             e.printStackTrace()
             Result.failure(e)
         }
@@ -136,7 +145,11 @@ class RemoteEmployeeRepository(
     }
     
     companion object {
+        // TODO: Verify correct endpoint path with backend team
+        // The Azure APIM might require a service prefix like /pos/employee/cashiers
+        // Current documentation says /employee/cashiers but this returns 302 redirect
         private const val ENDPOINT_CASHIERS = "/employee/cashiers"
+        
         // Temporary PIN for development - TODO: Remove when API is fully integrated
         private const val TEMP_VALID_PIN = "1234"
     }

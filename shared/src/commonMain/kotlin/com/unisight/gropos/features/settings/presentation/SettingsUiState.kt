@@ -23,9 +23,9 @@ data class SettingsUiState(
     val databaseStats: DatabaseStats = DatabaseStats(),
     val isLoadingStats: Boolean = false,
     
-    // Environment
-    val currentEnvironment: EnvironmentType = EnvironmentType.PRODUCTION,
-    val selectedEnvironment: EnvironmentType = EnvironmentType.PRODUCTION,
+    // Environment - default to DEVELOPMENT to match EnvironmentType.fromString(null)
+    val currentEnvironment: EnvironmentType = EnvironmentType.DEVELOPMENT,
+    val selectedEnvironment: EnvironmentType = EnvironmentType.DEVELOPMENT,
     
     // Wipe Confirmation
     val showWipeConfirmation: Boolean = false,

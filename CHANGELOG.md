@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-01-03
 
+### Environment Configuration Fix (P0)
+
+- **Global Environment Consistency** ✅
+  - **ROOT CAUSE:** Environment setting was not consistently applied across all components
+  - **ISSUE 1:** `SettingsUiState` defaulted to `PRODUCTION` while code defaulted to `DEVELOPMENT`
+  - **FIX:** Changed `SettingsUiState` defaults to `DEVELOPMENT` to match `EnvironmentType.fromString(null)`
+  - **ISSUE 2:** Storage keys were different between `InMemorySecureStorage` and `DesktopSecureStorage`
+  - **FIX:** Aligned all storage keys (`stationId`, `apiKey`, `branchId`, `branchName`, `environment`)
+  - **ISSUE 3:** No environment saved on first launch, causing inconsistent reads
+  - **FIX:** `NetworkModule` now saves default environment (`DEVELOPMENT`) if none is stored
+  - Added debug logging throughout environment flow for troubleshooting
+  - Hidden settings menu now correctly reflects the active environment
+
 ### Persistent Secure Storage (P0)
 
 - **DesktopSecureStorage Implementation** ✅

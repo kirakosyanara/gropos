@@ -63,6 +63,8 @@ class SettingsViewModel(
     
     @OptIn(ExperimentalUuidApi::class)
     private fun loadDeviceInfo() {
+        println("[SettingsViewModel] Loading device info...")
+        
         // Load device info from SecureStorage
         val storedDeviceId = secureStorage.getStationId()
         val deviceId = storedDeviceId ?: Uuid.random().toString()
@@ -70,6 +72,8 @@ class SettingsViewModel(
         // Load persisted environment from SecureStorage
         val storedEnv = secureStorage.getEnvironment()
         val currentEnv = EnvironmentType.fromString(storedEnv)
+        
+        println("[SettingsViewModel] Stored environment: $storedEnv -> Resolved: ${currentEnv.name}")
         
         val branchName = secureStorage.getBranchName() ?: "Unregistered Device"
         
@@ -83,6 +87,8 @@ class SettingsViewModel(
                 selectedEnvironment = currentEnv
             )
         }
+        
+        println("[SettingsViewModel] State updated: currentEnvironment = ${currentEnv.name}")
     }
     
     private fun loadDatabaseStats() {
