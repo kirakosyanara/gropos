@@ -4,6 +4,8 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlin.time.Duration
@@ -97,6 +99,10 @@ data class TokenRefreshConfig(
 
 /**
  * Default implementation of TokenRefreshManager.
+ * 
+ * **Per QA Audit Fix (Race Condition):**
+ * Uses Mutex to ensure only ONE refresh happens at a time.
+ * Concurrent callers wait for the in-flight refresh and share its result.
  */
 class DefaultTokenRefreshManager(
     private val authService: ApiAuthService,
@@ -110,7 +116,23 @@ class DefaultTokenRefreshManager(
     override val tokenStatus: StateFlow<TokenStatus> = _tokenStatus.asStateFlow()
     
     private var monitoringJob: Job? = null
-    private var isRefreshing = false
+    
+    /**
+     * Mutex to ensure only one refresh operation happens at a time.
+     * 
+     * **Per QA Audit:** Prevents race condition where multiple 401 errors
+     * would trigger multiple concurrent refresh attempts.
+     */
+    private val refreshMutex = Mutex()
+    
+    /**
+     * Shared deferred result for in-flight refresh operation.
+     * 
+     * When a refresh is in progress, new callers await this deferred
+     * instead of starting their own refresh. This ensures all concurrent
+     * 401 handlers receive the same result.
+     */
+    private var inFlightRefresh: CompletableDeferred<Result<Unit>>? = null
     
     override suspend fun startMonitoring() {
         if (monitoringJob?.isActive == true) {
@@ -183,15 +205,56 @@ class DefaultTokenRefreshManager(
         }
     }
     
+    /**
+     * Performs token refresh with retry logic and concurrent call handling.
+     * 
+     * **Thread-Safety Guarantee:**
+     * - Uses Mutex to ensure only ONE refresh executes at a time
+     * - Concurrent callers await the in-flight refresh's result
+     * - No duplicate refresh requests, no race conditions
+     * 
+     * **Per QA Audit Fix:** This replaces the unsafe boolean flag approach.
+     */
     private suspend fun refreshWithRetry(): Result<Unit> {
-        if (isRefreshing) {
-            println("TokenRefreshManager: Refresh already in progress")
-            return Result.failure(Exception("Refresh already in progress"))
+        // Fast path: Check if refresh is already in progress
+        // If so, await the existing result instead of starting a new one
+        val existingRefresh = refreshMutex.withLock {
+            inFlightRefresh?.let { existing ->
+                // Refresh already in progress - join it
+                println("TokenRefreshManager: Joining in-flight refresh")
+                return@withLock existing
+            }
+            
+            // No refresh in progress - start one
+            val deferred = CompletableDeferred<Result<Unit>>()
+            inFlightRefresh = deferred
+            _tokenStatus.value = TokenStatus.Refreshing
+            null // Signal that we should start refresh
         }
         
-        isRefreshing = true
-        _tokenStatus.value = TokenStatus.Refreshing
+        // If we got an existing deferred, just await it
+        if (existingRefresh != null) {
+            return existingRefresh.await()
+        }
         
+        // We are the refresh leader - execute the actual refresh
+        val result = executeRefreshWithRetry()
+        
+        // Complete the deferred and clean up
+        refreshMutex.withLock {
+            inFlightRefresh?.complete(result)
+            inFlightRefresh = null
+        }
+        
+        return result
+    }
+    
+    /**
+     * Executes the actual refresh logic with retry.
+     * 
+     * This is only called by the "leader" coroutine that acquired the lock.
+     */
+    private suspend fun executeRefreshWithRetry(): Result<Unit> {
         var lastError: Exception? = null
         
         repeat(config.maxRetries) { attempt ->
@@ -200,7 +263,6 @@ class DefaultTokenRefreshManager(
             val result = authService.refreshToken()
             
             if (result.isSuccess) {
-                isRefreshing = false
                 val state = authService.authState.value
                 if (state is AuthState.Authenticated) {
                     _tokenStatus.value = TokenStatus.Valid(state.expiresAt)
@@ -216,7 +278,6 @@ class DefaultTokenRefreshManager(
             }
         }
         
-        isRefreshing = false
         _tokenStatus.value = TokenStatus.RefreshFailed(lastError?.message ?: "Unknown error")
         println("TokenRefreshManager: Token refresh failed after ${config.maxRetries} attempts")
         

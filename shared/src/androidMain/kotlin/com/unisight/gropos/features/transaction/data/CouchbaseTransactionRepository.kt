@@ -229,6 +229,127 @@ class CouchbaseTransactionRepository(
         }
     }
     
+    /**
+     * Searches transactions by various criteria.
+     * 
+     * Per RETURNS.md: Returns processing requires finding original transaction.
+     */
+    override suspend fun searchTransactions(criteria: com.unisight.gropos.features.transaction.domain.repository.TransactionSearchCriteria): List<Transaction> = withContext(Dispatchers.IO) {
+        try {
+            var whereExpression: Expression? = null
+            
+            // Filter by receipt number (partial match on ID)
+            criteria.receiptNumber?.let { receipt ->
+                val idExpression = Expression.property("id").like(Expression.string("%$receipt%"))
+                whereExpression = idExpression
+            }
+            
+            // Filter by date range
+            criteria.startDate?.let { startDate ->
+                val dateExpr = Expression.property("completedDateTime").greaterThanOrEqualTo(Expression.string(startDate))
+                whereExpression = whereExpression?.and(dateExpr) ?: dateExpr
+            }
+            
+            criteria.endDate?.let { endDate ->
+                val dateExpr = Expression.property("completedDateTime").lessThanOrEqualTo(Expression.string(endDate))
+                whereExpression = whereExpression?.and(dateExpr) ?: dateExpr
+            }
+            
+            // Filter by employee
+            criteria.employeeId?.let { empId ->
+                val empExpr = Expression.property("employeeId").equalTo(Expression.intValue(empId))
+                whereExpression = whereExpression?.and(empExpr) ?: empExpr
+            }
+            
+            // Build query
+            val queryBuilder = QueryBuilder
+                .select(SelectResult.all())
+                .from(DataSource.collection(collection))
+            
+            val query = if (whereExpression != null) {
+                queryBuilder
+                    .where(whereExpression!!)
+                    .orderBy(Ordering.property("completedDateTime").descending())
+                    .limit(Expression.intValue(criteria.limit))
+            } else {
+                queryBuilder
+                    .orderBy(Ordering.property("completedDateTime").descending())
+                    .limit(Expression.intValue(criteria.limit))
+            }
+            
+            query.execute().use { resultSet ->
+                val results = resultSet.allResults().mapNotNull { result ->
+                    val dict = result.getDictionary(collection.name)
+                    dict?.let { mapToTransaction(it.toMap()) }
+                }
+                
+                // Filter by amount if specified (post-query filter for BigDecimal comparison)
+                criteria.amount?.let { amount ->
+                    results.filter { it.grandTotal.compareTo(amount) == 0 }
+                } ?: results
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("TransactionRepo", "Error searching transactions", e)
+            emptyList()
+        }
+    }
+    
+    /**
+     * Finds a transaction by its GUID (receipt number).
+     */
+    override suspend fun findByGuid(guid: String): Transaction? = withContext(Dispatchers.IO) {
+        try {
+            val query = QueryBuilder
+                .select(SelectResult.all())
+                .from(DataSource.collection(collection))
+                .where(Expression.property("guid").equalTo(Expression.string(guid)))
+                .limit(Expression.intValue(1))
+            
+            query.execute().use { resultSet ->
+                val result = resultSet.allResults().firstOrNull()
+                val dict = result?.getDictionary(collection.name)
+                dict?.let { mapToTransaction(it.toMap()) }
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("TransactionRepo", "Error finding transaction by GUID", e)
+            null
+        }
+    }
+    
+    /**
+     * Gets returned quantities for a transaction (for returns validation).
+     */
+    override suspend fun getReturnedQuantities(transactionId: Long): Map<Long, BigDecimal> = withContext(Dispatchers.IO) {
+        returnedQuantities[transactionId]?.toMap() ?: emptyMap()
+    }
+    
+    /**
+     * Creates a pullback (return) transaction.
+     */
+    override suspend fun createPullbackTransaction(
+        originalTransactionId: Long,
+        items: List<com.unisight.gropos.features.returns.domain.service.PullbackItemForCreate>,
+        totalValue: BigDecimal
+    ): Long = withContext(Dispatchers.IO) {
+        // TODO: Implement full return transaction creation
+        // For now, generate a new transaction ID
+        val newTransactionId = System.currentTimeMillis()
+        
+        // Track returned quantities
+        items.forEach { item ->
+            val quantities = returnedQuantities.getOrPut(originalTransactionId) { mutableMapOf() }
+            val currentQty = quantities[item.originalItemId] ?: BigDecimal.ZERO
+            quantities[item.originalItemId] = currentQty + item.quantity
+        }
+        
+        android.util.Log.d("TransactionRepo", "Created pullback $newTransactionId for original $originalTransactionId")
+        
+        newTransactionId
+    }
+    
+    // Track returned quantities per original transaction
+    private val returnedQuantities = mutableMapOf<Long, MutableMap<Long, BigDecimal>>()
+    
     // ========================================================================
     // Document Mapping
     // ========================================================================

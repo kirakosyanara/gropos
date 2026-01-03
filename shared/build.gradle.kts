@@ -123,6 +123,22 @@ kotlin {
                 
                 // Koin Android
                 implementation(libs.koin.android)
+                
+                // ----------------------------------------------------------------
+                // Android Hardware SDKs (per ANDROID_HARDWARE_GUIDE.md)
+                // ----------------------------------------------------------------
+                
+                // Sunmi POS Printer SDK
+                implementation(libs.sunmi.printer)
+                
+                // CameraX for barcode scanning
+                implementation(libs.camerax.core)
+                implementation(libs.camerax.lifecycle)
+                implementation(libs.camerax.view)
+                implementation(libs.camerax.camera2)
+                
+                // MLKit Barcode Scanning
+                implementation(libs.mlkit.barcode)
             }
         }
         
