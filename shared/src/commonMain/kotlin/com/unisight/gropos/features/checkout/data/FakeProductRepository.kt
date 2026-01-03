@@ -447,6 +447,23 @@ class FakeProductRepository : ProductRepository {
     }
     
     /**
+     * Inserts or updates a product in the repository.
+     * 
+     * Per SYNC_MECHANISM.md: Used for data sync operations.
+     */
+    override suspend fun insertProduct(product: Product): Boolean {
+        products[product.branchProductId] = product
+        return true
+    }
+    
+    /**
+     * Gets the count of products in the repository.
+     */
+    override suspend fun getProductCount(): Long {
+        return products.size.toLong()
+    }
+    
+    /**
      * Adds a product to the fake catalog.
      * For testing purposes only.
      */

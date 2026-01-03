@@ -23,15 +23,14 @@ import kotlinx.coroutines.launch
  * - Initial load fetches all data with pagination
  * - Heartbeat service handles ongoing updates
  * 
- * Current Implementation Status:
+ * Implementation Status:
  * - ✅ Employee sync (via RemoteEmployeeRepository)
- * - ⚠️ Product sync (requires heartbeat integration - see TODO below)
+ * - ✅ Product sync (via ProductSyncService)
  * - ⚠️ Category/Tax sync (pending backend integration)
  */
 class InitialSyncService(
-    private val employeeRepository: EmployeeRepository
-    // TODO: Add ProductSyncService for full product catalog sync
-    // TODO: Add HeartbeatService for ongoing sync
+    private val employeeRepository: EmployeeRepository,
+    private val productSyncService: ProductSyncService? = null
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     
@@ -51,8 +50,11 @@ class InitialSyncService(
      */
     suspend fun performInitialSync(): Result<Unit> {
         _syncState.value = SyncState.SYNCING
+        
+        val totalSteps = if (productSyncService != null) 2 else 1
+        
         _progress.value = SyncProgress(
-            totalSteps = 1,  // Will increase when more entities are added
+            totalSteps = totalSteps,
             currentStep = 0,
             currentEntity = "Employees"
         )
@@ -66,10 +68,20 @@ class InitialSyncService(
                 return employeeResult
             }
             
-            // TODO: Step 2: Sync products (requires ProductSyncService)
-            // This would call the ProductApi with pagination:
-            // - GET /product?offset=&limit=100
-            // - Save to CouchbaseLite via CouchbaseProductRepository
+            // Step 2: Sync products (if ProductSyncService is available)
+            if (productSyncService != null) {
+                _progress.value = _progress.value.copy(
+                    currentStep = 1,
+                    currentEntity = "Products"
+                )
+                
+                println("[InitialSyncService] Starting product sync...")
+                val productResult = syncProducts()
+                if (productResult.isFailure) {
+                    // Product sync failure is non-fatal - we can continue with cached data
+                    println("[InitialSyncService] Product sync failed, continuing: ${productResult.exceptionOrNull()?.message}")
+                }
+            }
             
             // TODO: Step 3: Sync categories
             // TODO: Step 4: Sync taxes
@@ -77,7 +89,7 @@ class InitialSyncService(
             
             _syncState.value = SyncState.COMPLETED
             _progress.value = _progress.value.copy(
-                currentStep = 1,
+                currentStep = totalSteps,
                 currentEntity = "Complete"
             )
             
@@ -98,11 +110,6 @@ class InitialSyncService(
      */
     private suspend fun syncEmployees(): Result<Unit> {
         return try {
-            _progress.value = _progress.value.copy(
-                currentStep = 1,
-                currentEntity = "Employees"
-            )
-            
             val result = employeeRepository.getEmployees()
             result.fold(
                 onSuccess = { employees ->
@@ -111,6 +118,39 @@ class InitialSyncService(
                 },
                 onFailure = { error ->
                     println("[InitialSyncService] Failed to sync employees: ${error.message}")
+                    Result.failure(error)
+                }
+            )
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+    /**
+     * Sync products from backend.
+     * 
+     * Uses ProductSyncService which calls GET /product with pagination
+     */
+    private suspend fun syncProducts(): Result<Unit> {
+        return try {
+            if (productSyncService == null) {
+                return Result.success(Unit)
+            }
+            
+            // Check if sync is needed (database is empty)
+            if (!productSyncService.isSyncNeeded()) {
+                println("[InitialSyncService] Product database already populated, skipping sync")
+                return Result.success(Unit)
+            }
+            
+            val result = productSyncService.syncAllProducts()
+            result.fold(
+                onSuccess = { count ->
+                    println("[InitialSyncService] Synced $count products")
+                    Result.success(Unit)
+                },
+                onFailure = { error ->
+                    println("[InitialSyncService] Failed to sync products: ${error.message}")
                     Result.failure(error)
                 }
             )

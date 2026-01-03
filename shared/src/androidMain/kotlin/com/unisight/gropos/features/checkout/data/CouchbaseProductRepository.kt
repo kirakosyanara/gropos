@@ -419,9 +419,9 @@ class CouchbaseProductRepository(
      * - ageRestriction -> ageRestrictionId (converted to enum string)
      * - isActive -> statusId (converted to "Active"/"Inactive")
      * 
-     * Used by DebugDataSeeder.
+     * Used by DebugDataSeeder and ProductSyncService.
      */
-    suspend fun insertProduct(product: Product): Boolean = withContext(Dispatchers.IO) {
+    override suspend fun insertProduct(product: Product): Boolean = withContext(Dispatchers.IO) {
         try {
             val doc = MutableDocument(product.branchProductId.toString())
             
@@ -529,9 +529,9 @@ class CouchbaseProductRepository(
     
     /**
      * Gets the count of products in the collection.
-     * Used by DebugDataSeeder to check if seeding is needed.
+     * Used by DebugDataSeeder and ProductSyncService to check if seeding is needed.
      */
-    suspend fun getProductCount(): Long = withContext(Dispatchers.IO) {
+    override suspend fun getProductCount(): Long = withContext(Dispatchers.IO) {
         try {
             collection.count
         } catch (e: Exception) {

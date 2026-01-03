@@ -74,6 +74,25 @@ interface ProductRepository {
      * @return List of categories with their products
      */
     suspend fun getCategories(): List<LookupCategory>
+    
+    /**
+     * Inserts or updates a product in the local database.
+     * 
+     * Per SYNC_MECHANISM.md: Used for initial data load and ongoing sync.
+     * 
+     * @param product The product to insert/update
+     * @return true if successful, false otherwise
+     */
+    suspend fun insertProduct(product: Product): Boolean
+    
+    /**
+     * Gets the total count of products in the database.
+     * 
+     * Used to check if initial sync is needed.
+     * 
+     * @return Number of products in the database
+     */
+    suspend fun getProductCount(): Long
 }
 
 /**

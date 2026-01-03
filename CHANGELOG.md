@@ -24,8 +24,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Integrated into `RegistrationViewModel` to trigger after successful registration
   - Shows "Syncing data..." during sync, then transitions to Login screen
 
+- **Product Sync Service** ✅
+  - Created `ProductSyncService` for paginated product sync from backend
+  - Uses `GET /product?offset=&limit=100` with pagination
+  - Saves products to `CouchbaseProductRepository`
+  - `ProductSyncProgress` data class for UI feedback
+  - Integrated into `InitialSyncService` as step 2 of sync process
+
+- **Product API DTOs** ✅
+  - Created `ProductApiDto` matching backend API response
+  - Includes nested DTOs: `ItemNumberDto`, `ProductTaxDto`, `SaleDto`
+  - `ProductApiDtoMapper` converts API DTOs to domain `Product` models
+  - Same mapping logic as `LegacyProductDto` for consistency
+
+- **ProductRepository Interface Updates** ✅
+  - Added `insertProduct(product)` method for sync operations
+  - Added `getProductCount()` method to check if sync is needed
+  - Updated `CouchbaseProductRepository` (Desktop & Android) with override modifiers
+  - Updated `FakeProductRepository` with implementations
+
 - **DI Module Updates** ✅
-  - `DeviceModule`: Added `InitialSyncService` singleton
+  - `DeviceModule`: Added `ProductSyncService` singleton
+  - `DeviceModule`: Added `InitialSyncService` singleton (now with product sync)
   - `DeviceModule`: Updated `RegistrationViewModel` factory to include sync service
   - `AuthModule`: Replaced `FakeEmployeeRepository` with `RemoteEmployeeRepository`
 
