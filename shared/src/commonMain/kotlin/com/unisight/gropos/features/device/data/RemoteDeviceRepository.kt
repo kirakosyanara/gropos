@@ -4,6 +4,7 @@ import com.unisight.gropos.core.network.ApiClient
 import com.unisight.gropos.core.storage.SecureStorage
 import com.unisight.gropos.features.device.data.dto.DeviceDomainMapper.toDomain
 import com.unisight.gropos.features.device.data.dto.DeviceStatusResponseDto
+import com.unisight.gropos.features.device.data.dto.DeviceTypes
 import com.unisight.gropos.features.device.data.dto.QrRegistrationRequest
 import com.unisight.gropos.features.device.data.dto.QrRegistrationResponseDto
 import com.unisight.gropos.features.device.domain.model.DeviceInfo
@@ -11,6 +12,7 @@ import com.unisight.gropos.features.device.domain.model.DeviceStatusResponse
 import com.unisight.gropos.features.device.domain.model.QrRegistrationResponse
 import com.unisight.gropos.features.device.domain.repository.DeviceRepository
 import io.ktor.client.request.get
+import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import kotlin.random.Random
@@ -29,18 +31,30 @@ import kotlin.random.Random
  * **Per API_INTEGRATION.md:**
  * - POST /device-registration/qr-registration - Get QR code
  * - GET /device-registration/device-status/{deviceGuid} - Poll status
- * - POST /device/heartbeat - Device heartbeat (separate from registration)
+ * - GET /device-registration/heartbeat - Device heartbeat (H2 FIX: GET, not POST)
+ * 
+ * **REMEDIATION FIXES:**
+ * - C1: QrRegistrationRequest now uses deviceType instead of deviceName/platform
+ * - C2: Status polling now includes Authorization: Bearer header
+ * - H3: Stores accessToken from QR response for polling
+ * - H4: Adds version: 1.0 header to all requests
  */
 class RemoteDeviceRepository(
     private val apiClient: ApiClient,
-    private val secureStorage: SecureStorage,
-    private val platformInfo: PlatformInfo = DefaultPlatformInfo
+    private val secureStorage: SecureStorage
 ) : DeviceRepository {
     
     companion object {
         private const val ENDPOINT_QR_REGISTRATION = "/device-registration/qr-registration"
         private const val ENDPOINT_DEVICE_STATUS = "/device-registration/device-status/{deviceGuid}"
+        private const val ENDPOINT_HEARTBEAT = "/device-registration/heartbeat"
+        private const val VERSION_HEADER = "version"
+        private const val VERSION_VALUE = "1.0"
     }
+    
+    // H3 FIX: Temporary token storage for polling phase (not persisted)
+    private var temporaryAccessToken: String? = null
+    private var currentDeviceGuid: String? = null
     
     // ========================================================================
     // Local Storage Operations
@@ -122,37 +136,80 @@ class RemoteDeviceRepository(
     /**
      * Requests a QR code for device registration.
      * 
-     * **API:** POST /device-registration/qr-registration
-     * **Response:** QrRegistrationResponseDto with URL and device GUID
+     * **Per DEVICE_REGISTRATION.md Section 4.1:**
+     * - API: POST /device-registration/qr-registration
+     * - Headers: version: 1.0
+     * - Request Body: { "deviceType": 0 }
+     * - Response: QrRegistrationResponseDto with URL, QR image, accessToken, assignedGuid
+     * 
+     * **REMEDIATION FIXES:**
+     * - C1: Request now uses deviceType instead of deviceName/platform
+     * - H3: Stores accessToken for subsequent polling calls
+     * - H4: Adds version header
      */
     override suspend fun requestQrCode(): Result<QrRegistrationResponse> {
-        val request = QrRegistrationRequest(
-            deviceName = platformInfo.getDeviceName(),
-            platform = platformInfo.getPlatform()
-        )
+        // C1 FIX: Use deviceType instead of deviceName/platform
+        val request = QrRegistrationRequest(deviceType = DeviceTypes.GROPOS)
         
         return apiClient.deviceRequest<QrRegistrationResponseDto> {
             post(ENDPOINT_QR_REGISTRATION) {
+                header(VERSION_HEADER, VERSION_VALUE)  // H4 FIX
                 setBody(request)
             }
-        }.map { it.toDomain() }
+        }.map { response ->
+            // H3 FIX: Store temporary token and GUID for polling
+            temporaryAccessToken = response.accessToken
+            currentDeviceGuid = response.assignedGuid
+            response.toDomain()
+        }
     }
     
     /**
      * Polls for device registration status.
      * 
-     * **API:** GET /device-registration/device-status/{deviceGuid}
-     * **Response:** DeviceStatusResponseDto with status and optionally API key
+     * **Per DEVICE_REGISTRATION.md Section 4.2:**
+     * - API: GET /device-registration/device-status/{deviceGuid}
+     * - Headers: Authorization: Bearer <accessToken>, version: 1.0
+     * - Response: DeviceStatusResponseDto with status and optionally API key
      * 
      * When status is "Registered", the caller should call registerDevice()
      * with the returned credentials.
+     * 
+     * **REMEDIATION FIXES:**
+     * - C2: Now includes Authorization: Bearer header
+     * - H4: Adds version header
      */
     override suspend fun checkRegistrationStatus(deviceGuid: String): Result<DeviceStatusResponse> {
+        val token = temporaryAccessToken
+        if (token == null) {
+            return Result.failure(DeviceRegistrationException("No access token available. Call requestQrCode() first."))
+        }
+        
         val endpoint = ENDPOINT_DEVICE_STATUS.replace("{deviceGuid}", deviceGuid)
         
         return apiClient.deviceRequest<DeviceStatusResponseDto> {
-            get(endpoint)
+            get(endpoint) {
+                header(VERSION_HEADER, VERSION_VALUE)  // H4 FIX
+                header("Authorization", "Bearer $token")  // C2 FIX
+            }
         }.map { it.toDomain() }
+    }
+    
+    /**
+     * Gets the current device GUID from the QR registration response.
+     * 
+     * Used by ViewModel to know which GUID to poll for.
+     */
+    fun getCurrentDeviceGuid(): String? = currentDeviceGuid
+    
+    /**
+     * Clears the temporary token and GUID.
+     * 
+     * Called after registration completes or is cancelled.
+     */
+    fun clearTemporaryCredentials() {
+        temporaryAccessToken = null
+        currentDeviceGuid = null
     }
 }
 
@@ -160,20 +217,4 @@ class RemoteDeviceRepository(
  * Exception for device registration failures.
  */
 class DeviceRegistrationException(message: String) : Exception(message)
-
-/**
- * Platform info provider for device registration.
- */
-interface PlatformInfo {
-    fun getDeviceName(): String
-    fun getPlatform(): String
-}
-
-/**
- * Default platform info (can be overridden per platform).
- */
-object DefaultPlatformInfo : PlatformInfo {
-    override fun getDeviceName(): String = "GroPOS Device"
-    override fun getPlatform(): String = "DESKTOP"
-}
 

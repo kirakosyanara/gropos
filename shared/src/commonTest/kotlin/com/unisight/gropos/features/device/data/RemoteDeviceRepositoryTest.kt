@@ -186,12 +186,13 @@ class RemoteDeviceRepositoryTest {
     
     @Test
     fun `checkRegistrationStatus returns Registered with credentials when activated`() = runTest {
+        // C4 FIX: stationId removed from DeviceStatusResponseDto per API spec
+        // stationId should come from assignedGuid in QR response
         val statusResponse = DeviceStatusResponseDto(
             deviceStatus = "Registered",
             apiKey = "production-api-key",
             branchId = 55,
-            branch = "Production Branch",
-            stationId = "prod-station-789"
+            branch = "Production Branch"
         )
         val repository = createRepository(statusResponse = statusResponse)
         

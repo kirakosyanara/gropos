@@ -6,6 +6,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-01-03
 
+### Security & Registration Fixes
+
+- **Device Registration Flow Remediation (Phase 1: Data Layer)** ✅
+  - **C1 FIX:** `QrRegistrationRequest` now uses `deviceType: Int` instead of `deviceName`/`platform`
+    - Added `DeviceTypes` constants object with all device type values
+    - Default deviceType = 0 (GroPOS)
+  - **C2 FIX:** Status polling now includes `Authorization: Bearer <accessToken>` header
+    - `checkRegistrationStatus()` requires valid access token
+  - **C4 FIX:** Removed `stationId` from `DeviceStatusResponseDto`
+    - stationId comes from `assignedGuid` in QR response (per API spec)
+    - Updated `toDeviceInfo()` mapper to accept `assignedGuid` parameter
+  - **H2 FIX:** Heartbeat changed from POST to GET
+    - Removed `DeviceHeartbeatRequest` (no request body for GET)
+    - Created `HeartbeatResponse` with `messageCount: Int`
+  - **H3 FIX:** Repository now stores `temporaryAccessToken` from QR response
+    - Token used for subsequent status polling calls
+    - Added `getCurrentDeviceGuid()` and `clearTemporaryCredentials()` helpers
+  - **H4 FIX:** Added `version: 1.0` header to all device registration requests
+  - **Tests:** Created `DeviceRegistrationDtoTest.kt` with 9 test cases validating:
+    - Correct JSON serialization of request/response DTOs
+    - Field presence/absence per API specification
+    - Default values and optional field handling
+
 ### Fixed
 - **P0: Dynamic Environment Switching** (QA Audit Fix - CRITICAL)
   - **Problem:** Environment selection in Admin Settings dialog did not persist or affect network configuration
