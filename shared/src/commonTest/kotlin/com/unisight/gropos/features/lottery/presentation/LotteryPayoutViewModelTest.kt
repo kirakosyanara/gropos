@@ -1,5 +1,7 @@
 package com.unisight.gropos.features.lottery.presentation
 
+import com.unisight.gropos.features.cashier.data.FakeTillRepository
+import com.unisight.gropos.features.cashier.domain.service.CashierSessionManager
 import com.unisight.gropos.features.lottery.data.FakeLotteryRepository
 import com.unisight.gropos.features.lottery.domain.model.PayoutStatus
 import com.unisight.gropos.features.lottery.domain.service.PayoutTierCalculator
@@ -33,13 +35,22 @@ class LotteryPayoutViewModelTest {
     
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var repository: FakeLotteryRepository
+    private lateinit var sessionManager: CashierSessionManager
     private lateinit var viewModel: LotteryPayoutViewModel
     
     @BeforeTest
     fun setup() {
         Dispatchers.setMain(testDispatcher)
         repository = FakeLotteryRepository()
-        viewModel = LotteryPayoutViewModel(repository, staffId = 100)
+        sessionManager = CashierSessionManager(FakeTillRepository())
+        // Start a mock session with employeeId = 100
+        sessionManager.startSession(
+            employeeId = 100,
+            employeeName = "Test Cashier",
+            tillId = 1,
+            tillName = "Till 1"
+        )
+        viewModel = LotteryPayoutViewModel(repository, sessionManager)
     }
     
     @AfterTest
@@ -279,4 +290,5 @@ class LotteryPayoutViewModelTest {
         assertEquals(2, state.tierNumber)
     }
 }
+
 

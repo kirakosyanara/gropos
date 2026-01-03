@@ -4,9 +4,33 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [Unreleased] - 2026-01-03
+## [1.0.0-rc1] - 2026-01-03
+
+**Release Candidate 1 - Phase 4 & 5 Complete**
 
 ### Fixed
+- **RC Fix: LotterySaleViewModel.currentSession reference**
+  - Fixed `Unresolved reference 'currentSession'` compilation error
+  - Changed to `sessionManager.activeSession.value` (correct property name)
+  
+- **RC Fix: LotteryPayoutViewModel.currentSession reference**
+  - Fixed `Unresolved reference 'currentSession'` compilation error
+  - Changed to `sessionManager.activeSession.value` (correct property name)
+  
+- **RC Fix: LotterySaleViewModelTest and LotteryPayoutViewModelTest**
+  - Updated tests to use `CashierSessionManager` with `FakeTillRepository`
+  - Removed obsolete `staffId` constructor parameter usage
+  
+- **RC Fix: Android SDK Compatibility**
+  - Downgraded `androidx-core` from 1.15.0 to 1.12.0
+  - Fixes compatibility with `compileSdk = 34` and AGP 8.2.2
+
+- **RC Fix: Android Launcher Icons**
+  - Added adaptive icon resources for Android 8.0+ (API 26+)
+  - Created `ic_launcher_foreground.xml` with GroPOS "G" logo
+  - Added `ic_launcher_background` color resource
+
+
 - **P0: DI Wiring - Production Repository Integration** (QA Audit Fix)
   - Created `NetworkModule.kt` providing `ApiClient`, `TokenStorage`, `SecureStorage`, `ApiAuthService`
   - `AuthModule.kt`: Replaced `FakeTillRepository` with `RemoteTillRepository` (API-backed)

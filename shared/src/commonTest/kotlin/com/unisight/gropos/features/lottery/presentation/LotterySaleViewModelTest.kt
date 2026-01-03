@@ -1,5 +1,7 @@
 package com.unisight.gropos.features.lottery.presentation
 
+import com.unisight.gropos.features.cashier.data.FakeTillRepository
+import com.unisight.gropos.features.cashier.domain.service.CashierSessionManager
 import com.unisight.gropos.features.lottery.data.FakeLotteryRepository
 import com.unisight.gropos.features.lottery.domain.model.LotteryGame
 import com.unisight.gropos.features.lottery.domain.model.LotteryGameType
@@ -34,13 +36,22 @@ class LotterySaleViewModelTest {
     
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var repository: FakeLotteryRepository
+    private lateinit var sessionManager: CashierSessionManager
     private lateinit var viewModel: LotterySaleViewModel
     
     @BeforeTest
     fun setup() {
         Dispatchers.setMain(testDispatcher)
         repository = FakeLotteryRepository()
-        viewModel = LotterySaleViewModel(repository, staffId = 100)
+        sessionManager = CashierSessionManager(FakeTillRepository())
+        // Start a mock session with employeeId = 100
+        sessionManager.startSession(
+            employeeId = 100,
+            employeeName = "Test Cashier",
+            tillId = 1,
+            tillName = "Till 1"
+        )
+        viewModel = LotterySaleViewModel(repository, sessionManager)
     }
     
     @AfterTest
@@ -311,4 +322,5 @@ class LotterySaleViewModelTest {
         assertEquals(10, state.filteredGames.size)
     }
 }
+
 

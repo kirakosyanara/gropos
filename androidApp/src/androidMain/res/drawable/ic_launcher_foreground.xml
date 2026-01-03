@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    GroPOS Launcher Icon Foreground
+    Simple "G" letter representing GroPOS
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Background circle with transparency -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,54m-30,0a30,30 0,1 1,60 0a30,30 0,1 1,-60 0"/>
+    
+    <!-- Letter G for GroPOS -->
+    <path
+        android:fillColor="#04571B"
+        android:pathData="M54,35 
+            C42,35 33,44 33,54 
+            C33,64 42,73 54,73 
+            C62,73 69,68 72,61 
+            L60,61 
+            L60,53 
+            L78,53 
+            L78,57 
+            C78,69 67,79 54,79 
+            C39,79 27,67 27,54 
+            C27,41 39,29 54,29 
+            C63,29 71,34 75,41 
+            L68,45 
+            C65,40 60,37 54,35Z"/>
+</vector>
+

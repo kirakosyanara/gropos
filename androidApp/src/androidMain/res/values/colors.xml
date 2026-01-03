@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- GroPOS Brand Colors per UI_DESIGN_SYSTEM.md -->
+    <color name="ic_launcher_background">#04571B</color>
+    <color name="primary_green">#04571B</color>
+    <color name="primary_blue">#2073BE</color>
+    <color name="danger_red">#FA1B1B</color>
+    <color name="warning_orange">#FF9800</color>
+</resources>
+

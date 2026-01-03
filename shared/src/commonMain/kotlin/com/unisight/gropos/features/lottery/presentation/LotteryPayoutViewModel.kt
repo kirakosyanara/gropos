@@ -46,7 +46,7 @@ class LotteryPayoutViewModel(
      * @throws IllegalStateException if no session is active
      */
     private val staffId: Int
-        get() = sessionManager.currentSession.value?.employeeId
+        get() = sessionManager.activeSession.value?.employeeId
             ?: throw IllegalStateException("No active session. User must be logged in to process lottery payouts.")
     
     private val _uiState = MutableStateFlow(LotteryPayoutUiState())

@@ -4,9 +4,19 @@
 
 A modern, offline-first POS application built with Kotlin Multiplatform and Jetpack Compose. Designed for grocery retail environments with support for Desktop (Windows/Linux/macOS) and Android.
 
-## 🚀 Version 0.9.0 - Feature Complete Alpha
+## 🚀 Version 1.0.0-rc1 - Release Candidate 1
 
-All P0 critical features are implemented:
+**Phase 4 & 5 Complete!** All core POS features, hardware integration, and lottery module are implemented.
+
+### What's New in v1.0.0-rc1
+
+- ✅ **Real Hardware Drivers** - Printer, Scanner, Scale for Desktop & Android
+- ✅ **Backend API Integration** - Full authentication, till management, sync
+- ✅ **Offline-First Persistence** - CouchbaseLite with crash recovery
+- ✅ **Lottery Module** - Sales, Payouts (with tier limits), Reports
+- ✅ **Compliance Ready** - $600+ payout blocking, complete audit trails
+
+### Core Features (from v0.9.0)
 
 - ✅ **Lock Screen & Inactivity Timer** - Auto-lock after 5 minutes
 - ✅ **Manager Approval Flow** - RBAC permissions system
