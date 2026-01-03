@@ -36,9 +36,9 @@ This document analyzes the integration between the **legacy Couchbase Lite schem
 
 | Category | Status | Count |
 |----------|--------|-------|
-| Fully Connected | ✅ | **8** |
+| Fully Connected | ✅ | **10** |
 | Partially Connected | ⚠️ | 3 |
-| Not Implemented | ❌ | 5 |
+| Not Implemented | ❌ | 3 |
 
 ---
 
@@ -109,6 +109,37 @@ suspend fun getItemDiscounts(groupId: Int): List<CustomerGroupItem>
 suspend fun getItemDiscount(groupId: Int, branchProductId: Int): CustomerGroupItem?
 suspend fun hasGroupPricing(groupId: Int): Boolean
 ```
+
+### ✅ Phase 3B: Tax & CRV Definitions (COMPLETE)
+
+**Completed on:** 2026-01-03
+
+| Task | Status | Files |
+|------|--------|-------|
+| Create Tax and Crv domain models | ✅ Done | `Tax.kt` |
+| Create LegacyTaxDto and LegacyCrvDto | ✅ Done | `LegacyTaxDto.kt` |
+| Implement CouchbaseTaxRepository | ✅ Done | Desktop version |
+| Implement CouchbaseCrvRepository | ✅ Done | Desktop version |
+| Wire in DatabaseModule | ✅ Done | `DatabaseModule.kt` |
+
+**New Domain Models:**
+- `Tax` - Tax definitions with rate calculation
+- `Crv` - CRV tier definitions with container deposit rates
+
+**Repository Features:**
+```kotlin
+// TaxRepository interface
+suspend fun getAllTaxes(): List<Tax>
+suspend fun getTaxById(taxId: Int): Tax?
+suspend fun getTaxByName(name: String): Tax?
+suspend fun getTaxesByIds(taxIds: List<Int>): List<Tax>
+
+// CrvRepository interface
+suspend fun getAllCrvRates(): List<Crv>
+suspend fun getCrvById(crvId: Int): Crv?
+suspend fun getDefaultSmallContainerCrv(): Crv?
+suspend fun getDefaultLargeContainerCrv(): Crv?
+```
 ```kotlin
 // Active transactions saved as "{guid}-P"
 suspend fun savePendingTransaction(transaction: Transaction): Result<Unit>
@@ -143,8 +174,8 @@ suspend fun getPendingTransactionsForResume(): List<Transaction>
 |-------------------|------------------|------------|--------|-------|
 | `Product` | `Product` | `CouchbaseProductRepository` | ✅ **Connected** | Field mappings complete via `LegacyProductDto` |
 | `Category` | `LookupCategory` | `CouchbaseProductRepository` | ⚠️ Partial | Built from products, not separate collection |
-| `Tax` | `ProductTax` (embedded) | — | ❌ Missing | No standalone Tax repository |
-| `CRV` | `crvRatePerUnit` (field) | — | ❌ Missing | CRV rates embedded in Product, no CRV collection |
+| `Tax` | `Tax` | `CouchbaseTaxRepository` | ✅ **Connected** | Standalone tax lookups via `LegacyTaxDto` |
+| `CRV` | `Crv` | `CouchbaseCrvRepository` | ✅ **Connected** | CRV rate lookups via `LegacyCrvDto` |
 | `CustomerGroup` | `CustomerGroup` | `CouchbaseCustomerGroupRepository` | ✅ **Connected** | Full implementation via `LegacyCustomerGroupDto` |
 | `CustomerGroupDepartment` | `CustomerGroupDepartment` | `CouchbaseCustomerGroupRepository` | ✅ **Connected** | Department-level discounts mapped |
 | `CustomerGroupItem` | `CustomerGroupItem` | `CouchbaseCustomerGroupRepository` | ✅ **Connected** | Item-level discounts/special prices mapped |
@@ -269,8 +300,8 @@ After Phase 1 & 2 implementation, these fields still need attention:
 
 | Collection | Purpose | New POS Impact | Priority |
 |------------|---------|----------------|----------|
-| `Tax` | Standalone tax definitions | ⚠️ Taxes embedded in products; no tax updates | 🟡 Medium |
-| `CRV` | CRV rate lookup | ⚠️ CRV rates embedded; no rate updates | 🟡 Medium |
+| ~~`Tax`~~ | ~~Standalone tax definitions~~ | ✅ **Implemented** | ✅ Done |
+| ~~`CRV`~~ | ~~CRV rate lookup~~ | ✅ **Implemented** | ✅ Done |
 | ~~`CustomerGroup`~~ | ~~Group-based pricing~~ | ✅ **Implemented** | ✅ Done |
 | ~~`CustomerGroupDepartment`~~ | ~~Department group pricing~~ | ✅ **Implemented** | ✅ Done |
 | ~~`CustomerGroupItem`~~ | ~~Item-specific group pricing~~ | ✅ **Implemented** | ✅ Done |
@@ -311,8 +342,8 @@ After Phase 1 & 2 implementation, these fields still need attention:
 
 | Task | Priority | Effort | Status |
 |------|----------|--------|--------|
-| Implement Tax collection repository | 🟡 Medium | 4h | 🔲 Pending |
-| Implement CRV collection repository | 🟡 Medium | 3h | 🔲 Pending |
+| Implement Tax collection repository | 🟡 Medium | 4h | ✅ **Done** |
+| Implement CRV collection repository | 🟡 Medium | 3h | ✅ **Done** |
 | Implement CustomerGroup collections | 🔴 High | 8h | ✅ **Done** |
 | Implement ConditionalSale collection | 🟡 Medium | 4h | 🔲 Pending |
 | Implement VendorPayout collection | 🟢 Low | 4h | 🔲 Pending |
@@ -413,7 +444,13 @@ suspend fun getPendingTransactionsForResume(): List<Transaction>
 | `shared/src/commonMain/.../pricing/domain/model/CustomerGroup.kt` | CustomerGroup, CustomerGroupDepartment, CustomerGroupItem models |
 | `shared/src/commonMain/.../pricing/domain/repository/CustomerGroupRepository.kt` | Repository interface for customer group pricing |
 | `shared/src/commonMain/.../pricing/data/dto/LegacyCustomerGroupDto.kt` | Legacy CustomerGroup DTOs with mappers |
+| `shared/src/commonMain/.../pricing/domain/model/Tax.kt` | Tax and Crv domain models |
+| `shared/src/commonMain/.../pricing/domain/repository/TaxRepository.kt` | Tax repository interface |
+| `shared/src/commonMain/.../pricing/domain/repository/CrvRepository.kt` | CRV repository interface |
+| `shared/src/commonMain/.../pricing/data/dto/LegacyTaxDto.kt` | Legacy Tax and CRV DTOs with mappers |
 | `shared/src/desktopMain/.../pricing/data/CouchbaseCustomerGroupRepository.kt` | Couchbase implementation for Desktop |
+| `shared/src/desktopMain/.../pricing/data/CouchbaseTaxRepository.kt` | Couchbase Tax implementation for Desktop |
+| `shared/src/desktopMain/.../pricing/data/CouchbaseCrvRepository.kt` | Couchbase CRV implementation for Desktop |
 
 ### Files Modified
 

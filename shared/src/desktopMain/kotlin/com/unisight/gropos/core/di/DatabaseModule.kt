@@ -4,8 +4,12 @@ import com.unisight.gropos.core.database.DatabaseProvider
 import com.unisight.gropos.core.database.seeder.DebugDataSeeder
 import com.unisight.gropos.features.checkout.data.CouchbaseProductRepository
 import com.unisight.gropos.features.checkout.domain.repository.ProductRepository
+import com.unisight.gropos.features.pricing.data.CouchbaseCrvRepository
 import com.unisight.gropos.features.pricing.data.CouchbaseCustomerGroupRepository
+import com.unisight.gropos.features.pricing.data.CouchbaseTaxRepository
+import com.unisight.gropos.features.pricing.domain.repository.CrvRepository
 import com.unisight.gropos.features.pricing.domain.repository.CustomerGroupRepository
+import com.unisight.gropos.features.pricing.domain.repository.TaxRepository
 import com.unisight.gropos.features.transaction.data.CouchbaseTransactionRepository
 import com.unisight.gropos.features.transaction.domain.repository.TransactionRepository
 import org.koin.core.module.Module
@@ -84,6 +88,36 @@ val databaseModule: Module = module {
      * Bind CouchbaseCustomerGroupRepository to CustomerGroupRepository interface.
      */
     single<CustomerGroupRepository> { get<CouchbaseCustomerGroupRepository>() }
+    
+    /**
+     * Couchbase tax repository.
+     * 
+     * Per COUCHBASE_LOCAL_STORAGE.md: Tax collection in "pos" scope.
+     * Used for standalone tax rate lookups and updates.
+     * 
+     * SINGLETON scope ensures consistent collection reference.
+     */
+    single { CouchbaseTaxRepository(get()) }
+    
+    /**
+     * Bind CouchbaseTaxRepository to TaxRepository interface.
+     */
+    single<TaxRepository> { get<CouchbaseTaxRepository>() }
+    
+    /**
+     * Couchbase CRV repository.
+     * 
+     * Per COUCHBASE_LOCAL_STORAGE.md: CRV collection in "pos" scope.
+     * Used for California Redemption Value rate lookups.
+     * 
+     * SINGLETON scope ensures consistent collection reference.
+     */
+    single { CouchbaseCrvRepository(get()) }
+    
+    /**
+     * Bind CouchbaseCrvRepository to CrvRepository interface.
+     */
+    single<CrvRepository> { get<CouchbaseCrvRepository>() }
     
     /**
      * Debug data seeder.

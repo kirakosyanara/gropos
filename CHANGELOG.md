@@ -16,6 +16,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Wired in `DatabaseModule.kt` (Desktop) with interface binding
   - Updated BACKEND_INTEGRATION_STATUS.md: CustomerGroup collections now ✅ Connected
 
+- **Tax and CRV Repositories** - Phase 3B Implementation
+  - Created `Tax` and `Crv` domain models with calculation methods
+  - Created `LegacyTaxDto` and `LegacyCrvDto` for legacy mapping
+  - Implemented `CouchbaseTaxRepository` for Desktop (reads from legacy `pos` scope)
+    - Methods: `getAllTaxes()`, `getTaxById()`, `getTaxByName()`, `getTaxesByIds()`
+  - Implemented `CouchbaseCrvRepository` for Desktop (reads from legacy `pos` scope)
+    - Methods: `getAllCrvRates()`, `getCrvById()`, `getDefaultSmallContainerCrv()`, `getDefaultLargeContainerCrv()`
+  - Wired in `DatabaseModule.kt` (Desktop) with interface bindings
+  - Updated BACKEND_INTEGRATION_STATUS.md: Tax and CRV collections now ✅ Connected
+
 - **Backend Integration Status Document** (`docs/data/BACKEND_INTEGRATION_STATUS.md`)
   - Comprehensive gap analysis between legacy Couchbase schema and new domain models
   - Connection Matrix: 8 collections fully/partially connected, 8 missing implementations
