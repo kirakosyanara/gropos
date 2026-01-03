@@ -369,6 +369,8 @@ Authorization: Bearer <accessToken>
 version: v1
 ```
 
+> **⚠️ NOTE:** Backend returns `"Complete"` (not `"Registered"`) when registration finishes. Client code must accept both values.
+
 **Response - Pending:**
 ```json
 {
