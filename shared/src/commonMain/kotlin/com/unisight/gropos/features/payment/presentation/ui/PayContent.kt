@@ -578,7 +578,7 @@ private fun PaymentMethodTabs(
             PaymentTab.Cash -> CashTabContent(onEvent = onEvent)
             PaymentTab.Charge -> ChargeTabContent(onEvent = onEvent)
             PaymentTab.Ebt -> EbtTabContent(onEvent = onEvent)
-            PaymentTab.Other -> OtherTabContent()
+            PaymentTab.Other -> OtherTabContent(onEvent = onEvent)
         }
     }
 }
@@ -696,24 +696,29 @@ private fun EbtTabContent(
 
 @Composable
 private fun OtherTabContent(
+    onEvent: (PaymentEvent) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(GroPOSSpacing.S)
     ) {
-        OutlineButton(
-            onClick = { /* TODO: Check payment */ },
+        // Check Payment
+        // Per PAYMENT_PROCESSING.md: Check tender type
+        PrimaryButton(
+            onClick = { onEvent(PaymentEvent.CheckPayment) },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Check")
+            Text("Check", fontWeight = FontWeight.Bold)
         }
         
+        // On Account Payment
         OutlineButton(
-            onClick = { /* TODO: On Account */ },
-            modifier = Modifier.fillMaxWidth()
+            onClick = { onEvent(PaymentEvent.OnAccountPayment) },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = false // Disabled until customer account feature is implemented
         ) {
-            Text("On Account")
+            Text("On Account (Coming Soon)")
         }
     }
 }

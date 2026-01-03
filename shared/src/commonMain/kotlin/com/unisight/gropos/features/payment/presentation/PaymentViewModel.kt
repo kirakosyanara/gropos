@@ -568,6 +568,67 @@ class PaymentViewModel(
     }
     
     // ========================================================================
+    // Check/Other Payments
+    // Per PAYMENT_PROCESSING.md: Check tender type
+    // ========================================================================
+    
+    /**
+     * Processes a check payment.
+     * 
+     * Per PAYMENT_PROCESSING.md: Check tender type.
+     * Check payments are applied for the entered amount (or remaining balance).
+     */
+    fun onCheckPayment() {
+        val remaining = _state.value.remainingAmountRaw
+        if (remaining <= BigDecimal.ZERO) {
+            _state.value = _state.value.copy(errorMessage = "No amount due")
+            return
+        }
+        
+        _state.value = _state.value.copy(isProcessing = true)
+        
+        effectiveScope.launch {
+            // Determine amount (entered or remaining)
+            val paymentAmount = getPaymentAmount()
+            
+            // Create the check payment
+            val payment = AppliedPayment(
+                id = UUID.randomUUID().toString(),
+                type = PaymentType.Check,
+                amount = paymentAmount,
+                displayName = "Check"
+            )
+            
+            // Add to applied payments
+            appliedPayments.add(payment)
+            totalPaid += paymentAmount
+            
+            // Calculate new remaining
+            val newRemainingRaw = remaining - paymentAmount
+            val isComplete = newRemainingRaw <= BigDecimal.ZERO
+            
+            // Log for audit
+            println("[AUDIT] CHECK PAYMENT APPLIED")
+            println("  Amount: ${currencyFormatter.format(paymentAmount)}")
+            println("  Timestamp: ${java.time.LocalDateTime.now()}")
+            
+            // Update state
+            _state.value = _state.value.copy(
+                isProcessing = false,
+                appliedPayments = appliedPayments.map { mapPaymentToUiModel(it) },
+                remainingAmount = currencyFormatter.format(newRemainingRaw.coerceAtLeast(BigDecimal.ZERO)),
+                remainingAmountRaw = newRemainingRaw.coerceAtLeast(BigDecimal.ZERO),
+                enteredAmount = ""
+            )
+            
+            // If complete, save transaction
+            if (isComplete) {
+                completeTransaction()
+            }
+        }
+    }
+    
+    // ========================================================================
     // Dialogs
     // ========================================================================
     

@@ -123,6 +123,23 @@ object PermissionManager {
     }
     
     /**
+     * Check if a user can self-approve an action.
+     *
+     * Per REMEDIATION_CHECKLIST: Self-Approval Logic for managers.
+     * Managers and higher can self-approve certain actions without
+     * requiring another manager's approval.
+     *
+     * @param user The current logged-in user
+     * @param action The action requiring approval
+     * @return True if the user can self-approve this action
+     */
+    fun canSelfApprove(user: AuthUser, action: RequestAction): Boolean {
+        val result = checkPermission(user, action)
+        return result == PermissionCheckResult.GRANTED ||
+               result == PermissionCheckResult.SELF_APPROVAL_ALLOWED
+    }
+    
+    /**
      * Get the role level for comparison.
      *
      * Per ROLES_AND_PERMISSIONS.md:

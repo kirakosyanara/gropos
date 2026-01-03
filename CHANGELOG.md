@@ -7,6 +7,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased] - 2026-01-02
 
 ### Added
+- **Payment & Permissions Enhancements**
+  - **Check Payment** - Full check tender type implementation
+    - Added `CheckPayment` and `OnAccountPayment` events to `PaymentEvent`
+    - `OtherTabContent` now wires Check button to event handler
+    - `PaymentViewModel.onCheckPayment()` processes check payments with full audit logging
+    - Check payments follow same pattern as cash (apply, update state, complete transaction)
+  - **Self-Approval Logic** - `canSelfApprove()` function for managers
+    - Added `PermissionManager.canSelfApprove(user, action)` convenience method
+    - Managers with SELF_APPROVAL_ALLOWED or GRANTED can self-approve actions
+    - Supports all RequestAction types (CASH_PICKUP, VOID_TRANSACTION, etc.)
+  - **Scale/Weight Hardware Interface**
+    - New `ScaleService` interface in `core/hardware/scale/`
+    - Supports: `connect()`, `disconnect()`, `zero()`, `getWeight()`
+    - Reactive flows: `currentWeight`, `status`, `isStable`
+    - `SimulatedScaleService` for development/testing with test helpers
+
 - **Customer Display & UI Enhancements**
   - **Voided Item Strikethrough** - Show voided items in red with strikethrough
     - Added `isVoided` property to `CheckoutItemUiModel`

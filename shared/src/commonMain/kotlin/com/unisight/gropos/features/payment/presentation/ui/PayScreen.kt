@@ -113,6 +113,14 @@ class PayScreen : Screen {
                     PaymentEvent.DismissError -> {
                         viewModel.dismissError()
                     }
+                    
+                    // Check/Other Payments
+                    PaymentEvent.CheckPayment -> {
+                        viewModel.onCheckPayment()
+                    }
+                    PaymentEvent.OnAccountPayment -> {
+                        // Not yet implemented
+                    }
                 }
             }
         )
@@ -154,5 +162,10 @@ sealed interface PaymentEvent {
     // Dialogs
     data object DismissChangeDialog : PaymentEvent
     data object DismissError : PaymentEvent
+    
+    // Check/Other Payments
+    // Per PAYMENT_PROCESSING.md: Check tender type
+    data object CheckPayment : PaymentEvent
+    data object OnAccountPayment : PaymentEvent
 }
 

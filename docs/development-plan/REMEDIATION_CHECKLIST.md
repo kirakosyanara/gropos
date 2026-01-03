@@ -57,7 +57,7 @@
 | Permission Check Function | ✅ Match | `PermissionManager.checkPermission()` returning GRANTED/REQUIRES_APPROVAL/SELF_APPROVAL_ALLOWED/DENIED (Jan 2026) |
 | Manager Approval Service | ✅ Match | `ManagerApprovalService` with `getApprovers()` and `validateApproval()` (Jan 2026) |
 | Manager Approval Dialog | ✅ Match | `ManagerApprovalDialog` composable with manager list and PIN entry (Jan 2026) |
-| Self-Approval Logic | ❌ Missing | Implement `canSelfApprove()` check for managers |
+| Self-Approval Logic | ✅ Match | `PermissionManager.canSelfApprove(user, action)` (Jan 2026) |
 | Request Actions Enum | ❌ Missing | Create `RequestAction` enum (CASH_PICKUP, VENDOR_PAYOUT, LINE_DISCOUNT, etc.) |
 | Approval Audit Trail | ❌ Missing | Create `ApprovalAuditEntry` and logging mechanism |
 | Permission Thresholds | ❌ Missing | Implement `PermissionThresholds` (discount limits, return limits) |
@@ -86,7 +86,7 @@
 | Payment Response Mapping | ✅ Match | `PaymentResult` sealed class: Approved/Declined/Error/Cancelled (Jan 2026) |
 | Void Payment | ✅ Match | `PaymentTerminal.processVoid()` + `VoidResult` sealed class (Jan 2026) |
 | Payment Progress Overlay | ✅ Match | `PaymentTerminalDialog` with spinner, amount, cancel button (Jan 2026) |
-| Check Payment | ❌ Missing | Implement check tender type |
+| Check Payment | ✅ Match | `PaymentViewModel.onCheckPayment()` with full processing (Jan 2026) |
 | On Account Payment | ❌ Missing | Implement customer account charging |
 | PaymentService Singleton | ❌ Missing | Create `@Singleton class PaymentService` with hardware integration |
 
@@ -113,7 +113,7 @@
 | Remove Item (Void Line) | ⚠️ Partial | `CartRepository.voidItem()` works, but items hidden instead of strikethrough |
 | More Information Dialog | ✅ Match | `ProductInfoDialog.kt` shows barcode, prices, tax, SNAP, age (Jan 2026) |
 | Info Bar - Customer Card | ❌ Missing | Implement customer avatar, name, loyalty search |
-| Info Bar - Weight Display | ❌ Missing | Show current scale weight |
+| Info Bar - Weight Display | ⚠️ Partial | `ScaleService` interface created, UI wiring pending (Jan 2026) |
 | Info Bar - Quantity Display | ⚠️ Partial | Need: Show preset quantity multiplier |
 | QTY Prefix for Multiple | ✅ Match | `quantityPrefix` state in CheckoutUiState, SetQuantityPrefix event (Jan 2026) |
 | Hold Transaction | ✅ Match | `HoldTransactionDialog` with optional note, `TransactionRepository.holdTransaction()` (Jan 2026) |
@@ -137,7 +137,7 @@
 | Advertisement Overlay | ✅ Match | `AdOverlay.kt` in features/ad/presentation/ with z-index:100, "Tap to Start", pulsing animation (Jan 2026) |
 | Savings Display | ✅ Match | Per-line "Saved $X.XX" in `CustomerOrderItem` (Jan 2026) |
 | Store Name Header | ✅ Match | `CustomerHeader` displays store name prominently (Jan 2026) |
-| Weight Display | ❌ Missing | Show current scale weight |
+| Weight Display | ⚠️ Partial | `ScaleService` interface + `SimulatedScaleService`, UI wiring pending (Jan 2026) |
 
 ---
 
@@ -282,19 +282,19 @@
 | Category | ✅ Match | ⚠️ Partial | ❌ Missing |
 |----------|----------|------------|------------|
 | Auth & Session | 9 | 3 | 9 |
-| Roles & Permissions | 0 | 1 | 12 |
-| Payment Processing | 10 | 2 | 5 |
-| Checkout & Transaction | 13 | 6 | 5 |
+| Roles & Permissions | 1 | 1 | 11 |
+| Payment Processing | 11 | 2 | 4 |
+| Checkout & Transaction | 13 | 8 | 3 |
 | Customer Display | 7 | 2 | 1 |
 | Returns Processing | 8 | 2 | 3 |
 | Till & Cash Operations | 9 | 1 | 0 |
 | Device Registration | 6 | 2 | 2 |
 | UI/UX Components | 10 | 1 | 3 |
 | Data Layer | 3 | 1 | 6 |
-| **TOTAL** | **90** | **21** | **29** |
+| **TOTAL** | **92** | **23** | **25** |
 
 ---
 
-*Last Updated: January 2, 2026 (Customer Display Enhancements Phase)*
+*Last Updated: January 2, 2026 (Payment & Permissions Enhancements Phase)*
 *Next Review: Post-Merge to main*
 
