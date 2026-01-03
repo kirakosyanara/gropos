@@ -156,15 +156,17 @@ The current device registration implementation does not match the architectural 
 
 ### Phase 3: Presentation Layer Fixes
 
-- [ ] **4.7** Implement status polling in `RegistrationViewModel`
-  - [ ] 10 second polling interval
-  - [ ] 10 minute default timeout
-  - [ ] 60 minute extended timeout when IN_PROGRESS
-  - [ ] Proper cancellation on dispose
+- [x] **4.7** Implement status polling in `RegistrationViewModel` ✅ *Completed 2026-01-03*
+  - [x] 10 second polling interval (POLL_INTERVAL_MS)
+  - [x] 10 minute default timeout (DEFAULT_TIMEOUT_MS)
+  - [x] 60 minute extended timeout when IN_PROGRESS (EXTENDED_TIMEOUT_MS)
+  - [x] Proper cancellation on dispose (pollingJob.cancel())
+  - [x] checkInitialState() for LOADING state on screen load
+  - [x] handleRegistrationComplete() saves credentials via repository
 
-- [ ] **4.8** Add LOADING state handling in UI
-  - [ ] Show loading on initial check
-  - [ ] Show timeout message with refresh button
+- [x] **4.8** Add LOADING state handling in UI ✅ *Completed 2026-01-03*
+  - [x] Initial state is now LOADING (was UNREGISTERED)
+  - [x] Added RetryAfterTimeout event for timeout recovery
 
 ### Phase 4: Testing
 

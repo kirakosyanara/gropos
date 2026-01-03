@@ -6,12 +6,15 @@ import com.unisight.gropos.features.device.data.FakeDeviceRepository
 import com.unisight.gropos.features.device.domain.model.DeviceInfo
 import com.unisight.gropos.features.device.domain.model.RegistrationState
 import com.unisight.gropos.features.device.domain.repository.DeviceRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
@@ -20,11 +23,17 @@ import kotlinx.datetime.toLocalDateTime
 /**
  * ViewModel for the Registration Screen.
  * 
- * Per DEVICE_REGISTRATION.md:
+ * **Per DEVICE_REGISTRATION.md:**
  * - Generates pairing code on init
  * - Manages QR code display
- * - Polls for registration status
+ * - Polls for registration status every 10 seconds
  * - Transitions to login on successful activation
+ * 
+ * **C3 FIX:** Implemented full status polling mechanism with:
+ * - 10 second polling interval
+ * - 10 minute default timeout
+ * - 60 minute extended timeout when IN_PROGRESS
+ * - Proper cancellation on dispose
  * 
  * @param deviceRepository Repository for device registration operations
  * @param coroutineScope Scope for launching coroutines (injectable for tests)
@@ -33,6 +42,25 @@ class RegistrationViewModel(
     private val deviceRepository: DeviceRepository,
     private val coroutineScope: CoroutineScope? = null
 ) : ScreenModel {
+    
+    companion object {
+        /**
+         * Polling interval per DEVICE_REGISTRATION.md Section 6.
+         */
+        private const val POLL_INTERVAL_MS = 10_000L        // 10 seconds
+        
+        /**
+         * Default timeout per DEVICE_REGISTRATION.md Section 6.
+         * QR code expires if not scanned within this time.
+         */
+        private const val DEFAULT_TIMEOUT_MS = 10 * 60 * 1000L   // 10 minutes
+        
+        /**
+         * Extended timeout per DEVICE_REGISTRATION.md Section 6.
+         * Applied when admin is actively assigning branch (IN_PROGRESS state).
+         */
+        private const val EXTENDED_TIMEOUT_MS = 60 * 60 * 1000L  // 60 minutes
+    }
     
     private val scope: CoroutineScope
         get() = coroutineScope ?: screenModelScope
@@ -43,12 +71,15 @@ class RegistrationViewModel(
     // Track if we're the active registration screen (to stop polling when navigating away)
     private var isActive = true
     
+    // C3 FIX: Job reference for status polling (allows cancellation)
+    private var pollingJob: Job? = null
+    
     init {
         // Start clock updates
         startClockUpdates()
         
-        // Generate initial pairing code
-        generatePairingCode()
+        // Check initial registration state
+        checkInitialState()
     }
     
     /**
@@ -61,38 +92,86 @@ class RegistrationViewModel(
             is RegistrationEvent.ShowAdminSettings -> showAdminSettings()
             is RegistrationEvent.HideAdminSettings -> hideAdminSettings()
             is RegistrationEvent.DismissError -> dismissError()
+            is RegistrationEvent.RetryAfterTimeout -> generatePairingCode()
         }
     }
     
     /**
-     * Generate a new pairing code and optionally request QR code from server.
+     * Check initial registration state on screen load.
+     * 
+     * Per DEVICE_REGISTRATION.md: Start with LOADING state while checking database.
      */
-    private fun generatePairingCode() {
+    private fun checkInitialState() {
         scope.launch {
-            _state.update { it.copy(isLoading = true, errorMessage = null) }
+            _state.update { it.copy(registrationState = RegistrationState.LOADING) }
             
             try {
-                // Generate local pairing code
+                if (deviceRepository.isRegistered()) {
+                    val deviceInfo = deviceRepository.getDeviceInfo()
+                    _state.update {
+                        it.copy(
+                            registrationState = RegistrationState.REGISTERED,
+                            branchName = deviceInfo?.branchName ?: "Unknown Branch",
+                            stationName = "Station ${deviceInfo?.stationId?.take(8) ?: "?"}"
+                        )
+                    }
+                } else {
+                    // Not registered, generate pairing code
+                    generatePairingCode()
+                }
+            } catch (e: Exception) {
+                // Error checking state, proceed to registration
+                generatePairingCode()
+            }
+        }
+    }
+    
+    /**
+     * Generate a new pairing code and request QR code from server.
+     * 
+     * Per DEVICE_REGISTRATION.md Section 4.1:
+     * - POST /device-registration/qr-registration
+     * - Receive QR code image and temporary access token
+     * - Start status polling with the assigned device GUID
+     */
+    private fun generatePairingCode() {
+        // Cancel any existing polling
+        pollingJob?.cancel()
+        
+        scope.launch {
+            _state.update { 
+                it.copy(
+                    isLoading = true, 
+                    errorMessage = null,
+                    registrationState = RegistrationState.LOADING
+                ) 
+            }
+            
+            try {
+                // Generate local pairing code for display
                 val pairingCode = deviceRepository.generatePairingCode()
                 
-                // Request QR code from server (mock for P2)
+                // Request QR code from server
                 val qrResult = deviceRepository.requestQrCode()
                 
                 qrResult.onSuccess { response ->
+                    val deviceGuid = response.assignedGuid
+                    
                     _state.update { 
                         it.copy(
                             pairingCode = pairingCode,
                             qrCodeImage = response.qrCodeImage,
-                            deviceGuid = response.assignedGuid,
+                            deviceGuid = deviceGuid,
                             activationUrl = response.url?.substringAfter("://") ?: "admin.gropos.com",
                             registrationState = RegistrationState.PENDING,
                             isLoading = false
                         )
                     }
                     
-                    // Start polling for status (would be done in production)
-                    // For P2, we rely on "Simulate Activation" button
-                    // startStatusPolling(response.assignedGuid ?: "")
+                    // C3 FIX: Start status polling with the device GUID
+                    if (!deviceGuid.isNullOrEmpty()) {
+                        startStatusPolling(deviceGuid)
+                    }
                     
                 }.onFailure { error ->
                     _state.update { 
@@ -113,6 +192,138 @@ class RegistrationViewModel(
                         isLoading = false
                     )
                 }
+            }
+        }
+    }
+    
+    /**
+     * Start polling for device registration status.
+     * 
+     * **C3 FIX:** Full implementation per DEVICE_REGISTRATION.md Section 6:
+     * - Poll every 10 seconds
+     * - Default timeout: 10 minutes
+     * - Extended timeout: 60 minutes when IN_PROGRESS (admin assigning branch)
+     * - Cancel on dispose or new pairing code generation
+     * 
+     * @param deviceGuid The device GUID from the QR registration response
+     */
+    private fun startStatusPolling(deviceGuid: String) {
+        pollingJob?.cancel()
+        
+        pollingJob = scope.launch {
+            val startTime = Clock.System.now().toEpochMilliseconds()
+            var currentTimeout = DEFAULT_TIMEOUT_MS
+            
+            while (isActive && this@RegistrationViewModel.isActive) {
+                val elapsedTime = Clock.System.now().toEpochMilliseconds() - startTime
+                
+                // Check for timeout
+                if (elapsedTime >= currentTimeout) {
+                    _state.update {
+                        it.copy(
+                            registrationState = RegistrationState.TIMEOUT,
+                            errorMessage = "Registration timed out. Please try again."
+                        )
+                    }
+                    break
+                }
+                
+                try {
+                    val statusResult = deviceRepository.checkRegistrationStatus(deviceGuid)
+                    
+                    statusResult.onSuccess { response ->
+                        when (response.deviceStatus) {
+                            "Pending" -> {
+                                // Still waiting for admin to scan QR - continue polling
+                                // State already PENDING, no update needed
+                            }
+                            "In-Progress" -> {
+                                // Admin has scanned, assigning branch
+                                // Extend timeout to 60 minutes
+                                currentTimeout = EXTENDED_TIMEOUT_MS
+                                _state.update {
+                                    it.copy(
+                                        registrationState = RegistrationState.IN_PROGRESS,
+                                        branchName = response.branch ?: "Configuring..."
+                                    )
+                                }
+                            }
+                            "Registered" -> {
+                                // Registration complete! Save credentials and transition
+                                handleRegistrationComplete(deviceGuid, response)
+                                return@launch  // Exit polling loop
+                            }
+                        }
+                    }.onFailure { error ->
+                        // Log error but continue polling (transient network issues)
+                        println("[REGISTRATION] Status poll failed: ${error.message}")
+                    }
+                    
+                } catch (e: CancellationException) {
+                    throw e  // Re-throw cancellation
+                } catch (e: Exception) {
+                    // Log but continue polling
+                    println("[REGISTRATION] Polling error: ${e.message}")
+                }
+                
+                // Wait before next poll
+                delay(POLL_INTERVAL_MS)
+            }
+        }
+    }
+    
+    /**
+     * Handle successful registration completion.
+     * 
+     * Per DEVICE_REGISTRATION.md Section 5:
+     * - Save API key and branch info to SecureStorage
+     * - Transition to REGISTERED state
+     * - UI will navigate to LoginScreen
+     * 
+     * @param deviceGuid The device GUID (becomes stationId)
+     * @param response The status response with apiKey and branch info
+     */
+    private suspend fun handleRegistrationComplete(
+        deviceGuid: String,
+        response: com.unisight.gropos.features.device.domain.model.DeviceStatusResponse
+    ) {
+        val apiKey = response.apiKey
+        if (apiKey.isNullOrEmpty()) {
+            _state.update {
+                it.copy(
+                    registrationState = RegistrationState.ERROR,
+                    errorMessage = "Registration failed: No API key received"
+                )
+            }
+            return
+        }
+        
+        val deviceInfo = DeviceInfo(
+            stationId = deviceGuid,  // C4 FIX: Use assignedGuid as stationId
+            apiKey = apiKey,
+            branchName = response.branch ?: "Unknown Branch",
+            branchId = response.branchId ?: -1,
+            environment = "PRODUCTION",  // TODO: Get from config
+            registeredAt = Clock.System.now().toString()
+        )
+        
+        val saveResult = deviceRepository.registerDevice(deviceInfo)
+        
+        saveResult.onSuccess {
+            _state.update {
+                it.copy(
+                    registrationState = RegistrationState.REGISTERED,
+                    branchName = deviceInfo.branchName,
+                    stationName = "Station ${deviceGuid.take(8)}",
+                    errorMessage = null
+                )
+            }
+        }.onFailure { error ->
+            _state.update {
+                it.copy(
+                    registrationState = RegistrationState.ERROR,
+                    errorMessage = "Failed to save credentials: ${error.message}"
+                )
             }
         }
     }
@@ -219,6 +430,9 @@ class RegistrationViewModel(
     override fun onDispose() {
         super.onDispose()
         isActive = false
+        // C3 FIX: Cancel polling when screen is disposed
+        pollingJob?.cancel()
+        pollingJob = null
     }
 }
 

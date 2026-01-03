@@ -6,14 +6,16 @@ import com.unisight.gropos.features.device.domain.model.RegistrationState
 /**
  * UI State for the Registration Screen.
  * 
- * Per DEVICE_REGISTRATION.md:
+ * **Per DEVICE_REGISTRATION.md:**
  * - Shows QR code and pairing code for device activation
- * - Polls for registration status
+ * - Polls for registration status every 10 seconds
  * - Transitions to login on successful activation
+ * 
+ * **C3 FIX:** Initial state is now LOADING while checking database.
  */
 data class RegistrationUiState(
     /** Current registration state */
-    val registrationState: RegistrationState = RegistrationState.UNREGISTERED,
+    val registrationState: RegistrationState = RegistrationState.LOADING,
     
     /** Station name (placeholder until registered) */
     val stationName: String = "Unregistered Station",
@@ -53,7 +55,9 @@ data class RegistrationUiState(
 )
 
 /**
- * Events for Registration Screen actions
+ * Events for Registration Screen actions.
+ * 
+ * **C3 FIX:** Added RetryAfterTimeout event for timeout recovery.
  */
 sealed interface RegistrationEvent {
     /** Generate new QR code / pairing code */
@@ -70,5 +74,11 @@ sealed interface RegistrationEvent {
     
     /** Dismiss error message */
     data object DismissError : RegistrationEvent
+    
+    /**
+     * Retry registration after timeout.
+     * Per DEVICE_REGISTRATION.md: User can generate new code after TIMEOUT.
+     */
+    data object RetryAfterTimeout : RegistrationEvent
 }
 
