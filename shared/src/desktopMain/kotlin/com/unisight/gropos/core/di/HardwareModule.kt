@@ -4,6 +4,10 @@ import com.unisight.gropos.core.hardware.printer.DesktopEscPosPrinter
 import com.unisight.gropos.core.hardware.printer.PrinterConfig
 import com.unisight.gropos.core.hardware.printer.PrinterService
 import com.unisight.gropos.core.hardware.printer.SimulatedPrinterService
+import com.unisight.gropos.core.hardware.scale.DesktopCasScale
+import com.unisight.gropos.core.hardware.scale.ScaleConfig
+import com.unisight.gropos.core.hardware.scale.ScaleService
+import com.unisight.gropos.core.hardware.scale.SimulatedScaleService
 import com.unisight.gropos.core.hardware.scanner.DesktopSerialScanner
 import com.unisight.gropos.core.hardware.scanner.ScannerConfig
 import com.unisight.gropos.features.checkout.data.FakeScannerRepository
@@ -77,6 +81,18 @@ val hardwareModule: Module = module {
         )
     }
     
+    /**
+     * Scale configuration loaded from environment or preferences.
+     * 
+     * Per DESKTOP_HARDWARE.md: CAS PD-II scales use 9600 baud.
+     */
+    single(named("scaleConfig")) {
+        ScaleConfig(
+            portName = System.getenv("SCALE_PORT") ?: "",
+            baudRate = System.getenv("SCALE_BAUD")?.toIntOrNull() ?: 9600
+        )
+    }
+    
     // ========================================================================
     // Scanner Implementations
     // ========================================================================
@@ -146,6 +162,38 @@ val hardwareModule: Module = module {
     }
     
     // ========================================================================
+    // Scale Implementations
+    // ========================================================================
+    
+    if (useRealHardware) {
+        /**
+         * PRODUCTION: Real CAS PD-II scale.
+         * 
+         * Uses jSerialComm for USB/Serial scale communication.
+         */
+        single<ScaleService> {
+            DesktopCasScale(get(named("scaleConfig")))
+        }
+        
+        println("[HARDWARE] Using REAL scale")
+        
+    } else {
+        /**
+         * DEVELOPMENT: Simulated scale.
+         * 
+         * For testing weight-based workflows without hardware.
+         * Inject weights programmatically via SimulatedScaleService.
+         */
+        single { SimulatedScaleService() }
+        
+        single<ScaleService> {
+            get<SimulatedScaleService>()
+        }
+        
+        println("[HARDWARE] Using SIMULATED scale")
+    }
+    
+    // ========================================================================
     // Raw Hardware Access (for settings screens)
     // ========================================================================
     
@@ -166,6 +214,15 @@ val hardwareModule: Module = module {
     single(named("rawPrinter")) {
         DesktopEscPosPrinter(PrinterConfig())
     }
+    
+    /**
+     * Raw scale for port enumeration (not wrapped).
+     * 
+     * Use for hardware settings screen where user selects port.
+     */
+    single(named("rawScale")) {
+        DesktopCasScale(ScaleConfig())
+    }
 }
 
 /**
@@ -182,5 +239,13 @@ fun getAvailableScannerPorts(): List<String> {
 fun getAvailablePrinterPorts(): List<String> {
     val printer = DesktopEscPosPrinter()
     return printer.getAvailablePorts().map { "${it.name} - ${it.description}" }
+}
+
+/**
+ * Helper to get available scale ports for UI.
+ */
+fun getAvailableScalePorts(): List<String> {
+    val scale = DesktopCasScale()
+    return scale.getAvailablePorts().map { "${it.name} - ${it.description}" }
 }
 
