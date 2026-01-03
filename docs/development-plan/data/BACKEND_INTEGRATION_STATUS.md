@@ -177,6 +177,24 @@ suspend fun getTodayPayoutTotal(stationId: Int?): BigDecimal
 suspend fun getUnsyncedPayouts(): List<VendorPayout>
 suspend fun markAsSynced(payoutId: Long): Result<Unit>
 ```
+
+### ✅ Android Platform Parity (COMPLETE)
+
+**Completed on:** 2026-01-03
+
+All Desktop repositories now have Android equivalents:
+
+| Repository | Desktop | Android |
+|------------|---------|---------|
+| `CouchbaseProductRepository` | ✅ | ✅ |
+| `CouchbaseTransactionRepository` | ✅ | ✅ |
+| `CouchbaseCustomerGroupRepository` | ✅ | ✅ |
+| `CouchbaseTaxRepository` | ✅ | ✅ |
+| `CouchbaseCrvRepository` | ✅ | ✅ |
+| `CouchbaseConditionalSaleRepository` | ✅ | ✅ |
+| `CouchbaseVendorPayoutRepository` | ✅ | ✅ |
+
+**Android DatabaseModule updated with all repository bindings.**
 ```kotlin
 // Active transactions saved as "{guid}-P"
 suspend fun savePendingTransaction(transaction: Transaction): Result<Unit>
