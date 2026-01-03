@@ -7,6 +7,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased] - 2026-01-02
 
 ### Added
+- **UI Component Polish**
+  - **Weight Display Component** - Info Bar integration
+    - `WeightDisplayComponent` with stable/motion indicators
+    - `ScaleWeightDisplay` auto-wired to ScaleService
+    - `CompactWeightDisplay` for smaller spaces
+    - `PreviewWeightDisplay` for testing
+  - **SNAP Eligible Display** - EBT/SNAP visibility
+    - `SnapEligibleDisplay` showing eligible amounts
+    - `SnapEligibleBadge` for order cell items
+    - `EbtCashEligibleBadge` for EBT cash items
+    - `EbtSummaryPanel` for customer display
+  - **Navigation Components**
+    - `NavigationBackButton` - standard back navigation
+    - `BackButtonWithLabel` - labeled back button
+    - `CloseButton` - for dialogs/modals
+    - `CancelButton` - destructive action styling
+    - `NavigationHeader` - title + back button combo
+    - `FloatingBackButton` - overlay screens
+
 - **API Authentication System**
   - **ApiAuthService** - Complete authentication service
     - `employeeGroPOSLogin()` with username/password

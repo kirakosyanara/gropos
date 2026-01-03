@@ -113,7 +113,7 @@
 | Remove Item (Void Line) | ⚠️ Partial | `CartRepository.voidItem()` works, but items hidden instead of strikethrough |
 | More Information Dialog | ✅ Match | `ProductInfoDialog.kt` shows barcode, prices, tax, SNAP, age (Jan 2026) |
 | Info Bar - Customer Card | ✅ Match | `CustomerInfoBar.kt` + `CustomerSearchDialog.kt` (Jan 2026) |
-| Info Bar - Weight Display | ⚠️ Partial | `ScaleService` interface created, UI wiring pending (Jan 2026) |
+| Info Bar - Weight Display | ✅ Match | `WeightDisplayComponent` wired to `ScaleService` (Jan 2026) |
 | Info Bar - Quantity Display | ⚠️ Partial | Need: Show preset quantity multiplier |
 | QTY Prefix for Multiple | ✅ Match | `quantityPrefix` state in CheckoutUiState, SetQuantityPrefix event (Jan 2026) |
 | Hold Transaction | ✅ Match | `HoldTransactionDialog` with optional note, `TransactionRepository.holdTransaction()` (Jan 2026) |
@@ -131,13 +131,13 @@
 | Order Items Display | ✅ Match | Shows cart items in real-time |
 | Totals Panel | ✅ Match | Shows subtotal, tax, total |
 | Item Ordering (FIFO) | ✅ Match | Cashier: Newest at TOP via `derivedStateOf { asReversed() }` (Jan 2026); Customer: FIFO (unchanged per spec) |
-| SNAP Eligible Display | ⚠️ Partial | Need: Add to customer display totals panel |
+| SNAP Eligible Display | ✅ Match | `SnapEligibleDisplay` + `EbtSummaryPanel` (Jan 2026) |
 | Customer Order Cell | ⚠️ Partial | Need: Full layout with image, qty, CRV, tax indicator |
 | Removed Item Strikethrough | ✅ Match | `CustomerOrderItem` shows voided items in red with strikethrough (Jan 2026) |
 | Advertisement Overlay | ✅ Match | `AdOverlay.kt` in features/ad/presentation/ with z-index:100, "Tap to Start", pulsing animation (Jan 2026) |
 | Savings Display | ✅ Match | Per-line "Saved $X.XX" in `CustomerOrderItem` (Jan 2026) |
 | Store Name Header | ✅ Match | `CustomerHeader` displays store name prominently (Jan 2026) |
-| Weight Display | ⚠️ Partial | `ScaleService` interface + `SimulatedScaleService`, UI wiring pending (Jan 2026) |
+| Weight Display | ✅ Match | `WeightDisplayComponent` + `ScaleWeightDisplay` (Jan 2026) |
 
 ---
 
@@ -212,7 +212,7 @@
 | GreenBox Container | ✅ Match | Success card implemented |
 | PrimaryButton | ✅ Match | Green primary buttons |
 | DangerButton | ✅ Match | Red danger buttons |
-| BackButton | ⚠️ Partial | Need: Consistent back navigation component |
+| BackButton | ✅ Match | `NavigationBackButton` + `BackButtonWithLabel` + `NavigationHeader` (Jan 2026) |
 | RequestStatusBox | ✅ Match | Orange status indicator |
 | Error Dialog | ✅ Match | `ErrorDialog.kt` in `core/components/dialogs/` with red header, danger icon, z-index:1000 (Jan 2026) |
 | Age Verification Dialog | ✅ Match | `AgeVerificationDialog.kt` with DOB input, dynamic age calc, Manager Override (Jan 2026) |
@@ -284,17 +284,17 @@
 | Auth & Session | 12 | 3 | 6 |
 | Roles & Permissions | 8 | 1 | 4 |
 | Payment Processing | 13 | 2 | 2 |
-| Checkout & Transaction | 14 | 8 | 2 |
-| Customer Display | 8 | 2 | 0 |
-| Returns Processing | 10 | 2 | 1 |
+| Checkout & Transaction | 16 | 6 | 2 |
+| Customer Display | 9 | 1 | 0 |
+| Returns Processing | 11 | 1 | 1 |
 | Till & Cash Operations | 9 | 1 | 0 |
 | Device Registration | 9 | 2 | 0 |
-| UI/UX Components | 11 | 1 | 2 |
+| UI/UX Components | 12 | 0 | 2 |
 | Data Layer | 7 | 1 | 2 |
-| **TOTAL** | **115** | **23** | **2** |
+| **TOTAL** | **119** | **19** | **2** |
 
 ---
 
-*Last Updated: January 2, 2026 (API Auth Phase)*
+*Last Updated: January 2, 2026 (Final Polish Phase)*
 *Next Review: Post-Merge to main*
 
