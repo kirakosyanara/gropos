@@ -236,6 +236,8 @@ class RegistrationViewModel(
                     val statusResult = deviceRepository.checkRegistrationStatus(deviceGuid)
                     
                     statusResult.onSuccess { response ->
+                        println("[REGISTRATION] Poll response: status=${response.deviceStatus}, branch=${response.branch}, hasApiKey=${response.apiKey != null}")
+                        
                         when (response.deviceStatus) {
                             "Pending" -> {
                                 // Still waiting for admin to scan QR - continue polling
@@ -252,8 +254,9 @@ class RegistrationViewModel(
                                     )
                                 }
                             }
-                            "Registered" -> {
+                            "Registered", "Complete" -> {
                                 // Registration complete! Save credentials and transition
+                                // Note: Backend may return "Complete" or "Registered"
                                 handleRegistrationComplete(deviceGuid, response)
                                 return@launch  // Exit polling loop
                             }

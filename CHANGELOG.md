@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - **FIX:** Added `decodeBase64Image()` helper function in `RegistrationContent.kt`
   - **FIX:** Shows loading spinner while QR code is being fetched
   - **FIX:** Displays error state if Base64 decoding fails
+  - **FIX:** Status polling now accepts both "Complete" and "Registered" from backend (backend returns "Complete")
 
 - **Device Registration Flow Remediation (Phase 1: Data Layer)** ✅
   - **C1 FIX:** `QrRegistrationRequest` now uses `deviceType: Int` instead of `deviceName`/`platform`
