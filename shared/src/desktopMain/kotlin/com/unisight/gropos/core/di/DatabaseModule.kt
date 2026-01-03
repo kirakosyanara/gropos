@@ -2,11 +2,15 @@ package com.unisight.gropos.core.di
 
 import com.unisight.gropos.core.database.DatabaseProvider
 import com.unisight.gropos.core.database.seeder.DebugDataSeeder
+import com.unisight.gropos.features.cashier.data.CouchbaseVendorPayoutRepository
+import com.unisight.gropos.features.cashier.domain.repository.VendorPayoutRepository
 import com.unisight.gropos.features.checkout.data.CouchbaseProductRepository
 import com.unisight.gropos.features.checkout.domain.repository.ProductRepository
+import com.unisight.gropos.features.pricing.data.CouchbaseConditionalSaleRepository
 import com.unisight.gropos.features.pricing.data.CouchbaseCrvRepository
 import com.unisight.gropos.features.pricing.data.CouchbaseCustomerGroupRepository
 import com.unisight.gropos.features.pricing.data.CouchbaseTaxRepository
+import com.unisight.gropos.features.pricing.domain.repository.ConditionalSaleRepository
 import com.unisight.gropos.features.pricing.domain.repository.CrvRepository
 import com.unisight.gropos.features.pricing.domain.repository.CustomerGroupRepository
 import com.unisight.gropos.features.pricing.domain.repository.TaxRepository
@@ -118,6 +122,36 @@ val databaseModule: Module = module {
      * Bind CouchbaseCrvRepository to CrvRepository interface.
      */
     single<CrvRepository> { get<CouchbaseCrvRepository>() }
+    
+    /**
+     * Couchbase conditional sale repository.
+     * 
+     * Per COUCHBASE_LOCAL_STORAGE.md: ConditionalSale collection in "pos" scope.
+     * Used for dynamic age verification and conditional sale rules.
+     * 
+     * SINGLETON scope ensures consistent collection reference.
+     */
+    single { CouchbaseConditionalSaleRepository(get()) }
+    
+    /**
+     * Bind CouchbaseConditionalSaleRepository to ConditionalSaleRepository interface.
+     */
+    single<ConditionalSaleRepository> { get<CouchbaseConditionalSaleRepository>() }
+    
+    /**
+     * Couchbase vendor payout repository.
+     * 
+     * Per COUCHBASE_LOCAL_STORAGE.md: VendorPayout collection in "pos" scope.
+     * Used for tracking vendor payments made from the till.
+     * 
+     * SINGLETON scope ensures consistent collection reference.
+     */
+    single { CouchbaseVendorPayoutRepository(get()) }
+    
+    /**
+     * Bind CouchbaseVendorPayoutRepository to VendorPayoutRepository interface.
+     */
+    single<VendorPayoutRepository> { get<CouchbaseVendorPayoutRepository>() }
     
     /**
      * Debug data seeder.

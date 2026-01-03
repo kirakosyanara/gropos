@@ -36,9 +36,9 @@ This document analyzes the integration between the **legacy Couchbase Lite schem
 
 | Category | Status | Count |
 |----------|--------|-------|
-| Fully Connected | ✅ | **10** |
+| Fully Connected | ✅ | **12** |
 | Partially Connected | ⚠️ | 3 |
-| Not Implemented | ❌ | 3 |
+| Not Implemented | ❌ | 1 |
 
 ---
 
@@ -140,6 +140,43 @@ suspend fun getCrvById(crvId: Int): Crv?
 suspend fun getDefaultSmallContainerCrv(): Crv?
 suspend fun getDefaultLargeContainerCrv(): Crv?
 ```
+
+### ✅ Phase 3C: Remaining Collections (COMPLETE)
+
+**Completed on:** 2026-01-03
+
+| Task | Status | Files |
+|------|--------|-------|
+| Create ConditionalSale domain model | ✅ Done | `ConditionalSale.kt` |
+| Create LegacyConditionalSaleDto | ✅ Done | `LegacyConditionalSaleDto.kt` |
+| Implement CouchbaseConditionalSaleRepository | ✅ Done | Desktop version |
+| Create VendorPayout domain model | ✅ Done | `VendorPayout.kt` |
+| Create LegacyVendorPayoutDto | ✅ Done | `LegacyVendorPayoutDto.kt` |
+| Implement CouchbaseVendorPayoutRepository | ✅ Done | Desktop version |
+| Wire in DatabaseModule | ✅ Done | `DatabaseModule.kt` |
+
+**ConditionalSale Features:**
+```kotlin
+// ConditionalSaleRepository interface
+suspend fun getActiveRules(): List<ConditionalSale>
+suspend fun getRuleById(ruleId: Int): ConditionalSale?
+suspend fun getRulesForProduct(branchProductId: Int, categoryId: Int?): List<ConditionalSale>
+suspend fun getAgeRestrictionRules(): List<ConditionalSale>
+suspend fun getRequiredAgeForProduct(branchProductId: Int, categoryId: Int?): Int?
+```
+
+**VendorPayout Features:**
+```kotlin
+// VendorPayoutRepository interface
+suspend fun savePayout(payout: VendorPayout): Result<Unit>
+suspend fun getPayoutById(payoutId: Long): VendorPayout?
+suspend fun getPayoutsForDateRange(startDate: String, endDate: String): List<VendorPayout>
+suspend fun getPayoutsForVendor(vendorId: Int, limit: Int): List<VendorPayout>
+suspend fun getPayoutsForStation(stationId: Int, limit: Int): List<VendorPayout>
+suspend fun getTodayPayoutTotal(stationId: Int?): BigDecimal
+suspend fun getUnsyncedPayouts(): List<VendorPayout>
+suspend fun markAsSynced(payoutId: Long): Result<Unit>
+```
 ```kotlin
 // Active transactions saved as "{guid}-P"
 suspend fun savePendingTransaction(transaction: Transaction): Result<Unit>
@@ -183,7 +220,7 @@ suspend fun getPendingTransactionsForResume(): List<Transaction>
 | `ProductImage` | — | — | ❌ Missing | Images embedded in Product; no separate collection |
 | `ProductTaxes` | `ProductTax` (embedded) | — | ✅ Connected | Embedded in Product.taxes array |
 | `ProductSalePrice` | `ProductSale` (embedded) | — | ✅ Connected | Embedded in Product.currentSale |
-| `ConditionalSale` | — | — | ❌ Missing | Age verification handled but no collection |
+| `ConditionalSale` | `ConditionalSale` | `CouchbaseConditionalSaleRepository` | ✅ **Connected** | Dynamic age rules via `LegacyConditionalSaleDto` |
 
 ### Transaction Collections
 
@@ -191,7 +228,7 @@ suspend fun getPendingTransactionsForResume(): List<Transaction>
 |-------------------|------------------|------------|--------|-------|
 | `LocalTransaction` | `Transaction` | `CouchbaseTransactionRepository` | ✅ **Connected** | Full implementation with pending pattern |
 | `HeldTransaction` | `HeldTransaction` | `CouchbaseTransactionRepository` | ✅ **Connected** | Hold/Recall operations supported |
-| `VendorPayout` | `Vendor` (model only) | — | ❌ Missing | Vendor exists but no payout tracking |
+| `VendorPayout` | `VendorPayout` | `CouchbaseVendorPayoutRepository` | ✅ **Connected** | Full payout tracking via `LegacyVendorPayoutDto` |
 
 ### Employee/Auth Collections
 
@@ -306,8 +343,8 @@ After Phase 1 & 2 implementation, these fields still need attention:
 | ~~`CustomerGroupDepartment`~~ | ~~Department group pricing~~ | ✅ **Implemented** | ✅ Done |
 | ~~`CustomerGroupItem`~~ | ~~Item-specific group pricing~~ | ✅ **Implemented** | ✅ Done |
 | `PosBranchSettings` | Branch configuration | ❌ No branch-level settings | 🟡 Medium |
-| `ConditionalSale` | Age restriction rules | ⚠️ Age checks hardcoded, not synced | 🟡 Medium |
-| `VendorPayout` | Vendor payment tracking | ❌ Payout history not persisted | 🟢 Low |
+| ~~`ConditionalSale`~~ | ~~Age restriction rules~~ | ✅ **Implemented** | ✅ Done |
+| ~~`VendorPayout`~~ | ~~Vendor payment tracking~~ | ✅ **Implemented** | ✅ Done |
 
 ### Sync/Update Mechanisms Status
 
@@ -345,8 +382,8 @@ After Phase 1 & 2 implementation, these fields still need attention:
 | Implement Tax collection repository | 🟡 Medium | 4h | ✅ **Done** |
 | Implement CRV collection repository | 🟡 Medium | 3h | ✅ **Done** |
 | Implement CustomerGroup collections | 🔴 High | 8h | ✅ **Done** |
-| Implement ConditionalSale collection | 🟡 Medium | 4h | 🔲 Pending |
-| Implement VendorPayout collection | 🟢 Low | 4h | 🔲 Pending |
+| Implement ConditionalSale collection | 🟡 Medium | 4h | ✅ **Done** |
+| Implement VendorPayout collection | 🟢 Low | 4h | ✅ **Done** |
 
 ### 🔲 Phase 4: System Configuration (Week 4)
 
