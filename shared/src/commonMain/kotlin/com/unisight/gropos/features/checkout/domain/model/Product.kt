@@ -40,8 +40,8 @@ data class ProductSale(
 /**
  * Represents a product in the POS system.
  * 
- * Per DATABASE_SCHEMA.md - Product Document structure.
- * All field names match the schema exactly.
+ * Per COUCHBASE_LOCAL_STORAGE.md - Product Document structure.
+ * Per BACKEND_INTEGRATION_STATUS.md - Field mappings from legacy schema.
  * 
  * Per code-quality.mdc: Use BigDecimal for currency, never Float/Double.
  *
@@ -49,31 +49,40 @@ data class ProductSale(
  * @property productId Reference to master product
  * @property productName Display name of the product
  * @property description Product description
- * @property category Category ID
- * @property categoryName Category display name
+ * @property brand Product brand name (legacy: brand)
+ * @property category Category ID (legacy: categoryId)
+ * @property categoryName Category display name (legacy: category)
  * @property departmentId Department ID
  * @property departmentName Department display name
  * @property retailPrice Unit price in dollars (BigDecimal for precision)
  * @property floorPrice Minimum allowed price
  * @property cost Product cost
  * @property soldById How product is sold (Quantity, Weight)
- * @property soldByName Display name for sold by
- * @property isSnapEligible SNAP/EBT eligible
- * @property isActive Product is active
+ * @property soldByName Display name for sold by (legacy: unitTypeId)
+ * @property unitSize Size value for unit-based products (legacy: unitSize)
+ * @property isSnapEligible SNAP/EBT eligible (legacy: foodStampable)
+ * @property isActive Product is active (legacy: statusId == "Active")
  * @property isForSale Product is available for sale
- * @property ageRestriction Minimum age required to purchase (18, 21) or null for no restriction
+ * @property ageRestriction Minimum age required to purchase (18, 21) or null (legacy: ageRestrictionId)
  * @property order Display order
  * @property itemNumbers List of barcodes/item numbers
  * @property taxes List of applicable taxes
  * @property currentSale Current sale/promotion if any
  * @property crvRatePerUnit California Redemption Value per unit
  * @property crvId CRV category ID
+ * @property qtyLimitPerCustomer Maximum quantity per transaction (legacy: qtyLimitPerCustomer)
+ * @property receiptName Short name printed on receipt (legacy: receiptName)
+ * @property returnPolicyId Return policy type (legacy: returnPolicyId)
+ * @property primaryImageUrl Product image URL (legacy: primaryImageUrl)
+ * @property createdDate Record creation timestamp (legacy: createdDate)
+ * @property updatedDate Last update timestamp (legacy: updatedDate)
  */
 data class Product(
     val branchProductId: Int,
     val productId: Int,
     val productName: String,
     val description: String? = null,
+    val brand: String? = null,
     val category: Int? = null,
     val categoryName: String? = null,
     val departmentId: Int? = null,
@@ -83,6 +92,7 @@ data class Product(
     val cost: BigDecimal? = null,
     val soldById: String = "Quantity",
     val soldByName: String = "Each",
+    val unitSize: BigDecimal? = null,
     val isSnapEligible: Boolean = false,
     val isActive: Boolean = true,
     val isForSale: Boolean = true,
@@ -92,7 +102,13 @@ data class Product(
     val taxes: List<ProductTax> = emptyList(),
     val currentSale: ProductSale? = null,
     val crvRatePerUnit: BigDecimal = BigDecimal.ZERO,
-    val crvId: Int? = null
+    val crvId: Int? = null,
+    val qtyLimitPerCustomer: BigDecimal? = null,
+    val receiptName: String? = null,
+    val returnPolicyId: String? = null,
+    val primaryImageUrl: String? = null,
+    val createdDate: String? = null,
+    val updatedDate: String? = null
 ) {
     init {
         require(retailPrice >= BigDecimal.ZERO) { "Price cannot be negative" }
@@ -134,4 +150,19 @@ data class Product(
      */
     val isAgeRestricted: Boolean
         get() = ageRestriction != null
+    
+    /**
+     * Gets the name to print on receipts.
+     * Uses receiptName if available, otherwise falls back to productName.
+     * 
+     * Per COUCHBASE_LOCAL_STORAGE.md: receiptName is a short name for receipts.
+     */
+    val displayNameForReceipt: String
+        get() = receiptName ?: productName
+    
+    /**
+     * Whether this product has a quantity limit per customer.
+     */
+    val hasQuantityLimit: Boolean
+        get() = qtyLimitPerCustomer != null && qtyLimitPerCustomer > BigDecimal.ZERO
 }

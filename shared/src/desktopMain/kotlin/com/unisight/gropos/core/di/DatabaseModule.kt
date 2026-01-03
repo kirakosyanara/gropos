@@ -4,6 +4,8 @@ import com.unisight.gropos.core.database.DatabaseProvider
 import com.unisight.gropos.core.database.seeder.DebugDataSeeder
 import com.unisight.gropos.features.checkout.data.CouchbaseProductRepository
 import com.unisight.gropos.features.checkout.domain.repository.ProductRepository
+import com.unisight.gropos.features.pricing.data.CouchbaseCustomerGroupRepository
+import com.unisight.gropos.features.pricing.domain.repository.CustomerGroupRepository
 import com.unisight.gropos.features.transaction.data.CouchbaseTransactionRepository
 import com.unisight.gropos.features.transaction.domain.repository.TransactionRepository
 import org.koin.core.module.Module
@@ -66,6 +68,22 @@ val databaseModule: Module = module {
      * Bind CouchbaseTransactionRepository to TransactionRepository interface.
      */
     single<TransactionRepository> { get<CouchbaseTransactionRepository>() }
+    
+    /**
+     * Couchbase customer group repository.
+     * 
+     * Per COUCHBASE_LOCAL_STORAGE.md: CustomerGroup, CustomerGroupDepartment, 
+     * CustomerGroupItem collections in "pos" scope.
+     * Used for employee discounts, senior discounts, and other group-based pricing.
+     * 
+     * SINGLETON scope ensures consistent collection references.
+     */
+    single { CouchbaseCustomerGroupRepository(get()) }
+    
+    /**
+     * Bind CouchbaseCustomerGroupRepository to CustomerGroupRepository interface.
+     */
+    single<CustomerGroupRepository> { get<CouchbaseCustomerGroupRepository>() }
     
     /**
      * Debug data seeder.

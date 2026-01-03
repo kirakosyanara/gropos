@@ -3,210 +3,217 @@ package com.unisight.gropos.features.transaction.data
 import com.couchbase.lite.Collection
 import com.couchbase.lite.DataSource
 import com.couchbase.lite.Expression
-import com.couchbase.lite.IndexBuilder
 import com.couchbase.lite.MutableArray
+import com.couchbase.lite.MutableDictionary
 import com.couchbase.lite.MutableDocument
 import com.couchbase.lite.Ordering
 import com.couchbase.lite.QueryBuilder
 import com.couchbase.lite.SelectResult
-import com.couchbase.lite.ValueIndexItem
 import com.unisight.gropos.core.database.DatabaseConfig
 import com.unisight.gropos.core.database.DatabaseProvider
 import com.unisight.gropos.features.returns.domain.service.PullbackItemForCreate
+import com.unisight.gropos.features.transaction.data.dto.LegacyTransactionDto
 import com.unisight.gropos.features.transaction.domain.model.HeldTransaction
-import com.unisight.gropos.features.transaction.domain.model.HeldTransactionItem
 import com.unisight.gropos.features.transaction.domain.model.Transaction
-import com.unisight.gropos.features.transaction.domain.model.TransactionItem
-import com.unisight.gropos.features.transaction.domain.model.TransactionPayment
 import com.unisight.gropos.features.transaction.domain.repository.TransactionRepository
 import com.unisight.gropos.features.transaction.domain.repository.TransactionSearchCriteria
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.math.BigDecimal
+import java.util.UUID
 
 /**
  * CouchbaseLite implementation of TransactionRepository for Desktop (JVM).
  * 
- * Per DATABASE_SCHEMA.md:
- * - Collection: LocalTransaction in local scope
- * - Document ID: {id} or {id}-P (pending sync)
- * - Index: completedDateTime descending for history queries
+ * Per COUCHBASE_LOCAL_STORAGE.md:
+ * - Collection: LocalTransaction in scope "pos"
+ * - Document ID: {guid} or {guid}-P (pending during active transaction)
+ * 
+ * Per BACKEND_INTEGRATION_STATUS.md:
+ * - Implements the Pending Document Pattern:
+ *   1. Active transactions saved with "-P" suffix
+ *   2. On completion, document is finalized (suffix removed)
+ *   3. On startup, check for "-P" documents to resume crashed transactions
  * 
  * Per reliability-rules.mdc:
  * - All database operations wrapped in try/catch
- * - Returns Result.failure on error instead of crashing
- * 
- * Per kotlin-standards.mdc:
- * - Uses withContext(Dispatchers.IO) for all DB operations
+ * - Uses Result<T> for operations that can fail
  */
 class CouchbaseTransactionRepository(
     private val databaseProvider: DatabaseProvider
 ) : TransactionRepository {
     
-    /**
-     * Lazily gets or creates the LocalTransaction collection.
-     * 
-     * Per DATABASE_SCHEMA.md: Collection "LocalTransaction" in scope "local"
-     */
-    private val collection: Collection by lazy {
-        val db = databaseProvider.getTypedDatabase()
-        val coll = db.createCollection(
-            DatabaseConfig.COLLECTION_LOCAL_TRANSACTION,
-            DatabaseConfig.SCOPE_LOCAL
-        )
-        
-        // Create index on completedDateTime for history queries
-        try {
-            coll.createIndex(
-                "transaction_date_idx",
-                IndexBuilder.valueIndex(ValueIndexItem.property("completedDateTime"))
-            )
-            println("CouchbaseTransactionRepository: Created completedDateTime index")
-        } catch (e: Exception) {
-            // Index may already exist, that's fine
-            println("CouchbaseTransactionRepository: Index creation: ${e.message}")
-        }
-        
-        coll
+    companion object {
+        /** Suffix for pending (in-progress) transaction documents */
+        private const val PENDING_SUFFIX = "-P"
     }
+    
+    /**
+     * LocalTransaction collection in "pos" scope (per COUCHBASE_LOCAL_STORAGE.md).
+     */
+    private val transactionCollection: Collection by lazy {
+        val db = databaseProvider.getTypedDatabase()
+        db.createCollection(
+            DatabaseConfig.COLLECTION_LOCAL_TRANSACTION,
+            DatabaseConfig.SCOPE_POS
+        )
+    }
+    
+    /**
+     * HeldTransaction collection for suspended transactions.
+     */
+    private val heldCollection: Collection by lazy {
+        val db = databaseProvider.getTypedDatabase()
+        db.createCollection(
+            DatabaseConfig.COLLECTION_HELD_TRANSACTION,
+            DatabaseConfig.SCOPE_POS
+        )
+    }
+    
+    // ========================================================================
+    // Transaction CRUD Operations
+    // ========================================================================
     
     /**
      * Saves a completed transaction to the local database.
      * 
-     * Per DATABASE_SCHEMA.md: Serialize transaction to JSON document.
-     * Per reliability-stability.mdc: Wrap in Result for error handling.
+     * Per COUCHBASE_LOCAL_STORAGE.md - Pending Document Pattern:
+     * 1. Delete any pending document with "-P" suffix
+     * 2. Save the final document with just the guid as ID
      */
     override suspend fun saveTransaction(transaction: Transaction): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            val documentId = transaction.id.toString()
-            val doc = MutableDocument(documentId)
+            val docId = transaction.guid
+            val pendingDocId = "${transaction.guid}$PENDING_SUFFIX"
             
-            // Core fields
-            doc.setLong("id", transaction.id)
-            doc.setString("guid", transaction.guid)
-            doc.setInt("branchId", transaction.branchId)
-            doc.setInt("stationId", transaction.stationId)
-            transaction.employeeId?.let { doc.setInt("employeeId", it) }
-            transaction.employeeName?.let { doc.setString("employeeName", it) }
-            
-            // Status
-            doc.setInt("transactionStatusId", transaction.transactionStatusId)
-            doc.setString("transactionTypeName", transaction.transactionTypeName)
-            
-            // Timestamps
-            doc.setString("startDateTime", transaction.startDateTime)
-            doc.setString("completedDateTime", transaction.completedDateTime)
-            doc.setString("completedDate", transaction.completedDate)
-            
-            // Totals - store as Double for Couchbase compatibility
-            doc.setDouble("subTotal", transaction.subTotal.toDouble())
-            doc.setDouble("discountTotal", transaction.discountTotal.toDouble())
-            doc.setDouble("taxTotal", transaction.taxTotal.toDouble())
-            doc.setDouble("crvTotal", transaction.crvTotal.toDouble())
-            doc.setDouble("grandTotal", transaction.grandTotal.toDouble())
-            
-            // Item count
-            doc.setInt("itemCount", transaction.itemCount)
-            
-            // Customer info
-            transaction.customerName?.let { doc.setString("customerName", it) }
-            transaction.loyaltyCardNumber?.let { doc.setString("loyaltyCardNumber", it) }
-            
-            // Items array
-            val itemsArray = MutableArray()
-            transaction.items.forEach { item ->
-                itemsArray.addDictionary(com.couchbase.lite.MutableDictionary().apply {
-                    setLong("id", item.id)
-                    setLong("transactionId", item.transactionId)
-                    setInt("branchProductId", item.branchProductId)
-                    setString("branchProductName", item.branchProductName)
-                    setDouble("quantityUsed", item.quantityUsed.toDouble())
-                    setString("unitType", item.unitType)
-                    setDouble("retailPrice", item.retailPrice.toDouble())
-                    item.salePrice?.let { setDouble("salePrice", it.toDouble()) }
-                    setDouble("priceUsed", item.priceUsed.toDouble())
-                    setDouble("discountAmountPerUnit", item.discountAmountPerUnit.toDouble())
-                    setDouble("transactionDiscountAmountPerUnit", item.transactionDiscountAmountPerUnit.toDouble())
-                    item.floorPrice?.let { setDouble("floorPrice", it.toDouble()) }
-                    setDouble("taxPerUnit", item.taxPerUnit.toDouble())
-                    setDouble("taxTotal", item.taxTotal.toDouble())
-                    setDouble("crvRatePerUnit", item.crvRatePerUnit.toDouble())
-                    setDouble("subTotal", item.subTotal.toDouble())
-                    setDouble("savingsTotal", item.savingsTotal.toDouble())
-                    setBoolean("isRemoved", item.isRemoved)
-                    setBoolean("isPromptedPrice", item.isPromptedPrice)
-                    setBoolean("isFloorPriceOverridden", item.isFloorPriceOverridden)
-                    setString("soldById", item.soldById)
-                    setString("taxIndicator", item.taxIndicator)
-                    setBoolean("isFoodStampEligible", item.isFoodStampEligible)
-                    item.scanDateTime?.let { setString("scanDateTime", it) }
-                })
+            // 1. Delete pending document if it exists
+            transactionCollection.getDocument(pendingDocId)?.let {
+                transactionCollection.delete(it)
+                println("CouchbaseTransactionRepository: Deleted pending document $pendingDocId")
             }
-            doc.setArray("items", itemsArray)
             
-            // Payments array
-            val paymentsArray = MutableArray()
-            transaction.payments.forEach { payment ->
-                paymentsArray.addDictionary(com.couchbase.lite.MutableDictionary().apply {
-                    setLong("id", payment.id)
-                    setLong("transactionId", payment.transactionId)
-                    setInt("paymentMethodId", payment.paymentMethodId)
-                    setString("paymentMethodName", payment.paymentMethodName)
-                    setDouble("value", payment.value.toDouble())
-                    payment.referenceNumber?.let { setString("referenceNumber", it) }
-                    payment.approvalCode?.let { setString("approvalCode", it) }
-                    payment.cardType?.let { setString("cardType", it) }
-                    payment.cardLastFour?.let { setString("cardLastFour", it) }
-                    setBoolean("isSuccessful", payment.isSuccessful)
-                    setString("paymentDateTime", payment.paymentDateTime)
-                })
-            }
-            doc.setArray("payments", paymentsArray)
+            // 2. Save the final document
+            val doc = createTransactionDocument(docId, transaction)
+            transactionCollection.save(doc)
             
-            // Save to database
-            collection.save(doc)
-            
-            println("CouchbaseTransactionRepository: Saved transaction ${transaction.id} with ${transaction.items.size} items and ${transaction.payments.size} payments")
-            println("CouchbaseTransactionRepository: Grand Total = ${transaction.grandTotal}")
-            
+            println("CouchbaseTransactionRepository: Saved transaction ${transaction.guid}")
             Result.success(Unit)
         } catch (e: Exception) {
-            println("CouchbaseTransactionRepository: Error saving transaction ${transaction.id} - ${e.message}")
-            e.printStackTrace()
+            println("CouchbaseTransactionRepository: Error saving transaction - ${e.message}")
             Result.failure(e)
         }
     }
     
     /**
-     * Retrieves a transaction by its ID.
+     * Saves a transaction as pending (during active transaction).
+     * 
+     * Per COUCHBASE_LOCAL_STORAGE.md - Pending Document Pattern:
+     * Document ID: {guid}-P
+     * 
+     * This is called periodically during transaction to ensure data isn't lost on crash.
      */
+    suspend fun savePendingTransaction(transaction: Transaction): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val pendingDocId = "${transaction.guid}$PENDING_SUFFIX"
+            val doc = createTransactionDocument(pendingDocId, transaction)
+            transactionCollection.save(doc)
+            
+            println("CouchbaseTransactionRepository: Saved pending transaction ${transaction.guid}")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            println("CouchbaseTransactionRepository: Error saving pending transaction - ${e.message}")
+            Result.failure(e)
+        }
+    }
+    
+    /**
+     * Retrieves any pending transactions (crashed sessions).
+     * 
+     * Per COUCHBASE_LOCAL_STORAGE.md:
+     * On startup, check for documents with "-P" suffix to resume.
+     */
+    suspend fun getPendingTransactionsForResume(): List<Transaction> = withContext(Dispatchers.IO) {
+        try {
+            // Query all documents with "-P" suffix
+            val query = QueryBuilder
+                .select(SelectResult.all())
+                .from(DataSource.collection(transactionCollection))
+            
+            query.execute().use { resultSet ->
+                resultSet.allResults()
+                    .mapNotNull { result ->
+                        val dict = result.getDictionary(transactionCollection.name)
+                        dict?.let { 
+                            // Check if document ID ends with -P
+                            val id = dict.getString("guid")
+                            if (id != null) {
+                                val docId = "${id}$PENDING_SUFFIX"
+                                val pendingDoc = transactionCollection.getDocument(docId)
+                                pendingDoc?.let { parseTransactionDocument(it.toMap()) }
+                            } else null
+                        }
+                    }
+            }
+        } catch (e: Exception) {
+            println("CouchbaseTransactionRepository: Error getting pending transactions for resume - ${e.message}")
+            emptyList()
+        }
+    }
+    
+    /**
+     * Deletes a pending transaction document.
+     * Called when user cancels/voids an active transaction.
+     */
+    suspend fun deletePendingTransaction(guid: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val pendingDocId = "$guid$PENDING_SUFFIX"
+            transactionCollection.getDocument(pendingDocId)?.let {
+                transactionCollection.delete(it)
+                println("CouchbaseTransactionRepository: Deleted pending transaction $pendingDocId")
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            println("CouchbaseTransactionRepository: Error deleting pending transaction - ${e.message}")
+            Result.failure(e)
+        }
+    }
+    
     override suspend fun getById(id: Long): Transaction? = withContext(Dispatchers.IO) {
         try {
-            val doc = collection.getDocument(id.toString())
-            doc?.let { mapToTransaction(it.toMap()) }
+            // Query by id field
+            val query = QueryBuilder
+                .select(SelectResult.all())
+                .from(DataSource.collection(transactionCollection))
+                .where(Expression.property("id").equalTo(Expression.longValue(id)))
+            
+            query.execute().use { resultSet ->
+                resultSet.allResults().firstOrNull()?.let { result ->
+                    val dict = result.getDictionary(transactionCollection.name)
+                    dict?.let { parseTransactionDocument(it.toMap()) }
+                }
+            }
         } catch (e: Exception) {
             println("CouchbaseTransactionRepository: Error getting transaction by ID $id - ${e.message}")
             null
         }
     }
     
-    /**
-     * Retrieves the most recent transactions.
-     * 
-     * Per DATABASE_SCHEMA.md: Query by completedDateTime descending.
-     */
     override suspend fun getRecent(limit: Int): List<Transaction> = withContext(Dispatchers.IO) {
         try {
             val query = QueryBuilder
                 .select(SelectResult.all())
-                .from(DataSource.collection(collection))
-                .orderBy(Ordering.property("completedDateTime").descending())
+                .from(DataSource.collection(transactionCollection))
+                .where(
+                    Expression.property("transactionStatusId")
+                        .equalTo(Expression.string("Completed"))
+                )
+                .orderBy(Ordering.property("completedDate").descending())
                 .limit(Expression.intValue(limit))
             
             query.execute().use { resultSet ->
                 resultSet.allResults().mapNotNull { result ->
-                    val dict = result.getDictionary(collection.name)
-                    dict?.let { mapToTransaction(it.toMap()) }
+                    val dict = result.getDictionary(transactionCollection.name)
+                    dict?.let { parseTransactionDocument(it.toMap()) }
                 }
             }
         } catch (e: Exception) {
@@ -215,17 +222,23 @@ class CouchbaseTransactionRepository(
         }
     }
     
-    /**
-     * Retrieves all pending (unsynced) transactions.
-     * 
-     * Per DATABASE_SCHEMA.md: Documents with "-P" suffix are pending sync.
-     * Note: This implementation uses document ID pattern matching.
-     */
     override suspend fun getPending(): List<Transaction> = withContext(Dispatchers.IO) {
         try {
-            // For now, return empty list as we're not implementing sync yet
-            // In production, we'd query by transactionStatusId or document ID pattern
-            emptyList()
+            val query = QueryBuilder
+                .select(SelectResult.all())
+                .from(DataSource.collection(transactionCollection))
+                .where(
+                    Expression.property("transactionStatusId")
+                        .equalTo(Expression.string("Open"))
+                        .or(Expression.property("transactionStatusId").equalTo(Expression.string("Pending")))
+                )
+            
+            query.execute().use { resultSet ->
+                resultSet.allResults().mapNotNull { result ->
+                    val dict = result.getDictionary(transactionCollection.name)
+                    dict?.let { parseTransactionDocument(it.toMap()) }
+                }
+            }
         } catch (e: Exception) {
             println("CouchbaseTransactionRepository: Error getting pending transactions - ${e.message}")
             emptyList()
@@ -233,219 +246,12 @@ class CouchbaseTransactionRepository(
     }
     
     // ========================================================================
-    // Transaction Search
-    // Per REMEDIATION_CHECKLIST: Find Transaction Screen for returns lookup
+    // Hold/Recall Operations
     // ========================================================================
     
-    /**
-     * Searches transactions by various criteria.
-     * 
-     * Per RETURNS.md: Returns processing requires finding original transaction.
-     */
-    override suspend fun searchTransactions(criteria: TransactionSearchCriteria): List<Transaction> = withContext(Dispatchers.IO) {
-        try {
-            var whereExpression: Expression? = null
-            
-            // Filter by receipt number (partial match on ID)
-            criteria.receiptNumber?.let { receipt ->
-                val idExpression = Expression.property("id").like(Expression.string("%$receipt%"))
-                whereExpression = idExpression
-            }
-            
-            // Filter by date range
-            criteria.startDate?.let { startDate ->
-                val dateExpr = Expression.property("completedDateTime").greaterThanOrEqualTo(Expression.string(startDate))
-                whereExpression = whereExpression?.and(dateExpr) ?: dateExpr
-            }
-            
-            criteria.endDate?.let { endDate ->
-                val dateExpr = Expression.property("completedDateTime").lessThanOrEqualTo(Expression.string(endDate))
-                whereExpression = whereExpression?.and(dateExpr) ?: dateExpr
-            }
-            
-            // Filter by employee
-            criteria.employeeId?.let { empId ->
-                val empExpr = Expression.property("employeeId").equalTo(Expression.intValue(empId))
-                whereExpression = whereExpression?.and(empExpr) ?: empExpr
-            }
-            
-            // Build query
-            val queryBuilder = QueryBuilder
-                .select(SelectResult.all())
-                .from(DataSource.collection(collection))
-            
-            val query = if (whereExpression != null) {
-                queryBuilder
-                    .where(whereExpression!!)
-                    .orderBy(Ordering.property("completedDateTime").descending())
-                    .limit(Expression.intValue(criteria.limit))
-            } else {
-                queryBuilder
-                    .orderBy(Ordering.property("completedDateTime").descending())
-                    .limit(Expression.intValue(criteria.limit))
-            }
-            
-            query.execute().use { resultSet ->
-                val results = resultSet.allResults().mapNotNull { result ->
-                    val dict = result.getDictionary(collection.name)
-                    dict?.let { mapToTransaction(it.toMap()) }
-                }
-                
-                // Filter by amount if specified (post-query filter for BigDecimal comparison)
-                criteria.amount?.let { amount ->
-                    results.filter { it.grandTotal.compareTo(amount) == 0 }
-                } ?: results
-            }
-        } catch (e: Exception) {
-            println("CouchbaseTransactionRepository: Error searching transactions - ${e.message}")
-            emptyList()
-        }
-    }
-    
-    // ========================================================================
-    // Document Mapping
-    // ========================================================================
-    
-    /**
-     * Maps a Couchbase document to a Transaction entity.
-     */
-    @Suppress("UNCHECKED_CAST")
-    private fun mapToTransaction(map: Map<String, Any?>): Transaction? {
-        return try {
-            val id = (map["id"] as? Number)?.toLong() ?: return null
-            
-            // Parse items array
-            val items = (map["items"] as? List<Map<String, Any?>>)?.mapNotNull { itemMap ->
-                mapToTransactionItem(itemMap)
-            } ?: emptyList()
-            
-            // Parse payments array
-            val payments = (map["payments"] as? List<Map<String, Any?>>)?.mapNotNull { paymentMap ->
-                mapToTransactionPayment(paymentMap)
-            } ?: emptyList()
-            
-            Transaction(
-                id = id,
-                guid = map["guid"] as? String ?: "",
-                branchId = (map["branchId"] as? Number)?.toInt() ?: 1,
-                stationId = (map["stationId"] as? Number)?.toInt() ?: 1,
-                employeeId = (map["employeeId"] as? Number)?.toInt(),
-                employeeName = map["employeeName"] as? String,
-                transactionStatusId = (map["transactionStatusId"] as? Number)?.toInt() ?: Transaction.COMPLETED,
-                transactionTypeName = map["transactionTypeName"] as? String ?: "Sale",
-                startDateTime = map["startDateTime"] as? String ?: "",
-                completedDateTime = map["completedDateTime"] as? String ?: "",
-                completedDate = map["completedDate"] as? String ?: "",
-                subTotal = BigDecimal((map["subTotal"] as? Number)?.toString() ?: "0"),
-                discountTotal = BigDecimal((map["discountTotal"] as? Number)?.toString() ?: "0"),
-                taxTotal = BigDecimal((map["taxTotal"] as? Number)?.toString() ?: "0"),
-                crvTotal = BigDecimal((map["crvTotal"] as? Number)?.toString() ?: "0"),
-                grandTotal = BigDecimal((map["grandTotal"] as? Number)?.toString() ?: "0"),
-                itemCount = (map["itemCount"] as? Number)?.toInt() ?: 0,
-                customerName = map["customerName"] as? String,
-                loyaltyCardNumber = map["loyaltyCardNumber"] as? String,
-                items = items,
-                payments = payments
-            )
-        } catch (e: Exception) {
-            println("CouchbaseTransactionRepository: Error mapping document to Transaction - ${e.message}")
-            null
-        }
-    }
-    
-    private fun mapToTransactionItem(map: Map<String, Any?>): TransactionItem? {
-        return try {
-            TransactionItem(
-                id = (map["id"] as? Number)?.toLong() ?: return null,
-                transactionId = (map["transactionId"] as? Number)?.toLong() ?: 0,
-                branchProductId = (map["branchProductId"] as? Number)?.toInt() ?: 0,
-                branchProductName = map["branchProductName"] as? String ?: "",
-                quantityUsed = BigDecimal((map["quantityUsed"] as? Number)?.toString() ?: "1"),
-                unitType = map["unitType"] as? String ?: "ea",
-                retailPrice = BigDecimal((map["retailPrice"] as? Number)?.toString() ?: "0"),
-                salePrice = (map["salePrice"] as? Number)?.let { BigDecimal(it.toString()) },
-                priceUsed = BigDecimal((map["priceUsed"] as? Number)?.toString() ?: "0"),
-                discountAmountPerUnit = BigDecimal((map["discountAmountPerUnit"] as? Number)?.toString() ?: "0"),
-                transactionDiscountAmountPerUnit = BigDecimal((map["transactionDiscountAmountPerUnit"] as? Number)?.toString() ?: "0"),
-                floorPrice = (map["floorPrice"] as? Number)?.let { BigDecimal(it.toString()) },
-                taxPerUnit = BigDecimal((map["taxPerUnit"] as? Number)?.toString() ?: "0"),
-                taxTotal = BigDecimal((map["taxTotal"] as? Number)?.toString() ?: "0"),
-                crvRatePerUnit = BigDecimal((map["crvRatePerUnit"] as? Number)?.toString() ?: "0"),
-                subTotal = BigDecimal((map["subTotal"] as? Number)?.toString() ?: "0"),
-                savingsTotal = BigDecimal((map["savingsTotal"] as? Number)?.toString() ?: "0"),
-                isRemoved = map["isRemoved"] as? Boolean ?: false,
-                isPromptedPrice = map["isPromptedPrice"] as? Boolean ?: false,
-                isFloorPriceOverridden = map["isFloorPriceOverridden"] as? Boolean ?: false,
-                soldById = map["soldById"] as? String ?: "Quantity",
-                taxIndicator = map["taxIndicator"] as? String ?: "T",
-                isFoodStampEligible = map["isFoodStampEligible"] as? Boolean ?: false,
-                scanDateTime = map["scanDateTime"] as? String
-            )
-        } catch (e: Exception) {
-            println("CouchbaseTransactionRepository: Error mapping item - ${e.message}")
-            null
-        }
-    }
-    
-    private fun mapToTransactionPayment(map: Map<String, Any?>): TransactionPayment? {
-        return try {
-            TransactionPayment(
-                id = (map["id"] as? Number)?.toLong() ?: return null,
-                transactionId = (map["transactionId"] as? Number)?.toLong() ?: 0,
-                paymentMethodId = (map["paymentMethodId"] as? Number)?.toInt() ?: 1,
-                paymentMethodName = map["paymentMethodName"] as? String ?: "Cash",
-                value = BigDecimal((map["value"] as? Number)?.toString() ?: "0"),
-                referenceNumber = map["referenceNumber"] as? String,
-                approvalCode = map["approvalCode"] as? String,
-                cardType = map["cardType"] as? String,
-                cardLastFour = map["cardLastFour"] as? String,
-                isSuccessful = map["isSuccessful"] as? Boolean ?: true,
-                paymentDateTime = map["paymentDateTime"] as? String ?: ""
-            )
-        } catch (e: Exception) {
-            println("CouchbaseTransactionRepository: Error mapping payment - ${e.message}")
-            null
-        }
-    }
-    
-    // ========================================================================
-    // Held Transactions (Hold/Recall)
-    // Per TRANSACTION_FLOW.md: Support for suspended transactions
-    // ========================================================================
-    
-    /**
-     * Lazily gets or creates the HeldTransaction collection.
-     */
-    private val heldCollection: Collection by lazy {
-        val db = databaseProvider.getTypedDatabase()
-        val coll = db.createCollection(
-            DatabaseConfig.COLLECTION_HELD_TRANSACTION,
-            DatabaseConfig.SCOPE_LOCAL
-        )
-        
-        // Create index on heldDateTime for ordering queries
-        try {
-            coll.createIndex(
-                "held_date_idx",
-                IndexBuilder.valueIndex(ValueIndexItem.property("heldDateTime"))
-            )
-            println("CouchbaseTransactionRepository: Created heldDateTime index")
-        } catch (e: Exception) {
-            // Index may already exist
-            println("CouchbaseTransactionRepository: Held index creation: ${e.message}")
-        }
-        
-        coll
-    }
-    
-    /**
-     * Holds (suspends) a transaction for later recall.
-     */
     override suspend fun holdTransaction(heldTransaction: HeldTransaction): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             val doc = MutableDocument(heldTransaction.id)
-            
-            // Core fields
             doc.setString("id", heldTransaction.id)
             doc.setString("holdName", heldTransaction.holdName)
             doc.setString("heldDateTime", heldTransaction.heldDateTime)
@@ -454,48 +260,37 @@ class CouchbaseTransactionRepository(
             doc.setInt("stationId", heldTransaction.stationId)
             doc.setInt("branchId", heldTransaction.branchId)
             doc.setInt("itemCount", heldTransaction.itemCount)
-            
-            // Totals
             doc.setDouble("grandTotal", heldTransaction.grandTotal.toDouble())
             doc.setDouble("subTotal", heldTransaction.subTotal.toDouble())
             doc.setDouble("taxTotal", heldTransaction.taxTotal.toDouble())
             doc.setDouble("crvTotal", heldTransaction.crvTotal.toDouble())
             
-            // Items array
-            val itemsArray = MutableArray()
-            heldTransaction.items.forEach { item ->
-                itemsArray.addDictionary(com.couchbase.lite.MutableDictionary().apply {
-                    setInt("branchProductId", item.branchProductId)
-                    setString("productName", item.productName)
-                    setDouble("quantityUsed", item.quantityUsed.toDouble())
-                    setDouble("priceUsed", item.priceUsed.toDouble())
-                    setDouble("discountAmountPerUnit", item.discountAmountPerUnit.toDouble())
-                    setDouble("transactionDiscountAmountPerUnit", item.transactionDiscountAmountPerUnit.toDouble())
-                    setBoolean("isRemoved", item.isRemoved)
-                    setBoolean("isPromptedPrice", item.isPromptedPrice)
-                    setBoolean("isFloorPriceOverridden", item.isFloorPriceOverridden)
-                    item.scanDateTime?.let { setString("scanDateTime", it) }
-                })
+            // Store serialized cart items (per HeldTransactionItem schema)
+            val itemsList = heldTransaction.items.map { item ->
+                mapOf(
+                    "branchProductId" to item.branchProductId,
+                    "productName" to item.productName,
+                    "quantityUsed" to item.quantityUsed.toDouble(),
+                    "priceUsed" to item.priceUsed.toDouble(),
+                    "discountAmountPerUnit" to item.discountAmountPerUnit.toDouble(),
+                    "transactionDiscountAmountPerUnit" to item.transactionDiscountAmountPerUnit.toDouble(),
+                    "isRemoved" to item.isRemoved,
+                    "isPromptedPrice" to item.isPromptedPrice,
+                    "isFloorPriceOverridden" to item.isFloorPriceOverridden,
+                    "scanDateTime" to item.scanDateTime
+                )
             }
-            doc.setArray("items", itemsArray)
+            doc.setArray("items", MutableArray(itemsList))
             
-            // Save to database
             heldCollection.save(doc)
-            
-            println("CouchbaseTransactionRepository: Held transaction ${heldTransaction.id} - ${heldTransaction.holdName}")
-            println("CouchbaseTransactionRepository: ${heldTransaction.itemCount} items, Total = ${heldTransaction.grandTotal}")
-            
+            println("CouchbaseTransactionRepository: Held transaction ${heldTransaction.id}")
             Result.success(Unit)
         } catch (e: Exception) {
             println("CouchbaseTransactionRepository: Error holding transaction - ${e.message}")
-            e.printStackTrace()
             Result.failure(e)
         }
     }
     
-    /**
-     * Retrieves all held transactions.
-     */
     override suspend fun getHeldTransactions(): List<HeldTransaction> = withContext(Dispatchers.IO) {
         try {
             val query = QueryBuilder
@@ -506,7 +301,7 @@ class CouchbaseTransactionRepository(
             query.execute().use { resultSet ->
                 resultSet.allResults().mapNotNull { result ->
                     val dict = result.getDictionary(heldCollection.name)
-                    dict?.let { mapToHeldTransaction(it.toMap()) }
+                    dict?.let { parseHeldTransaction(it.toMap()) }
                 }
             }
         } catch (e: Exception) {
@@ -515,108 +310,111 @@ class CouchbaseTransactionRepository(
         }
     }
     
-    /**
-     * Retrieves a specific held transaction by ID.
-     */
     override suspend fun getHeldTransactionById(id: String): HeldTransaction? = withContext(Dispatchers.IO) {
         try {
             val doc = heldCollection.getDocument(id)
-            doc?.let { mapToHeldTransaction(it.toMap()) }
+            doc?.let { parseHeldTransaction(it.toMap()) }
         } catch (e: Exception) {
-            println("CouchbaseTransactionRepository: Error getting held transaction by ID $id - ${e.message}")
+            println("CouchbaseTransactionRepository: Error getting held transaction $id - ${e.message}")
             null
         }
     }
     
-    /**
-     * Deletes a held transaction.
-     */
     override suspend fun deleteHeldTransaction(id: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            val doc = heldCollection.getDocument(id)
-            if (doc != null) {
-                heldCollection.delete(doc)
+            heldCollection.getDocument(id)?.let {
+                heldCollection.delete(it)
                 println("CouchbaseTransactionRepository: Deleted held transaction $id")
             }
             Result.success(Unit)
         } catch (e: Exception) {
-            println("CouchbaseTransactionRepository: Error deleting held transaction $id - ${e.message}")
+            println("CouchbaseTransactionRepository: Error deleting held transaction - ${e.message}")
             Result.failure(e)
         }
     }
     
     // ========================================================================
-    // Held Transaction Mapping
+    // Transaction Search
     // ========================================================================
     
-    @Suppress("UNCHECKED_CAST")
-    private fun mapToHeldTransaction(map: Map<String, Any?>): HeldTransaction? {
-        return try {
-            val items = (map["items"] as? List<Map<String, Any?>>)?.mapNotNull { itemMap ->
-                mapToHeldTransactionItem(itemMap)
-            } ?: emptyList()
+    override suspend fun searchTransactions(criteria: TransactionSearchCriteria): List<Transaction> = withContext(Dispatchers.IO) {
+        try {
+            var whereExpression: Expression = Expression.property("transactionStatusId")
+                .equalTo(Expression.string("Completed"))
             
-            HeldTransaction(
-                id = map["id"] as? String ?: return null,
-                holdName = map["holdName"] as? String ?: "",
-                heldDateTime = map["heldDateTime"] as? String ?: "",
-                employeeId = (map["employeeId"] as? Number)?.toInt(),
-                employeeName = map["employeeName"] as? String,
-                stationId = (map["stationId"] as? Number)?.toInt() ?: 1,
-                branchId = (map["branchId"] as? Number)?.toInt() ?: 1,
-                itemCount = (map["itemCount"] as? Number)?.toInt() ?: 0,
-                grandTotal = BigDecimal((map["grandTotal"] as? Number)?.toString() ?: "0"),
-                subTotal = BigDecimal((map["subTotal"] as? Number)?.toString() ?: "0"),
-                taxTotal = BigDecimal((map["taxTotal"] as? Number)?.toString() ?: "0"),
-                crvTotal = BigDecimal((map["crvTotal"] as? Number)?.toString() ?: "0"),
-                items = items
-            )
+            // Filter by receipt number (partial match on guid or id)
+            criteria.receiptNumber?.let { receipt ->
+                whereExpression = whereExpression.and(
+                    Expression.property("guid").like(Expression.string("%$receipt%"))
+                        .or(Expression.property("id").like(Expression.string("%$receipt%")))
+                )
+            }
+            
+            // Filter by employee ID
+            criteria.employeeId?.let { empId ->
+                whereExpression = whereExpression.and(
+                    Expression.property("employeeId").equalTo(Expression.intValue(empId))
+                )
+            }
+            
+            // Filter by date range
+            criteria.startDate?.let { startDate ->
+                whereExpression = whereExpression.and(
+                    Expression.property("completedDate").greaterThanOrEqualTo(Expression.string(startDate))
+                )
+            }
+            criteria.endDate?.let { endDate ->
+                whereExpression = whereExpression.and(
+                    Expression.property("completedDate").lessThanOrEqualTo(Expression.string(endDate))
+                )
+            }
+            
+            val query = QueryBuilder
+                .select(SelectResult.all())
+                .from(DataSource.collection(transactionCollection))
+                .where(whereExpression)
+                .orderBy(Ordering.property("completedDate").descending())
+                .limit(Expression.intValue(criteria.limit))
+            
+            query.execute().use { resultSet ->
+                resultSet.allResults().mapNotNull { result ->
+                    val dict = result.getDictionary(transactionCollection.name)
+                    dict?.let { parseTransactionDocument(it.toMap()) }
+                }.let { transactions ->
+                    // Additional filter by amount (not easily done in CouchbaseLite query)
+                    criteria.amount?.let { amount ->
+                        transactions.filter { it.grandTotal.compareTo(amount) == 0 }
+                    } ?: transactions
+                }
+            }
         } catch (e: Exception) {
-            println("CouchbaseTransactionRepository: Error mapping held transaction - ${e.message}")
-            null
-        }
-    }
-    
-    private fun mapToHeldTransactionItem(map: Map<String, Any?>): HeldTransactionItem? {
-        return try {
-            HeldTransactionItem(
-                branchProductId = (map["branchProductId"] as? Number)?.toInt() ?: return null,
-                productName = map["productName"] as? String ?: "",
-                quantityUsed = BigDecimal((map["quantityUsed"] as? Number)?.toString() ?: "1"),
-                priceUsed = BigDecimal((map["priceUsed"] as? Number)?.toString() ?: "0"),
-                discountAmountPerUnit = BigDecimal((map["discountAmountPerUnit"] as? Number)?.toString() ?: "0"),
-                transactionDiscountAmountPerUnit = BigDecimal((map["transactionDiscountAmountPerUnit"] as? Number)?.toString() ?: "0"),
-                isRemoved = map["isRemoved"] as? Boolean ?: false,
-                isPromptedPrice = map["isPromptedPrice"] as? Boolean ?: false,
-                isFloorPriceOverridden = map["isFloorPriceOverridden"] as? Boolean ?: false,
-                scanDateTime = map["scanDateTime"] as? String
-            )
-        } catch (e: Exception) {
-            println("CouchbaseTransactionRepository: Error mapping held item - ${e.message}")
-            null
+            println("CouchbaseTransactionRepository: Error searching transactions - ${e.message}")
+            emptyList()
         }
     }
     
     // ========================================================================
     // Pullback Operations
-    // Per REMEDIATION_CHECKLIST: Pullback Flow - Implement pullback with receipt scan
     // ========================================================================
     
-    /**
-     * Finds a transaction by its GUID (receipt number).
-     */
     override suspend fun findByGuid(guid: String): Transaction? = withContext(Dispatchers.IO) {
         try {
+            // Try direct document lookup first
+            val doc = transactionCollection.getDocument(guid)
+            if (doc != null) {
+                return@withContext parseTransactionDocument(doc.toMap())
+            }
+            
+            // Fallback: query by guid field
             val query = QueryBuilder
                 .select(SelectResult.all())
-                .from(DataSource.collection(collection))
+                .from(DataSource.collection(transactionCollection))
                 .where(Expression.property("guid").equalTo(Expression.string(guid)))
-                .limit(Expression.intValue(1))
             
             query.execute().use { resultSet ->
                 resultSet.allResults().firstOrNull()?.let { result ->
-                    val dict = result.getDictionary(collection.name)
-                    dict?.let { mapToTransaction(it.toMap()) }
+                    val dict = result.getDictionary(transactionCollection.name)
+                    dict?.let { parseTransactionDocument(it.toMap()) }
                 }
             }
         } catch (e: Exception) {
@@ -625,35 +423,240 @@ class CouchbaseTransactionRepository(
         }
     }
     
-    /**
-     * Gets previously returned quantities for a transaction.
-     * 
-     * Note: In a production system, this would query a Returns collection.
-     * For now, returns empty map (no returns tracked yet).
-     */
     override suspend fun getReturnedQuantities(transactionId: Long): Map<Long, BigDecimal> = withContext(Dispatchers.IO) {
-        // TODO: Query Returns collection to get previously returned quantities
-        // For now, return empty map indicating no items have been returned
-        emptyMap()
+        try {
+            // Query all return transactions that reference this original transaction
+            val query = QueryBuilder
+                .select(SelectResult.all())
+                .from(DataSource.collection(transactionCollection))
+                .where(
+                    Expression.property("originalTransactionId")
+                        .equalTo(Expression.longValue(transactionId))
+                        .and(Expression.property("transactionTypeName").equalTo(Expression.string("Return")))
+                )
+            
+            val returnedQuantities = mutableMapOf<Long, BigDecimal>()
+            
+            query.execute().use { resultSet ->
+                resultSet.allResults().forEach { result ->
+                    val dict = result.getDictionary(transactionCollection.name)
+                    dict?.let { map ->
+                        @Suppress("UNCHECKED_CAST")
+                        val items = (map.toMap()["items"] as? List<Map<String, Any?>>)
+                        items?.forEach { item ->
+                            val itemId = (item["originalItemId"] as? Number)?.toLong() ?: return@forEach
+                            val qty = BigDecimal.valueOf((item["quantityUsed"] as? Number)?.toDouble() ?: 0.0)
+                            returnedQuantities[itemId] = (returnedQuantities[itemId] ?: BigDecimal.ZERO) + qty
+                        }
+                    }
+                }
+            }
+            
+            returnedQuantities
+        } catch (e: Exception) {
+            println("CouchbaseTransactionRepository: Error getting returned quantities - ${e.message}")
+            emptyMap()
+        }
     }
     
-    /**
-     * Creates a pullback (return) transaction.
-     * 
-     * Note: In a production system, this would create a Return transaction
-     * and update the Returns collection with returned quantities.
-     */
     override suspend fun createPullbackTransaction(
         originalTransactionId: Long,
         items: List<PullbackItemForCreate>,
         totalValue: BigDecimal
     ): Long = withContext(Dispatchers.IO) {
-        // TODO: Implement full return transaction creation
-        // For now, generate a new transaction ID
-        val newId = System.currentTimeMillis()
-        println("CouchbaseTransactionRepository: Creating pullback transaction $newId for original $originalTransactionId")
-        println("CouchbaseTransactionRepository: Items: ${items.size}, Total: $totalValue")
-        newId
+        try {
+            val newId = System.currentTimeMillis()
+            val guid = UUID.randomUUID().toString()
+            val now = java.time.Instant.now().toString()
+            
+            val doc = MutableDocument(guid)
+            doc.setLong("id", newId)
+            doc.setString("guid", guid)
+            doc.setLong("originalTransactionId", originalTransactionId)
+            doc.setString("transactionTypeName", "Return")
+            doc.setString("transactionStatusId", "Completed")
+            doc.setString("startDate", now)
+            doc.setString("completedDate", now)
+            doc.setDouble("grandTotal", -totalValue.toDouble()) // Negative for returns
+            doc.setDouble("subTotal", -totalValue.toDouble())
+            doc.setDouble("taxTotal", 0.0)
+            doc.setDouble("crvTotal", 0.0)
+            doc.setDouble("savingsTotal", 0.0)
+            doc.setInt("itemCount", items.sumOf { it.quantity.toInt() })
+            
+            val itemsList = items.map { item ->
+                mapOf(
+                    "originalItemId" to item.originalItemId,
+                    "branchProductId" to item.branchProductId,
+                    "branchProductName" to "Returned Item",
+                    "quantityUsed" to item.quantity.toDouble(),
+                    "priceUsed" to -item.priceUsed.toDouble()
+                )
+            }
+            doc.setArray("items", MutableArray(itemsList))
+            
+            transactionCollection.save(doc)
+            println("CouchbaseTransactionRepository: Created pullback transaction $newId for original $originalTransactionId")
+            
+            newId
+        } catch (e: Exception) {
+            println("CouchbaseTransactionRepository: Error creating pullback transaction - ${e.message}")
+            throw e
+        }
+    }
+    
+    // ========================================================================
+    // Document Creation/Parsing
+    // ========================================================================
+    
+    /**
+     * Creates a MutableDocument from a Transaction.
+     * Uses LEGACY field names per BACKEND_INTEGRATION_STATUS.md.
+     */
+    private fun createTransactionDocument(docId: String, transaction: Transaction): MutableDocument {
+        val dto = LegacyTransactionDto.fromDomain(transaction)
+        val doc = MutableDocument(docId)
+        
+        // Primary identifiers
+        doc.setLong("id", dto.id)
+        doc.setString("guid", dto.guid)
+        
+        // Branch/Employee
+        doc.setInt("branchId", dto.branchId)
+        dto.branch?.let { doc.setString("branch", it) }
+        dto.employeeId?.let { doc.setInt("employeeId", it) }
+        dto.employee?.let { doc.setString("employee", it) }
+        
+        // Status
+        dto.transactionStatusId?.let { doc.setString("transactionStatusId", it) }
+        
+        // Timestamps - using legacy field names
+        dto.startDate?.let { doc.setString("startDate", it) }
+        dto.completedDate?.let { doc.setString("completedDate", it) }
+        
+        // Counts
+        dto.rowCount?.let { doc.setInt("rowCount", it) }
+        dto.itemCount?.let { doc.setInt("itemCount", it) }
+        dto.uniqueProductCount?.let { doc.setInt("uniqueProductCount", it) }
+        
+        // Totals - using legacy field names (savingsTotal instead of discountTotal)
+        dto.savingsTotal?.let { doc.setDouble("savingsTotal", it) }
+        dto.taxTotal?.let { doc.setDouble("taxTotal", it) }
+        dto.subTotal?.let { doc.setDouble("subTotal", it) }
+        dto.crvTotal?.let { doc.setDouble("crvTotal", it) }
+        dto.fee?.let { doc.setDouble("fee", it) }
+        dto.grandTotal?.let { doc.setDouble("grandTotal", it) }
+        
+        // Items array
+        dto.items?.let { items ->
+            val itemsList = items.map { item ->
+                mapOf(
+                    "id" to item.id,
+                    "transactionId" to item.transactionId,
+                    "branchProductId" to item.branchProductId,
+                    "branchProductName" to item.branchProductName,
+                    "quantityUsed" to item.quantityUsed,
+                    "unitType" to (item.unitType ?: "Each"),
+                    "retailPrice" to item.retailPrice,
+                    "salePrice" to item.salePrice,
+                    "priceUsed" to item.priceUsed,
+                    "discountAmountPerUnit" to item.discountAmountPerUnit,
+                    "transactionDiscountAmountPerUnit" to item.transactionDiscountAmountPerUnit,
+                    "floorPrice" to item.floorPrice,
+                    "taxPerUnit" to item.taxPerUnit,
+                    "taxTotal" to item.taxTotal,
+                    "crvRatePerUnit" to item.crvRatePerUnit,
+                    "subTotal" to item.subTotal,
+                    "savingsTotal" to item.savingsTotal,
+                    "isRemoved" to item.isRemoved,
+                    "isPromptedPrice" to item.isPromptedPrice,
+                    "isFloorPriceOverridden" to item.isFloorPriceOverridden,
+                    "soldById" to item.soldById,
+                    "taxIndicator" to item.taxIndicator,
+                    "isFoodStampEligible" to item.isFoodStampEligible,
+                    "scanDateTime" to item.scanDateTime
+                )
+            }
+            doc.setArray("items", MutableArray(itemsList))
+        }
+        
+        // Payments array
+        dto.payments?.let { payments ->
+            val paymentsList = payments.map { payment ->
+                mapOf(
+                    "id" to payment.id,
+                    "transactionId" to payment.transactionId,
+                    "paymentMethodId" to payment.paymentMethodId,
+                    "paymentMethodName" to payment.paymentMethodName,
+                    "value" to payment.value,
+                    "referenceNumber" to payment.referenceNumber,
+                    "approvalCode" to payment.approvalCode,
+                    "cardType" to payment.cardType,
+                    "cardLastFour" to payment.cardLastFour,
+                    "isSuccessful" to payment.isSuccessful,
+                    "paymentDateTime" to payment.paymentDateTime
+                )
+            }
+            doc.setArray("payments", MutableArray(paymentsList))
+        }
+        
+        return doc
+    }
+    
+    /**
+     * Parses a Couchbase document to a Transaction entity.
+     * Uses LegacyTransactionDto for field mapping.
+     */
+    @Suppress("UNCHECKED_CAST")
+    private fun parseTransactionDocument(map: Map<String, Any?>): Transaction? {
+        val dto = LegacyTransactionDto.fromMap(map)
+        return dto?.toDomain()
+    }
+    
+    /**
+     * Parses a held transaction document.
+     * 
+     * Per HeldTransaction model - includes holdName, stationId, branchId, and totals.
+     */
+    @Suppress("UNCHECKED_CAST")
+    private fun parseHeldTransaction(map: Map<String, Any?>): HeldTransaction? {
+        return try {
+            val id = map["id"] as? String ?: return null
+            
+            // Parse held items
+            val itemsList = (map["items"] as? List<Map<String, Any?>>)?.map { itemMap ->
+                com.unisight.gropos.features.transaction.domain.model.HeldTransactionItem(
+                    branchProductId = (itemMap["branchProductId"] as? Number)?.toInt() ?: 0,
+                    productName = itemMap["productName"] as? String ?: "",
+                    quantityUsed = BigDecimal.valueOf((itemMap["quantityUsed"] as? Number)?.toDouble() ?: 1.0),
+                    priceUsed = BigDecimal.valueOf((itemMap["priceUsed"] as? Number)?.toDouble() ?: 0.0),
+                    discountAmountPerUnit = BigDecimal.valueOf((itemMap["discountAmountPerUnit"] as? Number)?.toDouble() ?: 0.0),
+                    transactionDiscountAmountPerUnit = BigDecimal.valueOf((itemMap["transactionDiscountAmountPerUnit"] as? Number)?.toDouble() ?: 0.0),
+                    isRemoved = itemMap["isRemoved"] as? Boolean ?: false,
+                    isPromptedPrice = itemMap["isPromptedPrice"] as? Boolean ?: false,
+                    isFloorPriceOverridden = itemMap["isFloorPriceOverridden"] as? Boolean ?: false,
+                    scanDateTime = itemMap["scanDateTime"] as? String
+                )
+            } ?: emptyList()
+            
+            HeldTransaction(
+                id = id,
+                holdName = map["holdName"] as? String ?: "Held #$id",
+                heldDateTime = map["heldDateTime"] as? String ?: "",
+                employeeId = (map["employeeId"] as? Number)?.toInt(),
+                employeeName = map["employeeName"] as? String,
+                stationId = (map["stationId"] as? Number)?.toInt() ?: 1,
+                branchId = (map["branchId"] as? Number)?.toInt() ?: 1,
+                itemCount = (map["itemCount"] as? Number)?.toInt() ?: 0,
+                grandTotal = BigDecimal.valueOf((map["grandTotal"] as? Number)?.toDouble() ?: 0.0),
+                subTotal = BigDecimal.valueOf((map["subTotal"] as? Number)?.toDouble() ?: 0.0),
+                taxTotal = BigDecimal.valueOf((map["taxTotal"] as? Number)?.toDouble() ?: 0.0),
+                crvTotal = BigDecimal.valueOf((map["crvTotal"] as? Number)?.toDouble() ?: 0.0),
+                items = itemsList
+            )
+        } catch (e: Exception) {
+            println("CouchbaseTransactionRepository: Error parsing held transaction - ${e.message}")
+            null
+        }
     }
 }
-

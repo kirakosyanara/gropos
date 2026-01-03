@@ -61,5 +61,10 @@ object DatabaseConfig {
     
     // Per TRANSACTION_FLOW.md: Held transactions for suspend/resume
     const val COLLECTION_HELD_TRANSACTION = "HeldTransaction"
+    
+    // Per COUCHBASE_LOCAL_STORAGE.md: Customer group pricing collections
+    const val COLLECTION_CUSTOMER_GROUP = "CustomerGroup"
+    const val COLLECTION_CUSTOMER_GROUP_DEPARTMENT = "CustomerGroupDepartment"
+    const val COLLECTION_CUSTOMER_GROUP_ITEM = "CustomerGroupItem"
 }
 
