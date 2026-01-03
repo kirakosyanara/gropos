@@ -112,7 +112,7 @@
 | Price Change/Override | ⚠️ Partial | UI exists (PRICE mode), but requires floor price check (not implemented) |
 | Remove Item (Void Line) | ⚠️ Partial | `CartRepository.voidItem()` works, but items hidden instead of strikethrough |
 | More Information Dialog | ✅ Match | `ProductInfoDialog.kt` shows barcode, prices, tax, SNAP, age (Jan 2026) |
-| Info Bar - Customer Card | ❌ Missing | Implement customer avatar, name, loyalty search |
+| Info Bar - Customer Card | ✅ Match | `CustomerInfoBar.kt` + `CustomerSearchDialog.kt` (Jan 2026) |
 | Info Bar - Weight Display | ⚠️ Partial | `ScaleService` interface created, UI wiring pending (Jan 2026) |
 | Info Bar - Quantity Display | ⚠️ Partial | Need: Show preset quantity multiplier |
 | QTY Prefix for Multiple | ✅ Match | `quantityPrefix` state in CheckoutUiState, SetQuantityPrefix event (Jan 2026) |
@@ -219,7 +219,7 @@
 | Manager Approval Panel | ✅ Match | `ManagerApprovalDialog` in `core/components/dialogs/` (Jan 2026) |
 | Loading Overlay | ✅ Match | Full-screen loading indicator |
 | Time Display | ✅ Match | `RealTimeClock.kt` in `core/components/` - updates every second via LaunchedEffect (Jan 2026) |
-| Station Name Display | ❌ Missing | Show station identifier in headers |
+| Station Name Display | ✅ Match | `StationHeader.kt` + `StationIndicator.kt` components (Jan 2026) |
 
 ---
 
@@ -233,7 +233,7 @@
 | Transaction Repository | ✅ Match | Save/retrieve transactions |
 | Employee Repository | ✅ Match | `EmployeeRepository` interface + `FakeEmployeeRepository` (Jan 2026) |
 | Till/Account Repository | ✅ Match | `TillRepository` interface + `FakeTillRepository` (Jan 2026) |
-| Customer Repository | ❌ Missing | Implement for loyalty customer lookup |
+| Customer Repository | ✅ Match | `Customer` model + `CustomerRepository` + `FakeCustomerRepository` (Jan 2026) |
 | Tax Repository | ⚠️ Partial | Current: In-memory. Need: CouchbaseLite persistence |
 | Heartbeat/Sync Service | ❌ Missing | Implement background data synchronization |
 | Offline Queue | ❌ Missing | Queue transactions for later sync |
@@ -285,16 +285,16 @@
 | Roles & Permissions | 3 | 1 | 9 |
 | Payment Processing | 11 | 2 | 4 |
 | Checkout & Transaction | 13 | 8 | 3 |
-| Customer Display | 7 | 2 | 1 |
+| Customer Display | 8 | 2 | 0 |
 | Returns Processing | 10 | 2 | 1 |
 | Till & Cash Operations | 9 | 1 | 0 |
-| Device Registration | 6 | 2 | 2 |
-| UI/UX Components | 10 | 1 | 3 |
-| Data Layer | 3 | 1 | 6 |
-| **TOTAL** | **96** | **23** | **21** |
+| Device Registration | 7 | 2 | 1 |
+| UI/UX Components | 11 | 1 | 2 |
+| Data Layer | 4 | 1 | 5 |
+| **TOTAL** | **99** | **23** | **18** |
 
 ---
 
-*Last Updated: January 2, 2026 (Transaction Search & Audit Phase)*
+*Last Updated: January 2, 2026 (Station & Customer Display Phase)*
 *Next Review: Post-Merge to main*
 

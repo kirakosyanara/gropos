@@ -7,6 +7,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased] - 2026-01-02
 
 ### Added
+- **Station & Customer Display Features**
+  - **Device Info Service** - Station/register identity management
+    - New `DeviceInfo` data class with station ID, name, branch info
+    - New `HardwareConfig` for COM port settings
+    - New `DeviceService` interface with `InMemoryDeviceService` implementation
+    - `getStationDisplayName()` and `getFullLocationDisplay()` methods
+  - **Station Header Component** - Display station name in UI
+    - New `StationHeader.kt` with station name, branch, and employee display
+    - New `StationIndicator.kt` for compact station display
+  - **Customer Repository** - Loyalty customer lookup
+    - New `Customer` model with loyalty points, tier, store credit, account balance
+    - New `CustomerRepository` interface for search and selection
+    - `FakeCustomerRepository` with seeded customer data
+    - Search by name, phone, email, or loyalty card number
+  - **Customer Info Bar** - Transaction customer display
+    - New `CustomerInfoBar.kt` component with avatar, name, tier badge
+    - Shows loyalty points, store credit indicator
+    - Search prompt when no customer selected
+  - **Customer Search Dialog** - Loyalty card lookup
+    - New `CustomerSearchDialog.kt` with search input and results list
+    - Displays customer initials avatar, tier, phone, email, points
+
 - **Transaction Search & Audit Features**
   - **Find Transaction Screen** - Full search UI for returns lookup
     - New `FindTransactionScreen.kt` with search bar and results table
