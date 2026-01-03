@@ -37,7 +37,7 @@ import kotlin.random.Random
  * - C1: QrRegistrationRequest now uses deviceType instead of deviceName/platform
  * - C2: Status polling now includes Authorization: Bearer header
  * - H3: Stores accessToken from QR response for polling
- * - H4: Adds version: 1.0 header to all requests
+ * - H4: Adds version: v1 header to all requests (corrected from "1.0")
  */
 class RemoteDeviceRepository(
     private val apiClient: ApiClient,
@@ -49,7 +49,7 @@ class RemoteDeviceRepository(
         private const val ENDPOINT_DEVICE_STATUS = "/device-registration/device-status/{deviceGuid}"
         private const val ENDPOINT_HEARTBEAT = "/device-registration/heartbeat"
         private const val VERSION_HEADER = "version"
-        private const val VERSION_VALUE = "1.0"
+        private const val VERSION_VALUE = "v1"  // Must match backend expectation (not "1.0")
     }
     
     // H3 FIX: Temporary token storage for polling phase (not persisted)
@@ -138,7 +138,7 @@ class RemoteDeviceRepository(
      * 
      * **Per DEVICE_REGISTRATION.md Section 4.1:**
      * - API: POST /device-registration/qr-registration
-     * - Headers: version: 1.0
+     * - Headers: version: v1
      * - Request Body: { "deviceType": 0 }
      * - Response: QrRegistrationResponseDto with URL, QR image, accessToken, assignedGuid
      * 
@@ -169,7 +169,7 @@ class RemoteDeviceRepository(
      * 
      * **Per DEVICE_REGISTRATION.md Section 4.2:**
      * - API: GET /device-registration/device-status/{deviceGuid}
-     * - Headers: Authorization: Bearer <accessToken>, version: 1.0
+     * - Headers: Authorization: Bearer <accessToken>, version: v1
      * - Response: DeviceStatusResponseDto with status and optionally API key
      * 
      * When status is "Registered", the caller should call registerDevice()

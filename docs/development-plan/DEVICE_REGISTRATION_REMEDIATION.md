@@ -109,7 +109,7 @@ The current device registration implementation does not match the architectural 
 | H1 | Missing states | 5 states | 7 states (add LOADING, TIMEOUT) | UX gaps |
 | H2 | Heartbeat wrong | POST with body | GET, no body | Heartbeat fails |
 | H3 | accessToken not stored | Captured but unused | Store for polling | Polling auth fails |
-| H4 | Missing version header | Not set | `version: 1.0` | Potential API issues |
+| H4 | Missing version header | Not set | `version: v1` | Potential API issues |
 
 ### ✅ Acceptable Divergence
 
@@ -140,7 +140,7 @@ The current device registration implementation does not match the architectural 
   - [x] Updated response to `{ messageCount: Int }`
 
 - [x] **4.4** Update `RemoteDeviceRepository` ✅ *Completed 2026-01-03*
-  - [x] Add `version: 1.0` header to all requests
+  - [x] Add `version: v1` header to all requests (confirmed via Postman testing)
   - [x] Add Bearer token support for status polling
   - [x] Store temporary `accessToken` for polling phase
   - [x] Added `getCurrentDeviceGuid()` and `clearTemporaryCredentials()` helpers
@@ -247,7 +247,7 @@ override suspend fun requestQrCode(): Result<QrRegistrationResponse> {
     
     return apiClient.deviceRequest<QrRegistrationResponseDto> {
         post(ENDPOINT_QR_REGISTRATION) {
-            header("version", "1.0")
+            header("version", "v1")  // IMPORTANT: "v1" not "1.0"
             setBody(request)
         }
     }.map { response ->
@@ -269,7 +269,7 @@ override suspend fun checkRegistrationStatus(deviceGuid: String): Result<DeviceS
     
     return apiClient.deviceRequest<DeviceStatusResponseDto> {
         get(endpoint) {
-            header("version", "1.0")
+            header("version", "v1")  // IMPORTANT: "v1" not "1.0"
             header("Authorization", "Bearer $token")
         }
     }.map { it.toDomain() }
@@ -408,7 +408,7 @@ private suspend fun handleRegistrationComplete(
  * Response from device heartbeat.
  * 
  * **API Endpoint:** GET /device-registration/heartbeat
- * **Headers:** x-api-key: <apiKey>, version: 1.0
+ * **Headers:** x-api-key: <apiKey>, version: v1
  */
 @Serializable
 data class HeartbeatResponse(

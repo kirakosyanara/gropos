@@ -7,7 +7,7 @@
 **UI Framework:** Jetpack Compose / Compose Multiplatform  
 **Local Database:** Couchbase Lite
 
-This document provides a comprehensive guide to the entire device registration process in GroPOS, covering all scenarios from initial launch to post-registration operations, including frontend implementation, backend endpoints, and error handling.
+This document provides a comprehensive guide to the entire device registration process in GrowPOS, covering all scenarios from initial launch to post-registration operations, including frontend implementation, backend endpoints, and error handling.
 
 ---
 
@@ -35,7 +35,7 @@ This document provides a comprehensive guide to the entire device registration p
 
 ### What is Device Registration?
 
-GroPOS devices must be registered with the backend before they can process transactions. The registration process:
+GrowPOS devices must be registered with the backend before they can process transactions. The registration process:
 
 - Associates the device with a specific **branch** (store location)
 - Provides an **API key** that authenticates all subsequent API requests
@@ -157,8 +157,8 @@ enum class RegistrationState {
 │  │ STEP 2: Request QR Code from Backend                                │   │
 │  │                                                                      │   │
 │  │   POST /device-registration/qr-registration                         │   │
-│  │   Headers: { version: "1.0" }                                       │   │
-│  │   Body: { deviceType: 0 }  // 0 = GroPOS (optional)                │   │
+│  │   Headers: { version: "v1" }                                        │   │
+│  │   Body: { deviceType: 0 }  // 0 = GrowPOS (optional)                │   │
 │  │                                                                      │   │
 │  │   Backend generates:                                                 │   │
 │  │   • Unique device GUID (assignedGuid)                               │   │
@@ -214,7 +214,7 @@ enum class RegistrationState {
 │  │ STEP 5: Poll for Registration Status                                │   │
 │  │                                                                      │   │
 │  │   GET /device-registration/device-status/{assignedGuid}             │   │
-│  │   Headers: { Authorization: Bearer <accessToken>, version: "1.0" }  │   │
+│  │   Headers: { Authorization: Bearer <accessToken>, version: "v1" }   │   │
 │  │                                                                      │   │
 │  │   Polling Configuration:                                             │   │
 │  │   • Interval: 10 seconds (using Kotlin coroutines delay)            │   │
@@ -282,10 +282,12 @@ Generates a new QR code for device registration.
 
 **Headers:**
 ```
-version: 1.0
+version: v1
 Content-Type: application/json
-Ocp-Apim-Subscription-Key: <subscription-key>  (or via query param)
+Ocp-Apim-Subscription-Key: <subscription-key>  (optional, or via query param)
 ```
+
+> **⚠️ IMPORTANT:** The `version` header must be `v1` (not `"1.0"`). This was confirmed via Postman API testing on 2026-01-03. Using `1.0` returns HTTP 404.
 
 **Request Body (Optional):**
 ```json
@@ -297,7 +299,7 @@ Ocp-Apim-Subscription-Key: <subscription-key>  (or via query param)
 **Device Types:**
 | Value | Type |
 |-------|------|
-| 0 | GroPOS (default) |
+| 0 | GrowPOS (default) |
 | 1 | oneTime |
 | 2 | oneStore |
 | 3 | oneServer |
@@ -315,7 +317,7 @@ Ocp-Apim-Subscription-Key: <subscription-key>  (or via query param)
 **Success Response (201):**
 ```json
 {
-  "url": "https://admin.gropos.com/register/ABC123XYZ",
+  "url": "https://www.unisight.io/activate/ABC123XYZ",
   "qrCodeImage": "iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAYAAABccqhmA...",
   "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
   "assignedGuid": "550e8400-e29b-41d4-a716-446655440000"
@@ -364,7 +366,7 @@ Checks the current registration status of a device.
 **Headers:**
 ```
 Authorization: Bearer <accessToken>
-version: 1.0
+version: v1
 ```
 
 **Response - Pending:**
@@ -416,7 +418,7 @@ Used after registration to check for pending data updates.
 **Headers:**
 ```
 x-api-key: <DEVICE_API_KEY>
-version: 1.0
+version: v1
 ```
 
 **Success Response (200):**
@@ -1378,7 +1380,7 @@ sealed class RegistrationResult {
 │     ┌───────────────────────────────────────────────────────────┐   │
 │     │ • Generate unique device GUID                              │   │
 │     │ • Create registration URL with activation code             │   │
-│     │   Example: https://admin.gropos.com/register/ABC123XYZ     │   │
+│     │   Example: https://www.unisight.io/activate/ABC123XYZ     │   │
 │     │ • Encode URL into QR code image (PNG format)               │   │
 │     │ • Convert PNG to Base64 string                             │   │
 │     │ • Generate temporary JWT access token                      │   │
@@ -1389,7 +1391,7 @@ sealed class RegistrationResult {
 │     ┌───────────────────────────────────────────────────────────┐   │
 │     │ Response JSON:                                             │   │
 │     │ {                                                          │   │
-│     │   "url": "https://admin.gropos.com/register/ABC123XYZ",   │   │
+│     │   "url": "https://www.unisight.io/activate/ABC123XYZ",   │   │
 │     │   "qrCodeImage": "iVBORw0KGgoAAAANSUhEUgAA...",           │   │
 │     │   "accessToken": "eyJhbGciOiJIUzI1NiIs...",               │   │
 │     │   "assignedGuid": "550e8400-e29b-41d4-..."               │   │
@@ -1447,7 +1449,7 @@ actual fun decodeBase64ToImageBitmap(base64: String): ImageBitmap? {
 /**
  * Extracts the activation code from the registration URL.
  * 
- * @param url The full URL (e.g., "https://admin.gropos.com/register/ABC123XYZ")
+ * @param url The full URL (e.g., "https://www.unisight.io/activate/ABC123XYZ")
  * @return The activation code (e.g., "ABC123XYZ")
  */
 fun extractActivationCode(url: String): String {
@@ -1459,7 +1461,7 @@ fun extractActivationCode(url: String): String {
 }
 
 // Usage:
-// Input: "https://admin.gropos.com/register/ABC123XYZ"
+// Input: "https://www.unisight.io/activate/ABC123XYZ"
 // Output: "ABC123XYZ"
 ```
 
@@ -2268,21 +2270,21 @@ class DatabaseManager {
 │  DURING REGISTRATION:                                                │
 │  ┌────────────────────────────────────────────────────────────┐     │
 │  │ Authorization: Bearer <temporaryAccessToken>               │     │
-│  │ version: 1.0                                               │     │
-│  │ Ocp-Apim-Subscription-Key: <subscriptionKey>              │     │
+│  │ version: v1                                                │     │
+│  │ Ocp-Apim-Subscription-Key: <subscriptionKey> (optional)   │     │
 │  └────────────────────────────────────────────────────────────┘     │
 │                                                                      │
 │  AFTER REGISTRATION (All API Calls):                                │
 │  ┌────────────────────────────────────────────────────────────┐     │
 │  │ x-api-key: <deviceApiKey>                                  │     │
-│  │ version: 1.0                                               │     │
+│  │ version: v1                                                │     │
 │  └────────────────────────────────────────────────────────────┘     │
 │                                                                      │
 │  AFTER EMPLOYEE LOGIN:                                               │
 │  ┌────────────────────────────────────────────────────────────┐     │
 │  │ x-api-key: <deviceApiKey>                                  │     │
 │  │ Authorization: Bearer <employeeAccessToken>                │     │
-│  │ version: 1.0                                               │     │
+│  │ version: v1                                                │     │
 │  └────────────────────────────────────────────────────────────┘     │
 │                                                                      │
 └─────────────────────────────────────────────────────────────────────┘
@@ -2374,14 +2376,14 @@ actual class PlatformConfig actual constructor() {
 ```kotlin
 // Common theme configuration
 @Composable
-expect fun GroPOSTheme(
+expect fun GrowPOSTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 )
 
 // Android implementation
 @Composable
-actual fun GroPOSTheme(
+actual fun GrowPOSTheme(
     darkTheme: Boolean,
     content: @Composable () -> Unit
 ) {
@@ -2396,7 +2398,7 @@ actual fun GroPOSTheme(
 
 // Desktop implementation
 @Composable
-actual fun GroPOSTheme(
+actual fun GrowPOSTheme(
     darkTheme: Boolean,
     content: @Composable () -> Unit
 ) {
@@ -2466,7 +2468,7 @@ val appModule = module {
 
 | Value | Name |
 |-------|------|
-| 0 | GroPOS |
+| 0 | GrowPOS |
 | 1 | oneTime |
 | 2 | oneStore |
 | 3 | oneServer |

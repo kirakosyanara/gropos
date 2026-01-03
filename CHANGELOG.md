@@ -23,7 +23,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - **H3 FIX:** Repository now stores `temporaryAccessToken` from QR response
     - Token used for subsequent status polling calls
     - Added `getCurrentDeviceGuid()` and `clearTemporaryCredentials()` helpers
-  - **H4 FIX:** Added `version: 1.0` header to all device registration requests
+  - **H4 FIX:** Added `version: v1` header to all device registration requests (corrected from "1.0" per Postman API testing)
   - **Tests:** Created `DeviceRegistrationDtoTest.kt` with 9 test cases validating:
     - Correct JSON serialization of request/response DTOs
     - Field presence/absence per API specification

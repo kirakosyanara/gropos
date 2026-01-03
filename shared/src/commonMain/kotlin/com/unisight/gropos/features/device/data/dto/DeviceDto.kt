@@ -69,7 +69,7 @@ data class QrRegistrationResponseDto(
  * 
  * **Per DEVICE_REGISTRATION.md Section 4.2:**
  * - API Endpoint: GET /device-registration/device-status/{deviceGuid}
- * - Headers: Authorization: Bearer <accessToken>, version: 1.0
+ * - Headers: Authorization: Bearer <accessToken>, version: v1
  * 
  * **C4 FIX:** Removed stationId field - it's not in the API response.
  * The stationId should come from assignedGuid in QrRegistrationResponse.
@@ -95,7 +95,7 @@ data class DeviceStatusResponseDto(
  * 
  * **Per DEVICE_REGISTRATION.md Section 4.3:**
  * - API Endpoint: GET /device-registration/heartbeat (not POST!)
- * - Headers: x-api-key: <apiKey>, version: 1.0
+ * - Headers: x-api-key: <apiKey>, version: v1
  * - Response: { "messageCount": 5 }
  * 
  * **H2 FIX:** Changed from POST with body to GET with simple response.
