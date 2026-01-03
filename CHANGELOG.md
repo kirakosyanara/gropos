@@ -7,6 +7,196 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased] - 2026-01-02
 
 ### Added
+- **Phase 5: Lottery Module - Domain Layer**
+  - **Domain Models (LotteryModels.kt)**
+    - `LotteryGame` - Game catalog (scratchers + draw games)
+    - `LotteryGameType` enum (SCRATCHER, DRAW)
+    - `LotteryTransaction` - Sale/payout records
+    - `LotteryTransactionType` enum (SALE, PAYOUT)
+    - `PayoutStatus` enum with tier labels
+    - `PayoutValidationResult` for UI display
+    - `LotteryDailySummary` for reports
+  - **PayoutTierCalculator** - Business logic for payout tiers
+    - Tier 1: $0-$49.99 → APPROVED
+    - Tier 2: $50-$599.99 → LOGGED_ONLY
+    - Tier 3: $600+ → REJECTED_OVER_LIMIT (W-2G deferred)
+    - BigDecimal precision with HALF_UP rounding
+    - Full TDD test suite (23 test cases)
+  - **LotteryRepository Interface**
+    - `getActiveGames()` - Flow of active games
+    - `recordSale()` - Record ticket purchases
+    - `checkPayoutFeasibility()` - Validate payout amount
+    - `processPayout()` - Process with tier enforcement
+    - `getCurrentDaySummary()` - Daily totals
+  - **FakeLotteryRepository**
+    - 10 seeded games (5 scratchers + 5 draw)
+    - In-memory transaction storage
+    - Full test coverage (19 test cases)
+  - **LotteryModule (Koin DI)**
+    - Wired into AppModule
+    - Provides FakeLotteryRepository
+
+- **Phase 4.6: API Completeness & Remote Repositories**
+  - **ApiClient** - Central HTTP client with Ktor
+    - Bearer token injection via tokenProvider
+    - Automatic 401 handling with onUnauthorized callback
+    - Error mapping to ApiException sealed class
+    - Configurable timeouts (30s default)
+  - **RemoteTillRepository** - REST API for till operations
+    - GET /till - Fetch all tills
+    - POST /till/{id}/assign - Assign to employee
+    - POST /till/{id}/release - Release assignment
+    - TillDto + TillDomainMapper
+    - Full TDD test suite
+  - **RemoteVendorRepository** - REST API for vendor lookup
+    - GET /vendor - Fetch vendors
+    - In-memory cache for session
+    - VendorDto + VendorDomainMapper
+    - Graceful degradation on network errors
+  - **RemoteDeviceRepository** - REST API for device registration
+    - POST /device-registration/qr-registration
+    - GET /device-registration/device-status/{guid}
+    - SecureStorage integration for credentials
+    - DeviceDto + DeviceDomainMapper
+    - PlatformInfo interface for device naming
+  - **SecureStorage Interface** - Secure credential storage
+    - saveStationId/getStationId
+    - saveApiKey/getApiKey
+    - saveBranchInfo/getBranchInfo
+    - InMemorySecureStorage for testing
+  - **CameraPreview Composable** - Android camera viewfinder
+    - CameraX PreviewView integration
+    - Scanning overlay with target box
+    - Permission handling UI
+    - Close button
+  - **CameraScannerDialog** - Modal scanner for checkout
+    - Single-scan mode (auto-dismiss)
+    - InlineCameraScanner for embedded use
+
+- **Android Hardware Drivers (Phase 4 - Production Hardware)**
+  - **SunmiPrinterService** - Native Sunmi POS thermal printer
+    - AIDL service binding to IWoyouService
+    - Reflection-based method invocation for SDK compatibility
+    - Receipt formatting (header, items, totals, barcode, footer)
+    - Paper status monitoring (OK, Low, Empty)
+    - Cash drawer support via printer service
+    - Failed print job queue with retry
+  - **CameraBarcodeScanner** - CameraX + MLKit barcode scanner
+    - Support for UPC-A, UPC-E, EAN-13, EAN-8, CODE-128, CODE-39, QR
+    - 500ms debounce to prevent duplicate scans
+    - Lifecycle-aware camera binding
+    - Background thread image analysis
+    - PreviewView integration for UI display
+  - **SunmiHardwareScanner** - Native Sunmi hardware scanner
+    - BroadcastReceiver for `com.sunmi.scanner.ACTION_DATA_CODE_RECEIVED`
+    - Works with built-in laser scanners (V2 Pro, T2, etc.)
+    - 300ms debounce for rapid scans
+  - **Android HardwareModule** - Koin DI wiring
+    - Auto-detection: SUNMI, PAX, GENERIC device types
+    - Build-variant switching (release uses real hardware)
+    - SafeScannerRepository wrapper
+    - SimulatedPrinterService fallback
+  - **Dependencies Added (libs.versions.toml)**
+    - Sunmi Printer SDK: `com.sunmi:printerlibrary:1.0.19`
+    - CameraX: `androidx.camera:camera-*:1.3.0`
+    - MLKit Barcode: `com.google.android.gms:play-services-mlkit-barcode-scanning:18.3.0`
+
+- **Desktop Hardware Drivers (Phase 4 - Production Hardware)**
+  - **DesktopSerialScanner** - Real serial barcode scanner via jSerialComm
+    - Auto-discovery of available COM/serial ports
+    - Configurable baud rate (default 9600)
+    - Buffer-based protocol parsing (CR/LF terminator detection)
+    - Overflow protection (128 char limit)
+    - Thread-safe SharedFlow emission
+    - Port enumeration API for settings UI
+  - **DesktopEscPosPrinter** - Real ESC/POS thermal printer via jSerialComm
+    - Full ESC/POS command protocol implementation
+    - Receipt formatting with item lines, totals, barcode
+    - Cash drawer support (pulse command via RJ-11)
+    - Paper status monitoring
+    - Failed print job queue with retry support
+    - Auto-reconnection on disconnect
+  - **HardwareModule** - Koin DI wiring for desktop hardware
+    - Environment variable configuration (SCANNER_PORT, PRINTER_PORT)
+    - Runtime switch: USE_REAL_HARDWARE=true/false
+    - SafeScannerRepository wrapper for production
+    - SimulatedPrinterService fallback for development
+
+### Fixed
+- **PaymentViewModelTest Coroutine Errors (CRITICAL)**
+  - Fixed `UncompletedCoroutinesError` in 2 previously @Ignored tests
+  - Root cause: ViewModel's `observeCartChanges()` launches infinite Flow
+  - Solution: `@BeforeTest` sets `Dispatchers.Main` to `StandardTestDispatcher`
+  - Solution: `@AfterTest` cancels `viewModelScope` and calls `resetMain()`
+  - All 17 PaymentViewModelTest cases now pass green
+
+- **Network & Auth Hardening (QA Audit Fix - CRITICAL)**
+  - **TokenRefreshManager Race Condition Fix**
+    - Replaced unsafe `isRefreshing` boolean with `Mutex` and `CompletableDeferred`
+    - Concurrent 401 handlers now share single refresh result (no duplicate API calls)
+    - 12 unit tests verifying concurrent behavior
+    - Per QA finding: Multiple 401s were triggering multiple refresh attempts
+  
+  - **OfflineQueue Implementation**
+    - `DefaultOfflineQueueService` - Thread-safe queue with Mutex
+    - FIFO processing order for fairness
+    - Retry count tracking per item
+    - `AbandonedItem` list for items exceeding max retries
+    - `QueueItemSyncHandler` interface for API integration
+    - `ProcessResult` sealed class (Success, Retry, Abandon)
+    - 15 unit tests covering queue operations
+  
+  - **SyncWorker with Exponential Backoff**
+    - `SyncWorker` - Background sync orchestrator
+    - Exponential backoff: `baseDelay * 2^failures + jitter`
+    - Jitter factor prevents "thundering herd" on reconnection
+    - `SyncWorkerState` observable for UI binding
+    - `resetBackoff()` for external network state triggers
+    - 9 unit tests covering backoff behavior
+
+- **PaymentViewModel Test Coverage (QA Audit Fix - CRITICAL)**
+  - **PaymentViewModelTest** - 17 test cases for payment processing
+    - Cash payment: exact change, overpayment with change
+    - Split tender: cash + card, two/three payment combinations
+    - Card payments: approved, declined, error, cancelled
+    - Terminal dialog visibility during processing
+    - Transaction save failure handling
+    - TenKey input: digit, clear, backspace
+    - EBT SNAP payment flow
+    - 2 tests marked @Ignore pending coroutine investigation
+
+- **Hardware Safety Layer (QA Audit Fix - CRITICAL)**
+  - **BarcodeInputValidator** - Scanner input sanitization and validation
+    - `sanitize()` - Strips control characters (0x00-0x1F)
+    - `isValidLength()` - Rejects < 3 or > 128 characters
+    - `shouldRateLimit()` - Blocks scans within 50ms (prevents flooding)
+    - `validate()` - Full pipeline returning `ValidationResult` sealed class
+    - 34 unit tests covering attack vectors (buffer overflow, ANSI injection)
+  - **SafeScannerRepository** - Decorator for safe scanner operations
+    - Wraps any `ScannerRepository` with validation layer
+    - Emits `rejectedScans` flow for audit logging
+    - 11 integration tests covering edge cases
+  - **PrinterService** - Safe hardware abstraction for receipt printers
+    - `ConnectionStatus` flow for monitoring connect/disconnect
+    - `PrinterEvent` sealed class for proactive alerts
+    - `PrintResult` sealed class (never throws exceptions)
+    - `FailedPrintJob` queue for mid-print recovery
+    - `checkPaperStatus()` for proactive paper monitoring
+  - **SimulatedPrinterService** - Test implementation
+    - Controllable failure simulation (disconnect, paper out, timeout)
+    - Demonstrates safe exception handling pattern
+    - 17 unit tests covering all failure modes
+
+- **Phase 4 Status Report** - Comprehensive codebase audit
+  - Created `PHASE_4_STATUS_REPORT.md` documenting implementation status
+  - Verified 62 items across all Phase 4 steps
+  - Hardware Drivers (Step 7): 40% complete - interfaces exist, no real drivers
+  - Token Refresh (Step 8): ~75% complete - logic exists, missing HTTP interceptor
+  - Offline Queue (Step 9): Interface only - no implementation
+  - Remote Repositories (Steps 10-12): 0% - all use Fake implementations
+  - Lottery Module (Steps 13-17): 0% - only button placeholder exists
+  - Identified blocking issues for production deployment
+
 - **UI Component Polish**
   - **Weight Display Component** - Info Bar integration
     - `WeightDisplayComponent` with stable/motion indicators

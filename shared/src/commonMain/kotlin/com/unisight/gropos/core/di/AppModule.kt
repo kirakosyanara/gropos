@@ -16,9 +16,7 @@ val appModule = module {
     includes(returnsModule)
     includes(settingsModule)
     includes(deviceModule)
-    
-    // Future feature modules will be added here:
-    // includes(reportsModule)
+    includes(lotteryModule)  // Phase 5: Lottery Module
 }
 
 /**
