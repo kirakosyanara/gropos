@@ -7,6 +7,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased] - 2026-01-02
 
 ### Added
+- **Payment & Settings Features**
+  - **PaymentService Singleton** - Centralized payment processing
+    - New `PaymentService` interface with card, cash, check, EBT, on-account methods
+    - `SimulatedPaymentService` implementation for development/testing
+    - `PaymentServiceState` for tracking processing state
+    - Methods: `processCashPayment()`, `processCardPayment()`, `processEbtPayment()`, 
+      `processCheckPayment()`, `processOnAccountPayment()`, `voidPayment()`, `openCashDrawer()`
+  - **On Account Payment** - Customer account charging
+    - Validates customer has account charging enabled
+    - Checks available credit against account limit
+    - Returns approval/decline with appropriate messages
+  - **Hardware Settings Screen** - COM port configuration
+    - New `HardwareSettingsScreen.kt` with peripheral configuration
+    - COM port dropdowns for scanner, printer, scale, cash drawer
+    - Payment terminal IP/port configuration
+    - Simulated hardware mode toggle
+  - **Heartbeat Section** - Sync status display
+    - New `HeartbeatSection.kt` with connection indicator
+    - Shows last sync time, pending items count
+    - Animated connection status indicator
+    - Compact `HeartbeatIndicator` for headers
+
 - **Station & Customer Display Features**
   - **Device Info Service** - Station/register identity management
     - New `DeviceInfo` data class with station ID, name, branch info

@@ -87,8 +87,8 @@
 | Void Payment | ✅ Match | `PaymentTerminal.processVoid()` + `VoidResult` sealed class (Jan 2026) |
 | Payment Progress Overlay | ✅ Match | `PaymentTerminalDialog` with spinner, amount, cancel button (Jan 2026) |
 | Check Payment | ✅ Match | `PaymentViewModel.onCheckPayment()` with full processing (Jan 2026) |
-| On Account Payment | ❌ Missing | Implement customer account charging |
-| PaymentService Singleton | ❌ Missing | Create `@Singleton class PaymentService` with hardware integration |
+| On Account Payment | ✅ Match | `PaymentService.processOnAccountPayment()` with credit validation (Jan 2026) |
+| PaymentService Singleton | ✅ Match | `PaymentService` interface + `SimulatedPaymentService` (Jan 2026) |
 
 ---
 
@@ -196,8 +196,8 @@
 | Environment Selection | ✅ Match | Production/Staging/Development radio buttons in `AdminSettingsDialog` (Jan 2026) |
 | Database Stats View | ✅ Match | Collection record counts table in Database tab (Jan 2026) |
 | Clear Database Action | ✅ Match | Wipe button with confirmation dialog per governance (Jan 2026) |
-| Heartbeat Section | ❌ Missing | Show last sync time, pending updates |
-| Hardware Settings | ❌ Missing | COM port configuration for scanner/scale |
+| Heartbeat Section | ✅ Match | `HeartbeatSection.kt` + `HeartbeatIndicator.kt` components (Jan 2026) |
+| Hardware Settings | ✅ Match | `HardwareSettingsScreen.kt` with COM port dropdowns (Jan 2026) |
 
 ---
 
@@ -283,18 +283,18 @@
 |----------|----------|------------|------------|
 | Auth & Session | 9 | 3 | 9 |
 | Roles & Permissions | 3 | 1 | 9 |
-| Payment Processing | 11 | 2 | 4 |
+| Payment Processing | 13 | 2 | 2 |
 | Checkout & Transaction | 13 | 8 | 3 |
 | Customer Display | 8 | 2 | 0 |
 | Returns Processing | 10 | 2 | 1 |
 | Till & Cash Operations | 9 | 1 | 0 |
-| Device Registration | 7 | 2 | 1 |
+| Device Registration | 9 | 2 | 0 |
 | UI/UX Components | 11 | 1 | 2 |
 | Data Layer | 4 | 1 | 5 |
-| **TOTAL** | **99** | **23** | **18** |
+| **TOTAL** | **103** | **23** | **14** |
 
 ---
 
-*Last Updated: January 2, 2026 (Station & Customer Display Phase)*
+*Last Updated: January 2, 2026 (Payment & Settings Phase)*
 *Next Review: Post-Merge to main*
 
