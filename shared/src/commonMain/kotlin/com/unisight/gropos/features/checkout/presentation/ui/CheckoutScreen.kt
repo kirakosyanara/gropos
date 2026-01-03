@@ -222,6 +222,91 @@ class CheckoutScreen : Screen {
                     CheckoutEvent.DismissError -> {
                         viewModel.dismissError()
                     }
+                    
+                    // Functions Panel Events
+                    CheckoutEvent.OpenFunctionsPanel -> {
+                        viewModel.onOpenFunctionsPanel()
+                    }
+                    CheckoutEvent.DismissFunctionsPanel -> {
+                        viewModel.onDismissFunctionsPanel()
+                    }
+                    
+                    // Open Drawer Event
+                    CheckoutEvent.OpenDrawer -> {
+                        viewModel.onOpenDrawer()
+                    }
+                    
+                    // Price Check Events
+                    CheckoutEvent.OpenPriceCheckDialog -> {
+                        viewModel.onOpenPriceCheckDialog()
+                    }
+                    CheckoutEvent.DismissPriceCheckDialog -> {
+                        viewModel.onDismissPriceCheckDialog()
+                    }
+                    is CheckoutEvent.PriceCheckDigitPress -> {
+                        viewModel.onPriceCheckDigitPress(event.digit)
+                    }
+                    CheckoutEvent.PriceCheckClear -> {
+                        viewModel.onPriceCheckClear()
+                    }
+                    CheckoutEvent.PriceCheckBackspace -> {
+                        viewModel.onPriceCheckBackspace()
+                    }
+                    CheckoutEvent.PriceCheckLookup -> {
+                        viewModel.onPriceCheckLookup()
+                    }
+                    
+                    // Add Cash Events
+                    CheckoutEvent.OpenAddCashDialog -> {
+                        viewModel.onOpenAddCashDialog()
+                    }
+                    CheckoutEvent.DismissAddCashDialog -> {
+                        viewModel.onDismissAddCashDialog()
+                    }
+                    is CheckoutEvent.AddCashDigitPress -> {
+                        viewModel.onAddCashDigitPress(event.digit)
+                    }
+                    CheckoutEvent.AddCashClear -> {
+                        viewModel.onAddCashClear()
+                    }
+                    CheckoutEvent.AddCashBackspace -> {
+                        viewModel.onAddCashBackspace()
+                    }
+                    CheckoutEvent.AddCashConfirm -> {
+                        viewModel.onAddCashConfirm()
+                    }
+                    CheckoutEvent.DismissAddCashFeedback -> {
+                        viewModel.onDismissScanEvent() // Reuse scan event dismissal
+                    }
+                    
+                    // Vendor Payout Events
+                    CheckoutEvent.OpenVendorPayoutDialog -> {
+                        viewModel.onOpenVendorPayoutDialog()
+                    }
+                    CheckoutEvent.DismissVendorPayoutDialog -> {
+                        viewModel.onDismissVendorPayoutDialog()
+                    }
+                    is CheckoutEvent.VendorPayoutSelectVendor -> {
+                        viewModel.onVendorPayoutSelectVendor(event.vendorId, event.vendorName)
+                    }
+                    is CheckoutEvent.VendorPayoutDigitPress -> {
+                        viewModel.onVendorPayoutDigitPress(event.digit)
+                    }
+                    CheckoutEvent.VendorPayoutClear -> {
+                        viewModel.onVendorPayoutClear()
+                    }
+                    CheckoutEvent.VendorPayoutBackspace -> {
+                        viewModel.onVendorPayoutBackspace()
+                    }
+                    CheckoutEvent.VendorPayoutConfirm -> {
+                        viewModel.onVendorPayoutConfirm()
+                    }
+                    CheckoutEvent.VendorPayoutBack -> {
+                        viewModel.onVendorPayoutBack()
+                    }
+                    CheckoutEvent.DismissVendorPayoutFeedback -> {
+                        viewModel.onDismissVendorPayoutFeedback()
+                    }
                 }
             }
         )
@@ -417,4 +502,104 @@ sealed interface CheckoutEvent {
     
     /** Dismiss the critical error dialog */
     data object DismissError : CheckoutEvent
+    
+    // ========================================================================
+    // Functions Panel Events
+    // Per FUNCTIONS_MENU.md: Full functions panel with tabs
+    // ========================================================================
+    
+    /** Open the functions panel */
+    data object OpenFunctionsPanel : CheckoutEvent
+    
+    /** Dismiss the functions panel */
+    data object DismissFunctionsPanel : CheckoutEvent
+    
+    // ========================================================================
+    // Open Drawer Event
+    // Per FUNCTIONS_MENU.md: Open cash drawer without transaction
+    // ========================================================================
+    
+    /** Open the cash drawer */
+    data object OpenDrawer : CheckoutEvent
+    
+    // ========================================================================
+    // Price Check Events
+    // Per FUNCTIONS_MENU.md: Scan item to see price without adding to cart
+    // ========================================================================
+    
+    /** Open the price check dialog */
+    data object OpenPriceCheckDialog : CheckoutEvent
+    
+    /** Dismiss the price check dialog */
+    data object DismissPriceCheckDialog : CheckoutEvent
+    
+    /** Digit pressed in price check barcode input */
+    data class PriceCheckDigitPress(val digit: String) : CheckoutEvent
+    
+    /** Clear pressed in price check dialog */
+    data object PriceCheckClear : CheckoutEvent
+    
+    /** Backspace pressed in price check dialog */
+    data object PriceCheckBackspace : CheckoutEvent
+    
+    /** Look up the product for price check */
+    data object PriceCheckLookup : CheckoutEvent
+    
+    // ========================================================================
+    // Add Cash Events
+    // Per FUNCTIONS_MENU.md: Add cash to drawer
+    // ========================================================================
+    
+    /** Open the add cash dialog */
+    data object OpenAddCashDialog : CheckoutEvent
+    
+    /** Dismiss the add cash dialog */
+    data object DismissAddCashDialog : CheckoutEvent
+    
+    /** Digit pressed in add cash dialog */
+    data class AddCashDigitPress(val digit: String) : CheckoutEvent
+    
+    /** Clear pressed in add cash dialog */
+    data object AddCashClear : CheckoutEvent
+    
+    /** Backspace pressed in add cash dialog */
+    data object AddCashBackspace : CheckoutEvent
+    
+    /** Confirm the add cash */
+    data object AddCashConfirm : CheckoutEvent
+    
+    /** Dismiss add cash feedback */
+    data object DismissAddCashFeedback : CheckoutEvent
+    
+    // ========================================================================
+    // Vendor Payout Events
+    // Per FUNCTIONS_MENU.md: Vendor Payout flow
+    // ========================================================================
+    
+    /** Open the vendor payout dialog */
+    data object OpenVendorPayoutDialog : CheckoutEvent
+    
+    /** Dismiss the vendor payout dialog */
+    data object DismissVendorPayoutDialog : CheckoutEvent
+    
+    /** Select a vendor in step 1 */
+    data class VendorPayoutSelectVendor(val vendorId: String, val vendorName: String) : CheckoutEvent
+    
+    /** Digit pressed in vendor payout amount input */
+    data class VendorPayoutDigitPress(val digit: String) : CheckoutEvent
+    
+    /** Clear pressed in vendor payout dialog */
+    data object VendorPayoutClear : CheckoutEvent
+    
+    /** Backspace pressed in vendor payout dialog */
+    data object VendorPayoutBackspace : CheckoutEvent
+    
+    /** Confirm the vendor payout */
+    data object VendorPayoutConfirm : CheckoutEvent
+    
+    /** Go back from amount to vendor selection */
+    data object VendorPayoutBack : CheckoutEvent
+    
+    /** Dismiss vendor payout feedback */
+    data object DismissVendorPayoutFeedback : CheckoutEvent
 }

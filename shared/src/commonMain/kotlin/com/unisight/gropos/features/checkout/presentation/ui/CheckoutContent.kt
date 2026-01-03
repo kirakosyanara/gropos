@@ -64,6 +64,11 @@ import com.unisight.gropos.features.checkout.presentation.components.dialogs.Rec
 import com.unisight.gropos.features.checkout.presentation.components.dialogs.CashPickupDialog
 import com.unisight.gropos.features.auth.presentation.components.dialogs.LogoutDialog
 import com.unisight.gropos.features.auth.presentation.components.dialogs.LogoutOption
+import com.unisight.gropos.features.checkout.presentation.components.dialogs.PriceCheckDialog
+import com.unisight.gropos.features.checkout.presentation.components.dialogs.AddCashDialog
+import com.unisight.gropos.features.checkout.presentation.components.dialogs.VendorPayoutDialog
+import com.unisight.gropos.core.components.FunctionAction
+import com.unisight.gropos.core.components.FunctionsPanel
 import com.unisight.gropos.features.checkout.presentation.CheckoutItemUiModel
 import com.unisight.gropos.features.checkout.presentation.CheckoutTotalsUiModel
 import com.unisight.gropos.features.checkout.presentation.CheckoutUiState
@@ -216,7 +221,7 @@ fun CheckoutContent(
                     onLookupClick = { onEvent(CheckoutEvent.OpenLookup) },
                     onRecallClick = { onEvent(CheckoutEvent.OpenRecallDialog) },
                     onHoldClick = { onEvent(CheckoutEvent.OpenHoldDialog) },
-                    onFunctionsClick = { /* TODO: Show functions panel */ },
+                    onFunctionsClick = { onEvent(CheckoutEvent.OpenFunctionsPanel) },
                     onVoidTransactionClick = { onEvent(CheckoutEvent.VoidTransactionRequest) },
                     onSignOutClick = { onEvent(CheckoutEvent.OpenLogoutDialog) },
                     onCashPickupClick = { onEvent(CheckoutEvent.OpenCashPickupDialog) },
@@ -400,6 +405,79 @@ fun CheckoutContent(
                 onCancel = { onEvent(CheckoutEvent.AgeVerificationCancel) },
                 onManagerOverride = { onEvent(CheckoutEvent.AgeVerificationManagerOverride) }
             )
+        }
+        
+        // Price Check Dialog
+        // Per FUNCTIONS_MENU.md: Scan item to see price without adding to cart
+        PriceCheckDialog(
+            state = state.priceCheckDialogState,
+            onDigitPress = { digit -> onEvent(CheckoutEvent.PriceCheckDigitPress(digit)) },
+            onClear = { onEvent(CheckoutEvent.PriceCheckClear) },
+            onBackspace = { onEvent(CheckoutEvent.PriceCheckBackspace) },
+            onLookup = { onEvent(CheckoutEvent.PriceCheckLookup) },
+            onDismiss = { onEvent(CheckoutEvent.DismissPriceCheckDialog) }
+        )
+        
+        // Add Cash Dialog
+        // Per FUNCTIONS_MENU.md: Add cash to drawer
+        AddCashDialog(
+            state = state.addCashDialogState,
+            onDigitPress = { digit -> onEvent(CheckoutEvent.AddCashDigitPress(digit)) },
+            onClear = { onEvent(CheckoutEvent.AddCashClear) },
+            onBackspace = { onEvent(CheckoutEvent.AddCashBackspace) },
+            onConfirm = { onEvent(CheckoutEvent.AddCashConfirm) },
+            onDismiss = { onEvent(CheckoutEvent.DismissAddCashDialog) }
+        )
+        
+        // Functions Panel (Full screen overlay)
+        // Per FUNCTIONS_MENU.md: Tabbed panel with Recall, Payments, Till functions
+        if (state.showFunctionsPanel) {
+            androidx.compose.ui.window.Dialog(onDismissRequest = { onEvent(CheckoutEvent.DismissFunctionsPanel) }) {
+                FunctionsPanel(
+                    onActionClick = { action ->
+                        when (action) {
+                            FunctionAction.OPEN_DRAWER -> {
+                                onEvent(CheckoutEvent.OpenDrawer)
+                                onEvent(CheckoutEvent.DismissFunctionsPanel)
+                            }
+                            FunctionAction.PRICE_CHECK -> {
+                                onEvent(CheckoutEvent.OpenPriceCheckDialog)
+                            }
+                            FunctionAction.ADD_CASH -> {
+                                onEvent(CheckoutEvent.OpenAddCashDialog)
+                            }
+                            FunctionAction.VENDOR_PAYOUT -> {
+                                onEvent(CheckoutEvent.OpenVendorPayoutDialog)
+                                onEvent(CheckoutEvent.DismissFunctionsPanel)
+                            }
+                            FunctionAction.CASH_PICKUP -> {
+                                onEvent(CheckoutEvent.OpenCashPickupDialog)
+                                onEvent(CheckoutEvent.DismissFunctionsPanel)
+                            }
+                            FunctionAction.VOID_TRANSACTION -> {
+                                onEvent(CheckoutEvent.VoidTransactionRequest)
+                                onEvent(CheckoutEvent.DismissFunctionsPanel)
+                            }
+                            FunctionAction.LOTTO_PAY -> {
+                                // TODO: Navigate to Lottery module
+                                onEvent(CheckoutEvent.DismissFunctionsPanel)
+                            }
+                            FunctionAction.BACK -> {
+                                onEvent(CheckoutEvent.DismissFunctionsPanel)
+                            }
+                            FunctionAction.SIGN_OUT -> {
+                                onEvent(CheckoutEvent.OpenLogoutDialog)
+                                onEvent(CheckoutEvent.DismissFunctionsPanel)
+                            }
+                            else -> {
+                                // Other actions not yet implemented
+                                onEvent(CheckoutEvent.DismissFunctionsPanel)
+                            }
+                        }
+                    },
+                    onDismiss = { onEvent(CheckoutEvent.DismissFunctionsPanel) }
+                )
+            }
         }
         
         // ====================================================================

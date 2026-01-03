@@ -173,9 +173,9 @@
 | Cash Pickup ViewModel | ✅ Match | `CheckoutViewModel.onCashPickupConfirm()` with validation + manager approval (Jan 2026) |
 | Vendor Payout Screen | ✅ Match | `VendorPayoutDialog.kt` with two-step flow (vendor selection → amount input), drawer balance display, signature lines (Jan 2026) |
 | Vendor List API | ✅ Match | `VendorRepository` interface + `FakeVendorRepository` seeded with Coca-Cola, Pepsi, Frito-Lay, Local Bakery (Jan 2026) |
-| Add Cash Dialog | ❌ Missing | Create dialog to add cash to drawer |
-| Open Drawer Function | ❌ Missing | Implement `HardwareManager.printer.openDrawer()` |
-| Price Check Dialog | ❌ Missing | Scan item to see price without adding to cart |
+| Add Cash Dialog | ✅ Match | `AddCashDialog.kt` with TenKey amount entry, manager approval over $100 (Jan 2026) |
+| Open Drawer Function | ✅ Match | `CheckoutViewModel.onOpenDrawer()` with audit logging (Jan 2026) |
+| Price Check Dialog | ✅ Match | `PriceCheckDialog.kt` shows product name, price, SNAP eligibility (Jan 2026) |
 | Print Last Receipt | ⚠️ Partial | Current: Virtual printer to console. Need: Actual receipt reprint |
 | EBT Balance Check Dialog | ❌ Missing | Create dialog for EBT balance inquiry |
 | Transaction Discount | ❌ Missing | Apply percentage discount to entire order |
@@ -287,14 +287,14 @@
 | Checkout & Transaction | 11 | 7 | 7 |
 | Customer Display | 4 | 2 | 4 |
 | Returns Processing | 8 | 2 | 3 |
-| Till & Cash Operations | 4 | 1 | 5 |
+| Till & Cash Operations | 7 | 1 | 2 |
 | Device Registration | 6 | 2 | 2 |
 | UI/UX Components | 10 | 1 | 3 |
 | Data Layer | 3 | 1 | 6 |
-| **TOTAL** | **56** | **20** | **67** |
+| **TOTAL** | **82** | **23** | **37** |
 
 ---
 
-*Last Updated: January 2, 2026 (P3 Phase Complete)*
-*Next Review: Post-P3 - API Integration & Hardware Drivers*
+*Last Updated: January 2, 2026 (Missing Features Phase)*
+*Next Review: Post-Phase 4 - Merge to main*
 

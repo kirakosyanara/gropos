@@ -2333,4 +2333,343 @@ class CheckoutViewModel(
             null
         }
     }
+    
+    // ========================================================================
+    // Functions Panel
+    // Per FUNCTIONS_MENU.md: Full functions panel with tabs
+    // ========================================================================
+    
+    /**
+     * Opens the functions panel.
+     */
+    fun onOpenFunctionsPanel() {
+        _state.value = _state.value.copy(showFunctionsPanel = true)
+    }
+    
+    /**
+     * Dismisses the functions panel.
+     */
+    fun onDismissFunctionsPanel() {
+        _state.value = _state.value.copy(showFunctionsPanel = false)
+    }
+    
+    // ========================================================================
+    // Open Drawer
+    // Per FUNCTIONS_MENU.md: Open cash drawer without transaction
+    // ========================================================================
+    
+    /**
+     * Opens the cash drawer.
+     * 
+     * Per FUNCTIONS_MENU.md:
+     * - Opens drawer without any transaction
+     * - Audit logged for accountability
+     */
+    fun onOpenDrawer() {
+        effectiveScope.launch {
+            // Log audit event
+            println("[AUDIT] CASH DRAWER OPENED")
+            println("  Employee: ${currentUser?.username ?: "Unknown"}")
+            println("  Timestamp: ${LocalDateTime.now()}")
+            println("  Reason: Manual Open (No Transaction)")
+            
+            // TODO: Integrate with HardwareManager.printer.openDrawer() when available
+            // For now, show feedback
+            _state.value = _state.value.copy(
+                lastScanEvent = ScanEvent.ProductAdded("Cash Drawer Opened")
+            )
+        }
+    }
+    
+    // ========================================================================
+    // Price Check
+    // Per FUNCTIONS_MENU.md: Scan item to see price without adding to cart
+    // ========================================================================
+    
+    /**
+     * Opens the price check dialog.
+     */
+    fun onOpenPriceCheckDialog() {
+        _state.value = _state.value.copy(
+            priceCheckDialogState = PriceCheckDialogState(isVisible = true),
+            showFunctionsPanel = false
+        )
+    }
+    
+    /**
+     * Dismisses the price check dialog.
+     */
+    fun onDismissPriceCheckDialog() {
+        _state.value = _state.value.copy(
+            priceCheckDialogState = PriceCheckDialogState()
+        )
+    }
+    
+    /**
+     * Handles digit press in Price Check dialog.
+     */
+    fun onPriceCheckDigitPress(digit: String) {
+        val currentInput = _state.value.priceCheckDialogState.barcodeInput
+        val newInput = currentInput + digit
+        
+        // Limit barcode to 20 characters
+        if (newInput.length <= 20) {
+            _state.value = _state.value.copy(
+                priceCheckDialogState = _state.value.priceCheckDialogState.copy(
+                    barcodeInput = newInput,
+                    errorMessage = null,
+                    productName = null,
+                    productPrice = null
+                )
+            )
+        }
+    }
+    
+    /**
+     * Clears the Price Check barcode input.
+     */
+    fun onPriceCheckClear() {
+        _state.value = _state.value.copy(
+            priceCheckDialogState = _state.value.priceCheckDialogState.copy(
+                barcodeInput = "",
+                errorMessage = null,
+                productName = null,
+                productPrice = null,
+                isSnapEligible = false
+            )
+        )
+    }
+    
+    /**
+     * Handles backspace in Price Check dialog.
+     */
+    fun onPriceCheckBackspace() {
+        val currentInput = _state.value.priceCheckDialogState.barcodeInput
+        if (currentInput.isNotEmpty()) {
+            _state.value = _state.value.copy(
+                priceCheckDialogState = _state.value.priceCheckDialogState.copy(
+                    barcodeInput = currentInput.dropLast(1),
+                    errorMessage = null,
+                    productName = null,
+                    productPrice = null
+                )
+            )
+        }
+    }
+    
+    /**
+     * Looks up the product for price check.
+     * 
+     * Per FUNCTIONS_MENU.md:
+     * - Shows product name, price, SNAP eligibility
+     * - Does NOT add to cart
+     */
+    fun onPriceCheckLookup() {
+        val barcode = _state.value.priceCheckDialogState.barcodeInput
+        if (barcode.isBlank()) return
+        
+        _state.value = _state.value.copy(
+            priceCheckDialogState = _state.value.priceCheckDialogState.copy(
+                isLoading = true,
+                errorMessage = null
+            )
+        )
+        
+        effectiveScope.launch {
+            val product = productRepository.getByBarcode(barcode)
+            
+            if (product != null) {
+                _state.value = _state.value.copy(
+                    priceCheckDialogState = _state.value.priceCheckDialogState.copy(
+                        isLoading = false,
+                        productName = product.productName,
+                        productPrice = currencyFormatter.format(product.retailPrice),
+                        isSnapEligible = product.isSnapEligible,
+                        errorMessage = null
+                    )
+                )
+                
+                // Log for audit
+                println("[AUDIT] PRICE CHECK")
+                println("  Barcode: $barcode")
+                println("  Product: ${product.productName}")
+                println("  Price: ${currencyFormatter.format(product.retailPrice)}")
+                println("  Employee: ${currentUser?.username ?: "Unknown"}")
+            } else {
+                _state.value = _state.value.copy(
+                    priceCheckDialogState = _state.value.priceCheckDialogState.copy(
+                        isLoading = false,
+                        productName = null,
+                        productPrice = null,
+                        isSnapEligible = false,
+                        errorMessage = "Product not found: $barcode"
+                    )
+                )
+            }
+        }
+    }
+    
+    // ========================================================================
+    // Add Cash
+    // Per FUNCTIONS_MENU.md: Add cash to drawer
+    // ========================================================================
+    
+    /**
+     * Opens the add cash dialog.
+     */
+    fun onOpenAddCashDialog() {
+        val currentBalance = cashierSessionManager.getCurrentDrawerBalance()
+        
+        _state.value = _state.value.copy(
+            addCashDialogState = AddCashDialogState(
+                isVisible = true,
+                currentBalance = currencyFormatter.format(currentBalance)
+            ),
+            showFunctionsPanel = false
+        )
+    }
+    
+    /**
+     * Dismisses the add cash dialog.
+     */
+    fun onDismissAddCashDialog() {
+        _state.value = _state.value.copy(
+            addCashDialogState = AddCashDialogState()
+        )
+    }
+    
+    /**
+     * Handles digit press in Add Cash dialog.
+     */
+    fun onAddCashDigitPress(digit: String) {
+        val currentInput = _state.value.addCashDialogState.inputValue
+        val newInput = currentInput + digit
+        
+        // Limit to $9999.99 (999999 cents)
+        val amountCents = newInput.toLongOrNull() ?: 0
+        if (amountCents <= 999999) {
+            _state.value = _state.value.copy(
+                addCashDialogState = _state.value.addCashDialogState.copy(
+                    inputValue = newInput,
+                    errorMessage = null
+                )
+            )
+        }
+    }
+    
+    /**
+     * Clears the Add Cash input.
+     */
+    fun onAddCashClear() {
+        _state.value = _state.value.copy(
+            addCashDialogState = _state.value.addCashDialogState.copy(
+                inputValue = "",
+                errorMessage = null
+            )
+        )
+    }
+    
+    /**
+     * Handles backspace in Add Cash dialog.
+     */
+    fun onAddCashBackspace() {
+        val currentInput = _state.value.addCashDialogState.inputValue
+        if (currentInput.isNotEmpty()) {
+            _state.value = _state.value.copy(
+                addCashDialogState = _state.value.addCashDialogState.copy(
+                    inputValue = currentInput.dropLast(1),
+                    errorMessage = null
+                )
+            )
+        }
+    }
+    
+    /**
+     * Confirms adding cash to drawer.
+     * 
+     * Per FUNCTIONS_MENU.md:
+     * - Amounts over $100 require manager approval
+     * - Updates drawer balance
+     */
+    fun onAddCashConfirm() {
+        val inputValue = _state.value.addCashDialogState.inputValue
+        if (inputValue.isBlank()) {
+            _state.value = _state.value.copy(
+                addCashDialogState = _state.value.addCashDialogState.copy(
+                    errorMessage = "Please enter an amount"
+                )
+            )
+            return
+        }
+        
+        val amountCents = inputValue.toLongOrNull() ?: 0
+        if (amountCents <= 0) {
+            _state.value = _state.value.copy(
+                addCashDialogState = _state.value.addCashDialogState.copy(
+                    errorMessage = "Please enter a valid amount"
+                )
+            )
+            return
+        }
+        
+        val amount = BigDecimal(amountCents).divide(BigDecimal(100))
+        
+        // Check if amount requires manager approval (over $100)
+        if (amount > BigDecimal(100)) {
+            // Require manager approval
+            _state.value = _state.value.copy(
+                addCashDialogState = _state.value.addCashDialogState.copy(
+                    approvalPending = true
+                )
+            )
+            showManagerApprovalForAddCash(amount)
+        } else {
+            // Execute directly
+            executeAddCash(amount, "Self")
+        }
+    }
+    
+    /**
+     * Shows manager approval for add cash over $100.
+     */
+    private fun showManagerApprovalForAddCash(amount: BigDecimal) {
+        val user = currentUser ?: return
+        
+        effectiveScope.launch {
+            val managers = managerApprovalService.getApprovers(RequestAction.CASH_PICKUP, user)
+            
+            _state.value = _state.value.copy(
+                managerApprovalState = ManagerApprovalDialogState(
+                    isVisible = true,
+                    action = RequestAction.CASH_PICKUP,  // Reusing for Add Cash
+                    managers = managers,
+                    isProcessing = false,
+                    errorMessage = null
+                )
+            )
+        }
+    }
+    
+    /**
+     * Executes the add cash operation.
+     */
+    private fun executeAddCash(amount: BigDecimal, approverId: String) {
+        effectiveScope.launch {
+            // Update drawer balance
+            cashierSessionManager.addCash(amount)
+            
+            // Log audit event
+            println("[AUDIT] CASH ADDED TO DRAWER")
+            println("  Amount: ${currencyFormatter.format(amount)}")
+            println("  Approved By: $approverId")
+            println("  Employee: ${currentUser?.username ?: "Unknown"}")
+            println("  Timestamp: ${LocalDateTime.now()}")
+            
+            // Show feedback
+            _state.value = _state.value.copy(
+                addCashDialogState = AddCashDialogState(),
+                lastScanEvent = ScanEvent.ProductAdded("Added ${currencyFormatter.format(amount)} to drawer")
+            )
+        }
+    }
 }

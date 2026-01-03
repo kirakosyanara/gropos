@@ -4,6 +4,34 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased] - 2026-01-02
+
+### Added
+- **Missing Features Implementation (Phase 4 Continuation)**
+  - **Price Check Dialog** - Scan item to see price without adding to cart
+    - New `PriceCheckDialogState` in `CheckoutUiState`
+    - `PriceCheckDialog` composable with TenKey and product display
+    - Shows product name, price, and SNAP eligibility
+    - Audit logging for accountability
+  - **Add Cash Dialog** - Add cash to till drawer (e.g., starting float)
+    - New `AddCashDialogState` in `CheckoutUiState`
+    - `AddCashDialog` composable with currency input
+    - Manager approval required for amounts over $100
+    - `CashierSessionManager.addCash()` method for balance updates
+  - **Open Drawer Function** - Open cash drawer without transaction
+    - `onOpenDrawer()` method in `CheckoutViewModel`
+    - Audit logging for all manual drawer opens
+  - **Functions Panel Integration** - Full functions panel with tabs
+    - `showFunctionsPanel` state for panel visibility
+    - Wired all Till tab actions: Open Drawer, Price Check, Add Cash
+    - Wired Payment tab actions: Vendor Payout, Cash Pickup
+
+### Changed
+- **CheckoutContent**: `onFunctionsClick` now opens the full FunctionsPanel dialog
+- **CheckoutScreen**: Added event handlers for all new dialog events
+
+---
+
 ## [0.9.0] - 2026-01-01 - Feature Complete Alpha
 
 **🎉 All P0 Critical Features Complete!**

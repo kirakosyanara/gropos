@@ -254,6 +254,62 @@ enum class DateField {
 }
 
 /**
+ * State for the Price Check Dialog.
+ * 
+ * Per FUNCTIONS_MENU.md (Price Check section):
+ * - Scan or enter barcode to see price without adding to cart
+ * - Shows product name, price, and SNAP eligibility
+ * - No manager approval required
+ * 
+ * @property isVisible Whether the dialog is showing
+ * @property barcodeInput Current barcode input
+ * @property isLoading Whether a product lookup is in progress
+ * @property productName Name of the found product (null if not found)
+ * @property productPrice Formatted price string
+ * @property isSnapEligible Whether product is SNAP eligible
+ * @property errorMessage Error message if product not found
+ */
+data class PriceCheckDialogState(
+    val isVisible: Boolean = false,
+    val barcodeInput: String = "",
+    val isLoading: Boolean = false,
+    val productName: String? = null,
+    val productPrice: String? = null,
+    val isSnapEligible: Boolean = false,
+    val errorMessage: String? = null
+) {
+    /**
+     * Whether a product has been found.
+     */
+    val hasProduct: Boolean
+        get() = productName != null
+}
+
+/**
+ * State for the Add Cash Dialog.
+ * 
+ * Per FUNCTIONS_MENU.md (Add Cash section):
+ * - Add cash to the till drawer (e.g., starting float)
+ * - Requires Manager approval for amounts over $100
+ * - Updates drawer balance
+ * 
+ * @property isVisible Whether the dialog is showing
+ * @property inputValue Current input value (cents)
+ * @property currentBalance Current drawer balance (formatted)
+ * @property errorMessage Validation error message
+ * @property isProcessing Whether add cash is being processed
+ * @property approvalPending Whether manager approval is pending
+ */
+data class AddCashDialogState(
+    val isVisible: Boolean = false,
+    val inputValue: String = "",
+    val currentBalance: String = "$0.00",
+    val errorMessage: String? = null,
+    val isProcessing: Boolean = false,
+    val approvalPending: Boolean = false
+)
+
+/**
  * UI State for the Checkout screen.
  * 
  * Per kotlin-standards.mdc: Use sealed interface for strict typing.
@@ -310,7 +366,16 @@ data class CheckoutUiState(
     
     // Error Dialog state (per DIALOGS.md: Error Message Dialog)
     // Use for CRITICAL errors that stop the flow: Payments, Hardware, Legal
-    val errorDialog: ErrorDialogState? = null
+    val errorDialog: ErrorDialogState? = null,
+    
+    // Price Check state (per FUNCTIONS_MENU.md: Price Check)
+    val priceCheckDialogState: PriceCheckDialogState = PriceCheckDialogState(),
+    
+    // Add Cash state (per FUNCTIONS_MENU.md: Add Cash)
+    val addCashDialogState: AddCashDialogState = AddCashDialogState(),
+    
+    // Functions Panel state
+    val showFunctionsPanel: Boolean = false
 ) {
     /**
      * Whether the screen is in modification mode.

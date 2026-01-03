@@ -178,6 +178,49 @@ class CashierSessionManager(
     }
     
     /**
+     * Adds cash to the drawer (e.g., starting float, additional float).
+     * 
+     * Per FUNCTIONS_MENU.md (Add Cash section):
+     * - Increases the drawer's expected cash balance
+     * - Used for starting float or adding change
+     * - Audit logged for accountability
+     * 
+     * @param amount The amount being added
+     * @return Result indicating success or failure with validation error
+     */
+    suspend fun addCash(amount: BigDecimal): Result<Unit> {
+        val current = _activeSession.value
+            ?: return Result.failure(IllegalStateException("No active session"))
+        
+        // Validation: Amount must be positive
+        if (amount <= BigDecimal.ZERO) {
+            return Result.failure(
+                IllegalArgumentException("Add cash amount must be greater than zero")
+            )
+        }
+        
+        // Update session with added cash
+        _activeSession.value = current.copy(
+            expectedCash = current.expectedCash + amount,
+            openingFloat = current.openingFloat + amount
+        )
+        
+        // Audit log (per governance: log all cash drawer operations)
+        println("================================================================================")
+        println("[AUDIT] CASH ADDED TO DRAWER")
+        println("================================================================================")
+        println("Timestamp: ${kotlinx.datetime.Clock.System.now()}")
+        println("Employee: ${current.employeeName} (ID: ${current.employeeId})")
+        println("Amount Added: \$$amount")
+        println("Previous Balance: \$${current.expectedCash}")
+        println("New Balance: \$${current.expectedCash + amount}")
+        println("Till ID: ${current.tillId}")
+        println("================================================================================")
+        
+        return Result.success(Unit)
+    }
+    
+    /**
      * Records a vendor payout from the drawer.
      * 
      * Per FUNCTIONS_MENU.md (Vendor Payout section):
