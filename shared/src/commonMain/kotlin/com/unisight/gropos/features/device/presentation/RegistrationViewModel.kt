@@ -148,21 +148,23 @@ class RegistrationViewModel(
             }
             
             try {
-                // Generate local pairing code for display
-                val pairingCode = deviceRepository.generatePairingCode()
-                
                 // Request QR code from server
                 val qrResult = deviceRepository.requestQrCode()
                 
                 qrResult.onSuccess { response ->
                     val deviceGuid = response.assignedGuid
                     
+                    // Extract activation code from URL (last path segment)
+                    // URL format: https://dev.unisight.io/admin/hardware/devices/activation/1029c783
+                    val activationCode = response.url?.substringAfterLast("/")?.uppercase() ?: ""
+                    val displayUrl = response.url?.substringAfter("://") ?: "admin.gropos.com"
+                    
                     _state.update { 
                         it.copy(
-                            pairingCode = pairingCode,
+                            pairingCode = activationCode,  // Use backend activation code, not local random
                             qrCodeImage = response.qrCodeImage,
                             deviceGuid = deviceGuid,
-                            activationUrl = response.url?.substringAfter("://") ?: "admin.gropos.com",
+                            activationUrl = displayUrl,
                             registrationState = RegistrationState.PENDING,
                             isLoading = false
                         )
@@ -174,9 +176,11 @@ class RegistrationViewModel(
                     }
                     
                 }.onFailure { error ->
+                    // On error, generate a local fallback code
+                    val fallbackCode = deviceRepository.generatePairingCode()
                     _state.update { 
                         it.copy(
-                            pairingCode = pairingCode, // Still show local code
+                            pairingCode = fallbackCode,
                             errorMessage = error.message ?: "Failed to get QR code",
                             registrationState = RegistrationState.ERROR,
                             isLoading = false

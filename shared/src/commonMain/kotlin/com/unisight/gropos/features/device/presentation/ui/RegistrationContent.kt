@@ -33,7 +33,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.platform.testTag
+import androidx.compose.foundation.Image
+import org.jetbrains.skia.Image as SkiaImage
+import kotlin.io.encoding.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -337,6 +343,23 @@ private fun RegistrationPendingContent(
     }
 }
 
+/**
+ * Decodes a Base64 PNG image string to an ImageBitmap.
+ * 
+ * Per DEVICE_REGISTRATION.md: Backend returns qrCodeImage as Base64 PNG.
+ */
+@OptIn(ExperimentalEncodingApi::class)
+private fun decodeBase64Image(base64String: String): ImageBitmap? {
+    return try {
+        val imageBytes = Base64.decode(base64String)
+        val skiaImage = SkiaImage.makeFromEncoded(imageBytes)
+        skiaImage.toComposeImageBitmap()
+    } catch (e: Exception) {
+        println("[QR] Failed to decode Base64 image: ${e.message}")
+        null
+    }
+}
+
 @Composable
 private fun QrCodePlaceholder(
     qrCodeImage: String?,
@@ -357,33 +380,38 @@ private fun QrCodePlaceholder(
             modifier = Modifier.fillMaxSize()
         ) {
             if (qrCodeImage != null) {
-                // TODO: Decode and display Base64 QR image
-                // For now, show placeholder icon
-                Text(
-                    text = "[QR]",
-                    style = MaterialTheme.typography.displayLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = GroPOSColors.TextSecondary
-                )
+                // Decode and display Base64 QR image from backend
+                val imageBitmap = decodeBase64Image(qrCodeImage)
+                
+                if (imageBitmap != null) {
+                    Image(
+                        bitmap = imageBitmap,
+                        contentDescription = "QR Code for device registration",
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(GroPOSSpacing.S)
+                    )
+                } else {
+                    // Fallback if decoding fails
+                    Text(
+                        text = "[QR Error]",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = GroPOSColors.DangerRed
+                    )
+                }
             } else {
+                // Loading/placeholder state
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // QR Code placeholder (actual QR code would be rendered from Base64 image)
-                    Box(
-                        modifier = Modifier.size(100.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "QR",
-                            style = MaterialTheme.typography.displayMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = GroPOSColors.LightGray2
-                        )
-                    }
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(40.dp),
+                        color = GroPOSColors.PrimaryGreen
+                    )
                     Spacer(modifier = Modifier.height(GroPOSSpacing.S))
                     Text(
-                        text = "QR Code",
+                        text = "Loading QR Code...",
                         style = MaterialTheme.typography.labelMedium,
                         color = GroPOSColors.TextSecondary
                     )

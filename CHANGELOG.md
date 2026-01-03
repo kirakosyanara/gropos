@@ -8,6 +8,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Security & Registration Fixes
 
+- **QR Code Display and Activation Code Fix** ✅
+  - **FIX:** QR code now properly decoded from Base64 and displayed using Skia ImageBitmap
+  - **FIX:** Activation code now extracted from backend URL (last path segment) instead of random local generation
+  - **FIX:** Added `decodeBase64Image()` helper function in `RegistrationContent.kt`
+  - **FIX:** Shows loading spinner while QR code is being fetched
+  - **FIX:** Displays error state if Base64 decoding fails
+
 - **Device Registration Flow Remediation (Phase 1: Data Layer)** ✅
   - **C1 FIX:** `QrRegistrationRequest` now uses `deviceType: Int` instead of `deviceName`/`platform`
     - Added `DeviceTypes` constants object with all device type values
