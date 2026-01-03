@@ -7,7 +7,7 @@ import com.unisight.gropos.features.auth.domain.repository.AuthRepository
 import com.unisight.gropos.features.auth.domain.usecase.ValidateLoginUseCase
 import com.unisight.gropos.features.auth.presentation.LockViewModel
 import com.unisight.gropos.features.auth.presentation.LoginViewModel
-import com.unisight.gropos.features.cashier.data.FakeEmployeeRepository
+import com.unisight.gropos.features.cashier.data.RemoteEmployeeRepository
 import com.unisight.gropos.features.cashier.data.RemoteTillRepository
 import com.unisight.gropos.features.cashier.domain.repository.EmployeeRepository
 import com.unisight.gropos.features.cashier.domain.repository.TillRepository
@@ -23,13 +23,13 @@ import org.koin.dsl.module
  * - Provides employee list for login screen
  * - Provides till management for session assignment
  * 
- * **P0 FIX (QA Audit):**
- * - TillRepository now uses RemoteTillRepository (API-backed)
- * - EmployeeRepository still uses Fake (API endpoint not ready)
+ * **DATA SYNC IMPLEMENTATION:**
+ * - EmployeeRepository now uses RemoteEmployeeRepository (API-backed)
+ * - TillRepository uses RemoteTillRepository (API-backed)
  * 
  * Provides:
  * - AuthRepository (FakeAuthRepository for now)
- * - EmployeeRepository (FakeEmployeeRepository for now)
+ * - EmployeeRepository (RemoteEmployeeRepository - fetches from /employee/cashiers)
  * - TillRepository (RemoteTillRepository - production-ready)
  * - ValidateLoginUseCase
  * - LoginViewModel (with state machine flow)
@@ -42,8 +42,9 @@ val authModule = module {
     singleOf(::FakeAuthRepository) bind AuthRepository::class
     
     // Data Layer - Employee
-    // TODO: Replace with API-backed implementation when endpoint is ready
-    singleOf(::FakeEmployeeRepository) bind EmployeeRepository::class
+    // DATA SYNC FIX: Now uses RemoteEmployeeRepository with real API calls
+    // Per CASHIER_OPERATIONS.md: GET /employee/cashiers with x-api-key header
+    single<EmployeeRepository> { RemoteEmployeeRepository(get()) }
     
     // Data Layer - Till
     // P0 FIX: Now uses RemoteTillRepository with real API calls
