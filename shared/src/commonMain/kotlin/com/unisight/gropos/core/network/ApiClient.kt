@@ -39,7 +39,7 @@ import kotlinx.serialization.json.Json
  * @param onUnauthorized Callback when 401 is received (triggers token refresh)
  */
 class ApiClient(
-    private val config: ApiClientConfig,
+    @PublishedApi internal val config: ApiClientConfig,
     @PublishedApi internal val tokenProvider: () -> String?,
     @PublishedApi internal val apiKeyProvider: () -> String?,
     private val onUnauthorized: suspend () -> Result<Unit>
@@ -194,11 +194,16 @@ class ApiClient(
         val token = tokenProvider()
         
         println("[ApiClient.request] Making request...")
+        println("[ApiClient.request] Base URL: ${config.baseUrl}")
         println("[ApiClient.request] API Key available: ${apiKey != null} (${apiKey?.take(8) ?: "null"}...)")
         println("[ApiClient.request] Bearer Token available: ${token != null}")
         
         return try {
             val response = httpClient.request {
+                // CRITICAL FIX: Explicitly set base URL before block runs
+                // This ensures the host/scheme are set even when block only sets path
+                url(config.baseUrl)
+                
                 // Add dynamic auth headers at request time
                 apiKey?.let { 
                     header("x-api-key", it)

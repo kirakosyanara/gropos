@@ -149,7 +149,7 @@ This document tracks the remediation of the **Lock Screen**, **Cashier Login**, 
 - [x] **7.1** Create `LogoutOptionsDialog` composable ✅
 - [x] **7.2** Create `ManagerApprovalDialog` composable ✅
 - [x] **7.3** Implement manager PIN verification in dialog ✅
-- [ ] **7.4** Add permission check for `GrowPOS.Store.Force Sign Out` (deferred - needs backend integration)
+- [ ] **7.4** Add permission check for `GroPOS.Store.Force Sign Out` (deferred - needs backend integration)
 - [x] **7.5** Connect dialogs to `LockViewModel` sign-out flow ✅
 - [x] **7.6** Implement `logoutWithEndOfShift()` call ✅
 

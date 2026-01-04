@@ -55,9 +55,10 @@ class RemoteEmployeeRepository(
         
         return try {
             // Use the new request method which adds x-api-key header dynamically
+            // NOTE: Use pathSegments to set the path on the base URL
             val response = apiClient.request<List<EmployeeDto>> {
                 method = io.ktor.http.HttpMethod.Get
-                url { path(ENDPOINT_CASHIERS) }
+                url.pathSegments = ENDPOINT_CASHIERS.split("/").filter { it.isNotEmpty() }
             }
             
             response.fold(

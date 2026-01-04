@@ -127,15 +127,14 @@ class ProductSyncService(
     private suspend fun fetchProductPage(offset: String): Result<List<Product>> {
         return try {
             // Use the new request method which adds x-api-key header dynamically
+            // NOTE: Use pathSegments to set the path on the base URL
             val response = apiClient.request<List<ProductApiDto>> {
                 method = HttpMethod.Get
-                url { 
-                    path(ENDPOINT_PRODUCTS) 
-                    if (offset.isNotEmpty()) {
-                        parameters.append("offset", offset)
-                    }
-                    parameters.append("limit", PAGE_SIZE.toString())
+                url.pathSegments = ENDPOINT_PRODUCTS.split("/").filter { it.isNotEmpty() }
+                if (offset.isNotEmpty()) {
+                    url.parameters.append("offset", offset)
                 }
+                url.parameters.append("limit", PAGE_SIZE.toString())
             }
             
             response.map { dtos ->
