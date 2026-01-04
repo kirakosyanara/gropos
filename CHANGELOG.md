@@ -6,6 +6,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-01-04
 
+### Lookup Table Implementation (2026-01-04)
+
+- **Created `LookupCategoryRepository` and `LookupCategorySyncService`**
+  - Per LOOKUP_TABLE.md: Proper lookup table data infrastructure
+  - New `PosLookupCategory` collection in "pos" scope (per DatabaseConfig)
+  - API endpoint: `/api/posLookUpCategory/GetAllForPOS` with pagination
+  - Couchbase implementations for Desktop and Android platforms
+
+- **Domain Models for Lookup Table**
+  - `LookupCategoryWithItems`: Category with embedded product items
+  - `LookupProduct`: Product button in lookup grid with image URL
+  - `LookupGroupDto` and `LookupGroupItemDto`: API response DTOs
+
+- **Updated `InitialSyncService` to sync lookup categories**
+  - Added `LookupCategorySyncService` as dependency
+  - Syncs lookup categories during initial data load (after products)
+  - Reports progress via existing sync UI
+
+- **Updated `CheckoutViewModel` for lookup table**
+  - Added `LookupCategoryRepository` as optional dependency
+  - `onOpenLookup()` now uses lookup categories when available
+  - `onLookupCategorySelect()` uses cached category items
+  - Fallback to `ProductRepository` for backward compatibility
+
+- **Koin DI Updates**
+  - Registered `CouchbaseLookupCategoryRepository` in DatabaseModule (desktop/android)
+  - Registered `LookupCategorySyncService` in DeviceModule
+  - Updated `CheckoutViewModel` factory with optional `LookupCategoryRepository`
+
 ### Product Upsert Fix (2026-01-04)
 
 - **Fixed `LiteCoreException: conflict` errors** - Product sync now uses upsert

@@ -80,5 +80,8 @@ object DatabaseConfig {
     
     // Per QA Audit P0: Offline queue for crash-safe transaction storage
     const val COLLECTION_OFFLINE_QUEUE = "OfflineQueue"
+    
+    // Per LOOKUP_TABLE.md: Quick lookup buttons collection
+    const val COLLECTION_POS_LOOKUP_CATEGORY = "PosLookupCategory"
 }
 

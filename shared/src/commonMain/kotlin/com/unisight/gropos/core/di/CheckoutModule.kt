@@ -149,8 +149,9 @@ val checkoutModule: Module = module {
      * - CashierSessionManager: For logout/session management
      * - TransactionRepository: For hold/recall operations
      * - VendorRepository: For vendor payout operations
+     * - LookupCategoryRepository: For lookup table categories (optional)
      */
-    factory { CheckoutViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    factory { CheckoutViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), getOrNull()) }
     
     /**
      * Customer Display ViewModel/ScreenModel.

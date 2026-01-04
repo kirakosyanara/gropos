@@ -17,7 +17,10 @@ import com.unisight.gropos.features.cashier.domain.repository.VendorRepository
 import com.unisight.gropos.features.checkout.domain.model.Cart
 import com.unisight.gropos.features.checkout.domain.model.CartItem
 import com.unisight.gropos.features.checkout.domain.model.Product
+import com.unisight.gropos.features.checkout.domain.model.LookupCategoryWithItems
 import com.unisight.gropos.features.checkout.domain.repository.CartRepository
+import com.unisight.gropos.features.checkout.domain.repository.LookupCategory
+import com.unisight.gropos.features.checkout.domain.repository.LookupCategoryRepository
 import com.unisight.gropos.features.checkout.domain.repository.ProductRepository
 import com.unisight.gropos.features.checkout.domain.repository.ScannerRepository
 import com.unisight.gropos.features.checkout.domain.usecase.ScanItemUseCase
@@ -70,12 +73,16 @@ class CheckoutViewModel(
     private val cashierSessionManager: CashierSessionManager,
     private val transactionRepository: TransactionRepository,
     private val vendorRepository: VendorRepository,
+    private val lookupCategoryRepository: LookupCategoryRepository? = null,
     // Inject scope for testability (per testing-strategy.mdc)
     private val scope: CoroutineScope? = null
 ) : ScreenModel {
     
     // Cached current user for permission checks
     private var currentUser: AuthUser? = null
+    
+    // Cached lookup categories with items for category selection
+    private var cachedLookupCategories: List<LookupCategoryWithItems> = emptyList()
     
     private val _state = MutableStateFlow(CheckoutUiState.initial())
     
@@ -1125,7 +1132,8 @@ class CheckoutViewModel(
     /**
      * Opens the Product Lookup Dialog.
      * 
-     * Loads categories and initial product list.
+     * Per LOOKUP_TABLE.md: Uses LookupCategoryRepository for proper lookup categories.
+     * Falls back to ProductRepository if LookupCategoryRepository is not available.
      */
     fun onOpenLookup() {
         effectiveScope.launch {
@@ -1139,16 +1147,44 @@ class CheckoutViewModel(
             )
             
             try {
-                val categories = productRepository.getCategories()
-                val products = productRepository.searchProducts("")
-                
-                _state.value = _state.value.copy(
-                    lookupState = _state.value.lookupState.copy(
-                        categories = categories,
-                        products = products.map { mapProductToLookupUiModel(it) },
-                        isLoading = false
+                // Use LookupCategoryRepository if available (per LOOKUP_TABLE.md)
+                if (lookupCategoryRepository != null) {
+                    cachedLookupCategories = lookupCategoryRepository.getAllCategories()
+                    
+                    // Map to simple LookupCategory for UI
+                    val categories = cachedLookupCategories.map { category ->
+                        LookupCategory(
+                            id = category.id,
+                            name = category.name,
+                            displayOrder = category.order
+                        )
+                    }
+                    
+                    // Get all products from all lookup categories
+                    val allProducts = cachedLookupCategories.flatMap { it.items }
+                        .distinctBy { it.productId }
+                        .map { mapLookupProductToUiModel(it) }
+                    
+                    _state.value = _state.value.copy(
+                        lookupState = _state.value.lookupState.copy(
+                            categories = categories,
+                            products = allProducts,
+                            isLoading = false
+                        )
                     )
-                )
+                } else {
+                    // Fallback to ProductRepository for backward compatibility
+                    val categories = productRepository.getCategories()
+                    val products = productRepository.searchProducts("")
+                    
+                    _state.value = _state.value.copy(
+                        lookupState = _state.value.lookupState.copy(
+                            categories = categories,
+                            products = products.map { mapProductToLookupUiModel(it) },
+                            isLoading = false
+                        )
+                    )
+                }
             } catch (e: Exception) {
                 _state.value = _state.value.copy(
                     lookupState = _state.value.lookupState.copy(
@@ -1158,6 +1194,22 @@ class CheckoutViewModel(
                 )
             }
         }
+    }
+    
+    /**
+     * Maps a LookupProduct to ProductLookupUiModel.
+     * 
+     * Per LOOKUP_TABLE.md: Uses data from the lookup category items.
+     */
+    private fun mapLookupProductToUiModel(lookupProduct: com.unisight.gropos.features.checkout.domain.model.LookupProduct): ProductLookupUiModel {
+        return ProductLookupUiModel(
+            branchProductId = lookupProduct.productId,
+            name = lookupProduct.name,
+            price = "", // Price is not in lookup item, will be fetched on selection
+            imageUrl = lookupProduct.imageUrl,
+            isSnapEligible = false, // Not in lookup item
+            barcode = lookupProduct.itemNumber
+        )
     }
     
     /**
@@ -1210,6 +1262,8 @@ class CheckoutViewModel(
     /**
      * Handles category selection in the lookup dialog.
      * 
+     * Per LOOKUP_TABLE.md: Uses cached lookup categories for items.
+     * 
      * @param categoryId The selected category ID (null for "All Products")
      */
     fun onLookupCategorySelect(categoryId: Int?) {
@@ -1223,18 +1277,44 @@ class CheckoutViewModel(
         
         effectiveScope.launch {
             try {
-                val products = if (categoryId != null) {
-                    productRepository.getByCategory(categoryId)
-                } else {
-                    productRepository.searchProducts("")
-                }
-                
-                _state.value = _state.value.copy(
-                    lookupState = _state.value.lookupState.copy(
-                        products = products.map { mapProductToLookupUiModel(it) },
-                        isLoading = false
+                // Use cached lookup categories if available (per LOOKUP_TABLE.md)
+                if (lookupCategoryRepository != null && cachedLookupCategories.isNotEmpty()) {
+                    val products = if (categoryId != null) {
+                        // Get products from the selected category
+                        cachedLookupCategories
+                            .find { it.id == categoryId }
+                            ?.items
+                            ?.map { mapLookupProductToUiModel(it) }
+                            ?: emptyList()
+                    } else {
+                        // All products from all categories
+                        cachedLookupCategories
+                            .flatMap { it.items }
+                            .distinctBy { it.productId }
+                            .map { mapLookupProductToUiModel(it) }
+                    }
+                    
+                    _state.value = _state.value.copy(
+                        lookupState = _state.value.lookupState.copy(
+                            products = products,
+                            isLoading = false
+                        )
                     )
-                )
+                } else {
+                    // Fallback to ProductRepository
+                    val products = if (categoryId != null) {
+                        productRepository.getByCategory(categoryId)
+                    } else {
+                        productRepository.searchProducts("")
+                    }
+                    
+                    _state.value = _state.value.copy(
+                        lookupState = _state.value.lookupState.copy(
+                            products = products.map { mapProductToLookupUiModel(it) },
+                            isLoading = false
+                        )
+                    )
+                }
             } catch (e: Exception) {
                 _state.value = _state.value.copy(
                     lookupState = _state.value.lookupState.copy(

@@ -11,7 +11,9 @@ import com.unisight.gropos.core.sync.QueuedItem
 import com.unisight.gropos.core.sync.ProcessResult
 import com.unisight.gropos.features.cashier.data.CouchbaseVendorPayoutRepository
 import com.unisight.gropos.features.cashier.domain.repository.VendorPayoutRepository
+import com.unisight.gropos.features.checkout.data.CouchbaseLookupCategoryRepository
 import com.unisight.gropos.features.checkout.data.CouchbaseProductRepository
+import com.unisight.gropos.features.checkout.domain.repository.LookupCategoryRepository
 import com.unisight.gropos.features.checkout.domain.repository.ProductRepository
 import com.unisight.gropos.features.pricing.data.CouchbaseConditionalSaleRepository
 import com.unisight.gropos.features.pricing.data.CouchbaseCrvRepository
@@ -63,6 +65,21 @@ val databaseModule: Module = module {
      * the ProductRepository interface without modification.
      */
     single<ProductRepository> { get<CouchbaseProductRepository>() }
+    
+    /**
+     * Couchbase lookup category repository.
+     * 
+     * Per LOOKUP_TABLE.md: PosLookupCategory collection in "pos" scope.
+     * Used for quick lookup buttons in the Product Lookup dialog.
+     * 
+     * SINGLETON scope ensures consistent collection reference.
+     */
+    single { CouchbaseLookupCategoryRepository(get()) }
+    
+    /**
+     * Bind CouchbaseLookupCategoryRepository to LookupCategoryRepository interface.
+     */
+    single<LookupCategoryRepository> { get<CouchbaseLookupCategoryRepository>() }
     
     /**
      * Couchbase transaction repository.

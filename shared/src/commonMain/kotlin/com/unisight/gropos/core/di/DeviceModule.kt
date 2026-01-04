@@ -1,6 +1,7 @@
 package com.unisight.gropos.core.di
 
 import com.unisight.gropos.core.sync.InitialSyncService
+import com.unisight.gropos.core.sync.LookupCategorySyncService
 import com.unisight.gropos.core.sync.ProductSyncService
 import com.unisight.gropos.features.device.data.DeviceApi
 import com.unisight.gropos.features.device.data.RemoteDeviceApi
@@ -43,6 +44,10 @@ val deviceModule = module {
     // Per SYNC_MECHANISM.md: GET /product?offset=&limit=100
     single { ProductSyncService(get(), get()) }
     
+    // Lookup Category Sync Service - handles paginated lookup category sync
+    // Per LOOKUP_TABLE.md: GET /api/posLookUpCategory/GetAllForPOS
+    single { LookupCategorySyncService(get(), get()) }
+    
     // Initial Sync Service - orchestrates all data sync
     // Per COUCHBASE_SYNCHRONIZATION_DETAILED.md: Uses DataLoader for 12-entity sync
     // Per SYNC_MECHANISM.md: Pull-based sync of employees, products, etc.
@@ -50,6 +55,7 @@ val deviceModule = module {
         InitialSyncService(
             employeeRepository = get(),
             productSyncService = get(),
+            lookupCategorySyncService = get(),
             apiClient = get(),
             productRepository = getOrNull(),
             taxRepository = getOrNull(),

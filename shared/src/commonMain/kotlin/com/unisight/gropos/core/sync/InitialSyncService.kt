@@ -40,6 +40,7 @@ import kotlinx.coroutines.launch
 class InitialSyncService(
     private val employeeRepository: EmployeeRepository,
     private val productSyncService: ProductSyncService? = null,
+    private val lookupCategorySyncService: LookupCategorySyncService? = null,
     private val apiClient: ApiClient? = null,
     private val productRepository: ProductRepository? = null,
     private val taxRepository: TaxRepository? = null,
@@ -139,6 +140,23 @@ class InitialSyncService(
                 }
             }
             
+            // Sync lookup categories (Step 7 per LOOKUP_TABLE.md)
+            // This runs after DataLoader or product sync
+            if (lookupCategorySyncService != null) {
+                _progress.value = _progress.value.copy(
+                    currentStep = _progress.value.currentStep + 1,
+                    currentEntity = "Lookup Categories"
+                )
+                
+                println("[InitialSyncService] Syncing lookup categories...")
+                val lookupResult = syncLookupCategories()
+                if (lookupResult.isFailure) {
+                    println("[InitialSyncService] Lookup category sync failed, continuing: ${lookupResult.exceptionOrNull()?.message}")
+                } else {
+                    println("[InitialSyncService] Lookup categories synced successfully")
+                }
+            }
+            
             _syncState.value = SyncState.COMPLETED
             _progress.value = _progress.value.copy(
                 currentStep = totalSteps,
@@ -203,6 +221,34 @@ class InitialSyncService(
                 },
                 onFailure = { error ->
                     println("[InitialSyncService] Failed to sync products: ${error.message}")
+                    Result.failure(error)
+                }
+            )
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+    /**
+     * Sync lookup categories from backend.
+     * 
+     * Per LOOKUP_TABLE.md: Uses LookupCategorySyncService which calls
+     * GET /api/posLookUpCategory/GetAllForPOS with pagination.
+     */
+    private suspend fun syncLookupCategories(): Result<Unit> {
+        return try {
+            if (lookupCategorySyncService == null) {
+                return Result.success(Unit)
+            }
+            
+            val result = lookupCategorySyncService.syncAllCategories()
+            result.fold(
+                onSuccess = { count ->
+                    println("[InitialSyncService] Synced $count lookup categories")
+                    Result.success(Unit)
+                },
+                onFailure = { error ->
+                    println("[InitialSyncService] Failed to sync lookup categories: ${error.message}")
                     Result.failure(error)
                 }
             )
