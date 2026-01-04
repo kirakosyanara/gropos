@@ -1348,9 +1348,18 @@ class CheckoutViewModel(
     fun onProductSelected(productUiModel: ProductLookupUiModel) {
         effectiveScope.launch {
             try {
-                // Get the full product by ID
-                val product = productRepository.getById(productUiModel.branchProductId)
+                // First try by branchProductId (which comes from lookup item's productId)
+                var product = productRepository.getById(productUiModel.branchProductId)
+                
+                // If not found by ID, try by barcode (itemNumber) - more reliable
+                if (product == null && !productUiModel.barcode.isNullOrEmpty()) {
+                    println("[CheckoutViewModel] Product not found by ID ${productUiModel.branchProductId}, trying barcode: ${productUiModel.barcode}")
+                    product = productRepository.getByBarcode(productUiModel.barcode)
+                }
+                
                 if (product != null) {
+                    println("[CheckoutViewModel] Found product: ${product.productName} (branchProductId=${product.branchProductId})")
+                    
                     // Close lookup dialog first
                     onCloseLookup()
                     
@@ -1367,6 +1376,12 @@ class CheckoutViewModel(
                     _state.value = _state.value.copy(
                         lastScanEvent = ScanEvent.ProductAdded(product.productName)
                     )
+                } else {
+                    println("[CheckoutViewModel] Product not found: ID=${productUiModel.branchProductId}, barcode=${productUiModel.barcode}")
+                    _state.value = _state.value.copy(
+                        lastScanEvent = ScanEvent.Error("Product not found: ${productUiModel.name}")
+                    )
+                    onCloseLookup()
                 }
             } catch (e: Exception) {
                 _state.value = _state.value.copy(
