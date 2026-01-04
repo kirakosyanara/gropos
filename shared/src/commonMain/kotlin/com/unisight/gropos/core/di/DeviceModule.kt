@@ -44,8 +44,22 @@ val deviceModule = module {
     single { ProductSyncService(get(), get()) }
     
     // Initial Sync Service - orchestrates all data sync
+    // Per COUCHBASE_SYNCHRONIZATION_DETAILED.md: Uses DataLoader for 12-entity sync
     // Per SYNC_MECHANISM.md: Pull-based sync of employees, products, etc.
-    single { InitialSyncService(get(), get()) }
+    single { 
+        InitialSyncService(
+            employeeRepository = get(),
+            productSyncService = get(),
+            apiClient = get(),
+            productRepository = getOrNull(),
+            taxRepository = getOrNull(),
+            crvRepository = getOrNull(),
+            customerGroupRepository = getOrNull(),
+            conditionalSaleRepository = getOrNull(),
+            branchRepository = getOrNull(),
+            branchSettingsRepository = getOrNull()
+        )
+    }
     
     // ViewModel - factory for fresh state per screen
     // Now includes InitialSyncService for post-registration sync

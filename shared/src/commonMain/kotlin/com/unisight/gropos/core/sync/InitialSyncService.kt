@@ -1,6 +1,14 @@
 package com.unisight.gropos.core.sync
 
+import com.unisight.gropos.core.network.ApiClient
 import com.unisight.gropos.features.cashier.domain.repository.EmployeeRepository
+import com.unisight.gropos.features.checkout.domain.repository.ProductRepository
+import com.unisight.gropos.features.pricing.domain.repository.ConditionalSaleRepository
+import com.unisight.gropos.features.pricing.domain.repository.CrvRepository
+import com.unisight.gropos.features.pricing.domain.repository.CustomerGroupRepository
+import com.unisight.gropos.features.pricing.domain.repository.TaxRepository
+import com.unisight.gropos.features.settings.domain.repository.BranchRepository
+import com.unisight.gropos.features.settings.domain.repository.BranchSettingsRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -12,25 +20,34 @@ import kotlinx.coroutines.launch
 /**
  * Service that handles initial data synchronization after device registration.
  * 
- * Per DEVICE_REGISTRATION.md Section "STEP 7: Initial Data Load":
+ * **Per COUCHBASE_SYNCHRONIZATION_DETAILED.md Section 5:**
+ * - Uses DataLoader object to orchestrate full sync
+ * - Loads 12 entity types with pagination
+ * - Reports progress via LoadingState
+ * 
+ * **Per DEVICE_REGISTRATION.md Section "STEP 7: Initial Data Load":**
  * - Show "Initializing Database Please Wait..." dialog
  * - Load all data from backend (products, taxes, categories, etc.)
  * - Start HeartbeatWorker and SyncFailedTransactionWorker
  * - Fetch employee list for login
  * 
- * Per SYNC_MECHANISM.md:
- * - Uses pull-based synchronization model
- * - Initial load fetches all data with pagination
- * - Heartbeat service handles ongoing updates
- * 
- * Implementation Status:
+ * **Implementation Status:**
  * - ✅ Employee sync (via RemoteEmployeeRepository)
- * - ✅ Product sync (via ProductSyncService)
- * - ⚠️ Category/Tax sync (pending backend integration)
+ * - ✅ Product sync (via ProductSyncService/DataLoader)
+ * - ✅ DataLoader framework created for 12-entity sync
+ * - ⚠️ Category/Tax/CRV sync (API integration pending)
  */
 class InitialSyncService(
     private val employeeRepository: EmployeeRepository,
-    private val productSyncService: ProductSyncService? = null
+    private val productSyncService: ProductSyncService? = null,
+    private val apiClient: ApiClient? = null,
+    private val productRepository: ProductRepository? = null,
+    private val taxRepository: TaxRepository? = null,
+    private val crvRepository: CrvRepository? = null,
+    private val customerGroupRepository: CustomerGroupRepository? = null,
+    private val conditionalSaleRepository: ConditionalSaleRepository? = null,
+    private val branchRepository: BranchRepository? = null,
+    private val branchSettingsRepository: BranchSettingsRepository? = null
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     
@@ -43,6 +60,9 @@ class InitialSyncService(
     /**
      * Perform initial sync after device registration.
      * 
+     * **Per COUCHBASE_SYNCHRONIZATION_DETAILED.md Section 5.2:**
+     * Uses DataLoader.loadData() to orchestrate full sync of all 12 entity types.
+     * 
      * This should be called after successful device registration
      * to populate the local database with production data.
      * 
@@ -51,7 +71,8 @@ class InitialSyncService(
     suspend fun performInitialSync(): Result<Unit> {
         _syncState.value = SyncState.SYNCING
         
-        val totalSteps = if (productSyncService != null) 2 else 1
+        // Per documentation: 12 entity types + 1 for employees = 13 steps
+        val totalSteps = 13
         
         _progress.value = SyncProgress(
             totalSteps = totalSteps,
@@ -60,7 +81,7 @@ class InitialSyncService(
         )
         
         return try {
-            // Step 1: Sync employees
+            // Step 1: Sync employees first (required for login)
             println("[InitialSyncService] Starting employee sync...")
             val employeeResult = syncEmployees()
             if (employeeResult.isFailure) {
@@ -68,24 +89,55 @@ class InitialSyncService(
                 return employeeResult
             }
             
-            // Step 2: Sync products (if ProductSyncService is available)
-            if (productSyncService != null) {
+            _progress.value = _progress.value.copy(
+                currentStep = 1,
+                currentEntity = "Employees"
+            )
+            
+            // Steps 2-13: Use DataLoader for remaining 12 entity types
+            // Per COUCHBASE_SYNCHRONIZATION_DETAILED.md Section 5.2
+            if (apiClient != null && productRepository != null) {
+                println("[InitialSyncService] Starting DataLoader for full sync...")
+                
+                DataLoader.loadData(
+                    apiClient = apiClient,
+                    productRepository = productRepository,
+                    taxRepository = taxRepository,
+                    crvRepository = crvRepository,
+                    customerGroupRepository = customerGroupRepository,
+                    conditionalSaleRepository = conditionalSaleRepository,
+                    branchRepository = branchRepository,
+                    branchSettingsRepository = branchSettingsRepository,
+                    onProgress = { progress, message ->
+                        // Map DataLoader progress (0-1) to our step count (2-13)
+                        val step = 1 + (progress * 12).toInt()
+                        _progress.value = SyncProgress(
+                            totalSteps = totalSteps,
+                            currentStep = step,
+                            currentEntity = message.removePrefix("Loading ").removeSuffix("...")
+                        )
+                    },
+                    onComplete = { success ->
+                        if (success) {
+                            println("[InitialSyncService] DataLoader completed successfully")
+                        } else {
+                            println("[InitialSyncService] DataLoader had failures (non-fatal)")
+                        }
+                    }
+                )
+            } else if (productSyncService != null) {
+                // Fallback: Legacy product-only sync
+                println("[InitialSyncService] Using legacy product sync (DataLoader not available)")
                 _progress.value = _progress.value.copy(
-                    currentStep = 1,
+                    currentStep = 2,
                     currentEntity = "Products"
                 )
                 
-                println("[InitialSyncService] Starting product sync...")
                 val productResult = syncProducts()
                 if (productResult.isFailure) {
-                    // Product sync failure is non-fatal - we can continue with cached data
                     println("[InitialSyncService] Product sync failed, continuing: ${productResult.exceptionOrNull()?.message}")
                 }
             }
-            
-            // TODO: Step 3: Sync categories
-            // TODO: Step 4: Sync taxes
-            // TODO: Step 5: Start heartbeat service
             
             _syncState.value = SyncState.COMPLETED
             _progress.value = _progress.value.copy(

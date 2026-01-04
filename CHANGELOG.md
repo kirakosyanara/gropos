@@ -6,6 +6,72 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-01-04
 
+### Data Sync Infrastructure Implementation (2026-01-04)
+
+- **Created `DefaultSyncEngine`** - Production implementation of SyncEngine interface
+  - Pings server via heartbeat endpoint for connectivity check
+  - Downloads updated products via `ProductSyncService`
+  - Tracks last download time for incremental sync
+
+- **Created `SyncModule`** - Koin DI module for sync services
+  - Registers `SyncEngine` (DefaultSyncEngine)
+  - Registers `HeartbeatService` (DefaultHeartbeatService)
+  - Configures heartbeat interval (30s) and sync interval (5min)
+
+- **Integrated HeartbeatService into Login Flow**
+  - HeartbeatService.start() called after successful login
+  - Background sync begins immediately when user logs in
+  - Uploads pending transactions and downloads updated data
+
+- **Root Cause Identified**
+  - `SyncEngine` interface existed but had no production implementation
+  - `HeartbeatService` was never registered in Koin DI
+  - `QueueItemSyncHandler` was a placeholder that didn't actually sync
+
+- **Fixed ProductSyncService API Endpoint**
+  - Changed from `/product` to `/api/Product/GetAll` per pos.json spec
+  - Fixed pagination parameters: `minid` and `count` instead of `offset` and `limit`
+
+### Fixed: Product Sync 500 Error (2026-01-04)
+
+- **Root Cause Identified via Enhanced Error Logging**
+  - Added proper HTTP response inspection with `bodyAsText()` for debugging
+  - Added `ApiErrorResponse` wrapper for parsing server error messages
+  - Server returned 500 with SQL error: "The offset specified in a OFFSET clause may not be negative"
+
+- **Fixed Pagination: `minid` is 1-based, not 0-based**
+  - Per pos.json description: "PageNumber: first page is 1" (despite `default: 0` in spec)
+  - Changed `pageNumber` to start at 1 instead of 0
+  - Backend calculates `OFFSET = (pageNum - 1) * count`, so `minid=0` caused negative offset
+
+- **Increased Timeout for Bulk Product Sync**
+  - Per reliability-stability.mdc: Bulk operations may need longer timeouts
+  - Increased product sync request timeout from 30s to 120s
+  - Product catalog can be large and slow to retrieve
+
+### Data Sync Architecture: Per COUCHBASE_SYNCHRONIZATION_DETAILED.md (2026-01-04)
+
+- **Created `DataLoader` object** - Per Section 5.2
+  - Orchestrates full sync of all 12 entity types
+  - Reports progress via callbacks
+  - Framework in place for: Branch, Category, CRV, CustomerGroup, CustomerGroupDepartment,
+    CustomerGroupItem, PosLookupCategory, Product, ProductImage, ProductTaxes, Tax, ConditionalSale
+
+- **Updated `InitialSyncService`** - Per Section 5.4
+  - Now uses `DataLoader.loadData()` for comprehensive sync
+  - Added repository dependencies for all entity types
+  - Fallback to legacy product-only sync when DataLoader not available
+
+- **Updated `DeviceModule` DI**
+  - Wires up all repositories to InitialSyncService
+  - Uses `getOrNull()` for graceful degradation when repos unavailable
+
+- **Fixed Product API Response Parsing** ✅ VERIFIED WORKING
+  - API returns wrapper object `{"success":[...]}`, not direct array
+  - Created `ProductListResponse` wrapper (matches `EmployeeListResponse` pattern)
+  - Now correctly parses products from `success` field
+  - Successfully syncing 100+ products per page with pagination
+
 ### Security Audit: Hardcoded Values Remediation (2026-01-03)
 
 - **Created `docs/HARDCODED_VALUES_AUDIT.md`**

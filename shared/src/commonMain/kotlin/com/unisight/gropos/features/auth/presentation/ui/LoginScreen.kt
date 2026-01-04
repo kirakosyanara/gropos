@@ -9,6 +9,7 @@ import cafe.adriel.voyager.koin.koinScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.unisight.gropos.core.session.InactivityManager
+import com.unisight.gropos.core.sync.HeartbeatService
 import com.unisight.gropos.features.auth.presentation.LoginStage
 import com.unisight.gropos.features.auth.presentation.LoginViewModel
 import com.unisight.gropos.features.checkout.presentation.ui.CheckoutScreen
@@ -34,12 +35,20 @@ class LoginScreen : Screen {
         val viewModel = koinScreenModel<LoginViewModel>()
         val state by viewModel.state.collectAsState()
         
+        // Inject HeartbeatService for background sync
+        val heartbeatService: HeartbeatService = koinInject()
+        
         // Navigate to CheckoutScreen on successful login
         LaunchedEffect(state.stage) {
             if (state.stage == LoginStage.SUCCESS) {
                 // Start inactivity monitoring
                 // Per CASHIER_OPERATIONS.md: Timer starts after successful login
                 InactivityManager.start()
+                
+                // Start HeartbeatService for background data sync
+                // Per SYNC_MECHANISM.md: Background sync starts after login
+                heartbeatService.start()
+                println("[LoginScreen] HeartbeatService started")
                 
                 // Replace entire navigation stack to prevent back navigation to login
                 navigator.replaceAll(CheckoutScreen())

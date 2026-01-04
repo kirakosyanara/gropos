@@ -22,6 +22,7 @@ val appModule = module {
     includes(settingsModule)
     includes(deviceModule)
     includes(lotteryModule)  // Phase 5: Lottery Module
+    includes(syncModule)     // Data sync: HeartbeatService, SyncEngine
 }
 
 /**
