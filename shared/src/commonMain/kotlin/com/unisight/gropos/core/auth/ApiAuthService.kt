@@ -79,6 +79,44 @@ interface ApiAuthService {
     suspend fun logout(): Result<Unit>
     
     /**
+     * Logs out with end-of-shift flag.
+     * 
+     * Per LOCK_SCREEN_AND_CASHIER_LOGIN.md:
+     * - Triggers till count prompt
+     * - Opens cash drawer for counting
+     * 
+     * @return Result.success if logout succeeded
+     */
+    suspend fun logoutWithEndOfShift(): Result<Unit>
+    
+    /**
+     * Verifies employee PIN on lock screen.
+     * 
+     * Per LOCK_SCREEN_AND_CASHIER_LOGIN.md:
+     * - POST /api/Employee/VerifyPassword
+     * - Used to unlock a locked station
+     * - Does NOT refresh tokens (session remains active)
+     * 
+     * @param request The verification request with username and PIN
+     * @return Result containing true if PIN is valid
+     */
+    suspend fun verifyPassword(request: VerifyPasswordRequest): Result<Boolean>
+    
+    /**
+     * Reports lock/unlock event to backend.
+     * 
+     * Per LOCK_SCREEN_AND_CASHIER_LOGIN.md:
+     * - POST /api/Employee/LockDevice
+     * - Locked(4): Manual lock
+     * - Unlocked(5): Successful PIN verification
+     * - AutoLocked(6): Inactivity timeout
+     * 
+     * @param request The lock request with event type
+     * @return Result containing the event response
+     */
+    suspend fun lockDevice(request: DeviceLockRequest): Result<DeviceEventResponse>
+    
+    /**
      * Sets the bearer token directly (for Manager override scenarios).
      * 
      * Per REMEDIATION_CHECKLIST: `Manager.setBearerToken()`.
@@ -388,7 +426,7 @@ class DefaultApiAuthService(
     
     override suspend fun logout(): Result<Unit> {
         return try {
-            // Per API_INTEGRATION.md: POST /employee/logout
+            // Per LOCK_SCREEN_AND_CASHIER_LOGIN.md: POST /api/Employee/Logout
             // Fire and forget - we clear local state regardless of API response
             apiClient.authenticatedRequest<Unit> {
                 post(ENDPOINT_LOGOUT)
@@ -409,9 +447,76 @@ class DefaultApiAuthService(
     }
     
     /**
+     * Logs out with end-of-shift flag.
+     * 
+     * Per LOCK_SCREEN_AND_CASHIER_LOGIN.md:
+     * - POST /api/Employee/LogoutWithEndOfShift
+     * - Triggers till count prompt
+     */
+    override suspend fun logoutWithEndOfShift(): Result<Unit> {
+        return try {
+            apiClient.authenticatedRequest<Unit> {
+                post(ENDPOINT_LOGOUT_END_OF_SHIFT)
+            }
+            
+            tokenStorage.clearTokens()
+            _authState.value = AuthState.Unauthenticated
+            
+            println("ApiAuthService: End of shift logout successful")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            // Still clear local state even if API call fails
+            tokenStorage.clearTokens()
+            _authState.value = AuthState.Unauthenticated
+            println("ApiAuthService: End of shift logout completed (API call failed: ${e.message})")
+            Result.success(Unit)
+        }
+    }
+    
+    /**
+     * Verifies employee PIN on lock screen.
+     * 
+     * Per LOCK_SCREEN_AND_CASHIER_LOGIN.md:
+     * - POST /api/Employee/VerifyPassword
+     * - Used to unlock locked station without refreshing tokens
+     */
+    override suspend fun verifyPassword(request: VerifyPasswordRequest): Result<Boolean> {
+        return try {
+            apiClient.authenticatedRequest<Boolean> {
+                post(ENDPOINT_VERIFY_PASSWORD) {
+                    setBody(request)
+                }
+            }
+        } catch (e: Exception) {
+            println("ApiAuthService: PIN verification failed: ${e.message}")
+            Result.failure(AuthException("PIN verification failed: ${e.message}"))
+        }
+    }
+    
+    /**
+     * Reports lock/unlock event to backend.
+     * 
+     * Per LOCK_SCREEN_AND_CASHIER_LOGIN.md:
+     * - POST /api/Employee/LockDevice
+     */
+    override suspend fun lockDevice(request: DeviceLockRequest): Result<DeviceEventResponse> {
+        return try {
+            apiClient.authenticatedRequest<DeviceEventResponse> {
+                post(ENDPOINT_LOCK_DEVICE) {
+                    setBody(request)
+                }
+            }
+        } catch (e: Exception) {
+            println("ApiAuthService: Lock device failed: ${e.message}")
+            // Return a success response anyway - lock events are non-critical
+            Result.success(DeviceEventResponse(success = false, message = e.message))
+        }
+    }
+    
+    /**
      * Fetches the user profile from the API.
      * 
-     * Per API_INTEGRATION.md: GET /employee/profile
+     * Per LOCK_SCREEN_AND_CASHIER_LOGIN.md: GET /api/Employee/GetProfile
      */
     private suspend fun fetchUserProfile(): Result<AuthUser> {
         return apiClient.authenticatedRequest<UserProfileDto> {

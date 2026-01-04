@@ -62,10 +62,10 @@ This document tracks the remediation of the **Lock Screen**, **Cashier Login**, 
 
 | # | Endpoint | Purpose | File to Modify | Status |
 |---|----------|---------|----------------|--------|
-| M1 | `GET /api/v1/devices/current` | Get device info with claimed employee | NEW: `DeviceApi.kt` | ⬜ TODO |
-| M2 | `POST /api/Employee/VerifyPassword` | Verify PIN on lock screen | `ApiAuthService.kt` | ⬜ TODO |
-| M3 | `POST /api/Employee/LockDevice` | Report lock/unlock events | `ApiAuthService.kt` | ⬜ TODO |
-| M4 | `POST /api/Employee/LogoutWithEndOfShift` | End-of-shift logout | `ApiAuthService.kt` | ⬜ TODO |
+| M1 | `GET /api/v1/devices/current` | Get device info with claimed employee | `DeviceApi.kt` | ✅ DONE |
+| M2 | `POST /api/Employee/VerifyPassword` | Verify PIN on lock screen | `ApiAuthService.kt` | ✅ DONE |
+| M3 | `POST /api/Employee/LockDevice` | Report lock/unlock events | `ApiAuthService.kt` | ✅ DONE |
+| M4 | `POST /api/Employee/LogoutWithEndOfShift` | End-of-shift logout | `ApiAuthService.kt` | ✅ DONE |
 
 ### 2. Business Logic Issues
 
@@ -124,11 +124,11 @@ This document tracks the remediation of the **Lock Screen**, **Cashier Login**, 
 - [ ] **3.4** Update login request to use `CashierLoginRequest` (deferred to Phase 5 - needs till context)
 
 ### Phase 4: Add Missing Endpoints (Commit: `feat(auth): add device current and lock device endpoints`)
-- [ ] **4.1** Create `DeviceApi` interface
-- [ ] **4.2** Implement `getCurrentDevice()` for `GET /api/v1/devices/current`
-- [ ] **4.3** Add `verifyPassword()` to `ApiAuthService` for `POST /api/Employee/VerifyPassword`
-- [ ] **4.4** Add `lockDevice()` to `ApiAuthService` for `POST /api/Employee/LockDevice`
-- [ ] **4.5** Add `logoutWithEndOfShift()` to `ApiAuthService`
+- [x] **4.1** Create `DeviceApi` interface ✅
+- [x] **4.2** Implement `getCurrentDevice()` for `GET /api/v1/devices/current` ✅
+- [x] **4.3** Add `verifyPassword()` to `ApiAuthService` for `POST /api/Employee/VerifyPassword` ✅
+- [x] **4.4** Add `lockDevice()` to `ApiAuthService` for `POST /api/Employee/LockDevice` ✅
+- [x] **4.5** Add `logoutWithEndOfShift()` to `ApiAuthService` ✅
 
 ### Phase 5: Station Claiming Logic (Commit: `feat(auth): implement station claiming on login`)
 - [ ] **5.1** Inject `DeviceApi` into `LoginViewModel`
@@ -830,6 +830,7 @@ data class LocationAccountDto(
 | 2026-01-03 | - | Document created | ✅ |
 | 2026-01-04 | `fix(auth): D1-D5 - add required DTOs` | Added DeviceEventType, CashierLoginRequest, VerifyPasswordRequest, CurrentDeviceInfoDto, LocationAccountDto | ✅ |
 | 2026-01-04 | `fix(auth): E1-E3 - correct API endpoints` | Fixed endpoints in RemoteEmployeeRepository, RemoteTillRepository, ApiAuthService | ✅ |
+| 2026-01-04 | `feat(auth): M1-M4 - add missing endpoints` | Created DeviceApi, added verifyPassword, lockDevice, logoutWithEndOfShift | ✅ |
 | | | | |
 
 ---
