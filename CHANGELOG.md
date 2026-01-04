@@ -6,6 +6,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-01-04
 
+### Security Audit: Hardcoded Values Remediation (2026-01-03)
+
+- **Created `docs/HARDCODED_VALUES_AUDIT.md`**
+  - Forensic sweep identified 37 instances of hardcoded "lazy dev" artifacts
+  - Categorized by severity: 🔴 HIGH (14), 🟡 MEDIUM (18), 🟢 LOW (5)
+
+- **HIGH Severity Findings**
+  - Hardcoded PIN `"1234"` in LockViewModel, FakeAuthRepository, FakeEmployeeRepository
+  - Hardcoded manager PINs in ManagerApprovalService (`9999 -> 1234`, `9998 -> 5678`)
+  - Hardcoded `stationId = 1`, `branchId = 1` in CheckoutViewModel, PullbackService
+  - Fake employee IDs `9999`, `9998` in multiple files
+
+- **MEDIUM Severity Findings**
+  - Fake repositories bound in production DI (AuthModule, CheckoutModule, LotteryModule)
+  - Simulated services in main source sets (SimulatedPaymentTerminal, SimulatedNfcScanner)
+  - Direct cast to `FakeDeviceRepository` in RegistrationViewModel
+
+- **Remediation Plan**
+  - Phase 1: Remove hardcoded PINs and employee IDs
+  - Phase 2: Replace Fake repositories with Remote implementations
+  - Phase 3: Move simulated services to test source sets
+
 ### Till Selection Logic Fixed (2026-01-04)
 
 - **Fixed: Cashiers can now select their own assigned till**
