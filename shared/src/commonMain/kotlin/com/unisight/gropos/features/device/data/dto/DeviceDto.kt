@@ -108,6 +108,50 @@ data class HeartbeatResponse(
 )
 
 /**
+ * Current device info response from /api/v1/devices/current.
+ * 
+ * Per LOCK_SCREEN_AND_CASHIER_LOGIN.md:
+ * - GET /api/v1/devices/current
+ * - Returns device info INCLUDING claimed employee and till assignment
+ * - Used for Station Claiming logic on login screen
+ * 
+ * When employeeId is not null, the station is "claimed" by that employee
+ * and the login screen should pre-select them.
+ */
+@Serializable
+data class CurrentDeviceInfoDto(
+    @SerialName("id")
+    val id: Int,
+    
+    @SerialName("branchId")
+    val branchId: Int,
+    
+    @SerialName("branch")
+    val branch: String? = null,
+    
+    @SerialName("name")
+    val name: String? = null,
+    
+    @SerialName("location")
+    val location: String? = null,
+    
+    @SerialName("employeeId")
+    val employeeId: Int? = null,  // ID of claimed employee (null if station is FREE)
+    
+    @SerialName("employee")
+    val employee: String? = null,  // Name of claimed employee
+    
+    @SerialName("locationAccountId")
+    val locationAccountId: Int? = null,  // Assigned till account ID
+    
+    @SerialName("locationAccount")
+    val locationAccount: String? = null,  // Till account name
+    
+    @SerialName("lastHeartbeat")
+    val lastHeartbeat: String? = null
+)
+
+/**
  * Mapper for converting between Device DTOs and Domain models.
  */
 object DeviceDomainMapper {

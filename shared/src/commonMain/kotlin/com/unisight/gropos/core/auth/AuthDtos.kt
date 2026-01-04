@@ -8,16 +8,40 @@ import kotlinx.serialization.Serializable
 /**
  * Auth request/response DTOs for API communication.
  * 
- * **Per API_INTEGRATION.md:**
- * - POST /employee/login - Employee authentication
- * - POST /employee/refresh - Token refresh
- * - POST /employee/unlock - PIN validation
- * - POST /employee/logout - End session
+ * **Per LOCK_SCREEN_AND_CASHIER_LOGIN.md:**
+ * - POST /api/Employee/Login - Cashier authentication with till assignment
+ * - POST /api/Employee/VerifyPassword - PIN verification on lock screen
+ * - POST /api/Employee/LockDevice - Report lock/unlock events
+ * - POST /api/Employee/Logout - End session
+ * - POST /api/Employee/LogoutWithEndOfShift - End-of-shift logout
  * 
  * **Per zero-trust-security.mdc:**
  * - PINs are only transmitted over HTTPS
  * - Tokens are stored securely after receipt
  */
+
+// ========================================================================
+// Enums
+// ========================================================================
+
+/**
+ * Device event types for lock/unlock tracking.
+ * 
+ * Per LOCK_SCREEN_AND_CASHIER_LOGIN.md:
+ * - Locked(4): Manual lock (keyboard shortcut or lock button)
+ * - Unlocked(5): Successful PIN verification
+ * - AutoLocked(6): Inactivity timeout
+ */
+@Serializable
+enum class DeviceEventType(val value: Int) {
+    @SerialName("0") SignedIn(0),
+    @SerialName("1") SignedOut(1),
+    @SerialName("2") ClockedIn(2),
+    @SerialName("3") ClockedOut(3),
+    @SerialName("4") Locked(4),
+    @SerialName("5") Unlocked(5),
+    @SerialName("6") AutoLocked(6)
+}
 
 // ========================================================================
 // Request DTOs
@@ -26,13 +50,48 @@ import kotlinx.serialization.Serializable
 /**
  * Login request with PIN and branch ID.
  * 
- * Per AUTHENTICATION.md: PIN-based authentication.
+ * Per AUTHENTICATION.md: PIN-based authentication (legacy).
  */
 @Serializable
 data class LoginRequest(
     val pin: String,
     @SerialName("branch")
     val branchId: Int
+)
+
+/**
+ * Cashier login request with till assignment.
+ * 
+ * Per LOCK_SCREEN_AND_CASHIER_LOGIN.md:
+ * - POST /api/Employee/Login
+ * - locationAccountId (till ID) is REQUIRED
+ */
+@Serializable
+data class CashierLoginRequest(
+    val userName: String,
+    val password: String,
+    val clientName: String = "device",
+    val authenticationKey: String? = null,
+    val locationAccountId: Int,  // Till ID (REQUIRED)
+    val branchId: Int,
+    val deviceId: Int
+)
+
+/**
+ * Verify password request for lock screen PIN verification.
+ * 
+ * Per LOCK_SCREEN_AND_CASHIER_LOGIN.md:
+ * - POST /api/Employee/VerifyPassword
+ * - Used to unlock a locked station
+ * - Does NOT refresh tokens (session remains active)
+ */
+@Serializable
+data class VerifyPasswordRequest(
+    val userName: String,
+    val password: String,
+    val clientName: String = "device",
+    val branchId: Int? = null,
+    val deviceId: Int? = null
 )
 
 /**
@@ -73,11 +132,13 @@ data class UnlockRequest(
 /**
  * Device lock request.
  * 
- * Per AUTHENTICATION.md: Report lock status to server.
+ * Per LOCK_SCREEN_AND_CASHIER_LOGIN.md:
+ * - POST /api/Employee/LockDevice
+ * - Reports lock/unlock events to backend
  */
 @Serializable
 data class DeviceLockRequest(
-    val lockType: String // "Locked", "AutoLocked", "Unlocked"
+    val lockType: DeviceEventType
 )
 
 // ========================================================================
@@ -102,6 +163,19 @@ data class TokenResponseDto(
     
     @SerialName("tokenType")
     val tokenType: String = "Bearer"
+)
+
+/**
+ * Response from lock device endpoint.
+ * 
+ * Per LOCK_SCREEN_AND_CASHIER_LOGIN.md:
+ * - Returned from POST /api/Employee/LockDevice
+ */
+@Serializable
+data class DeviceEventResponse(
+    val success: Boolean = true,
+    val eventId: Long? = null,
+    val message: String? = null
 )
 
 /**

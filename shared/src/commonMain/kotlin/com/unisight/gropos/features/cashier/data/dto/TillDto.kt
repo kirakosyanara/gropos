@@ -38,6 +38,43 @@ data class TillDto(
 )
 
 /**
+ * Location Account DTO for /api/account/GetTillAccountList endpoint.
+ * 
+ * Per LOCK_SCREEN_AND_CASHIER_LOGIN.md:
+ * - GET /api/account/GetTillAccountList
+ * - Returns list of available tills (location accounts)
+ */
+@Serializable
+data class LocationAccountDto(
+    @SerialName("locationAccountId")
+    val locationAccountId: Int,
+    
+    @SerialName("accountName")
+    val accountName: String? = null,
+    
+    @SerialName("assignedEmployeeId")
+    val assignedEmployeeId: Int? = null,
+    
+    @SerialName("employeeName")
+    val employeeName: String? = null,
+    
+    @SerialName("currentBalance")
+    val currentBalance: Double? = null
+)
+
+/**
+ * Grid response wrapper for till account list.
+ * 
+ * Per LOCK_SCREEN_AND_CASHIER_LOGIN.md:
+ * - Response format for GET /api/account/GetTillAccountList
+ */
+@Serializable
+data class GridDataOfLocationAccountListViewModel(
+    val rows: List<LocationAccountDto>? = null,
+    val totalCount: Int? = null
+)
+
+/**
  * Request body for assigning a till to an employee.
  * 
  * **API Endpoint:** POST /till/{tillId}/assign
@@ -102,6 +139,28 @@ object TillDomainMapper {
      */
     fun List<TillDto>.toDomainList(): List<Till> {
         return map { it.toDomain() }
+    }
+    
+    /**
+     * Converts a LocationAccountDto to the domain Till model.
+     * 
+     * Per LOCK_SCREEN_AND_CASHIER_LOGIN.md:
+     * Maps the /api/account/GetTillAccountList response.
+     */
+    fun LocationAccountDto.toDomain(): Till {
+        return Till(
+            id = locationAccountId,
+            name = accountName ?: "Till $locationAccountId",
+            assignedEmployeeId = assignedEmployeeId,
+            assignedEmployeeName = employeeName
+        )
+    }
+    
+    /**
+     * Converts GridDataOfLocationAccountListViewModel to domain models.
+     */
+    fun GridDataOfLocationAccountListViewModel.toDomainList(): List<Till> {
+        return rows?.map { it.toDomain() } ?: emptyList()
     }
 }
 

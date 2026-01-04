@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-01-03
 
+### Lock Screen & Till Flow Remediation (Planning)
+
+- **Created Remediation Tracking Document** ✅
+  - Created `docs/development-plan/LOCK_SCREEN_TILL_REMEDIATION.md`
+  - Gap analysis comparing current implementation vs `LOCK_SCREEN_AND_CASHIER_LOGIN.md`
+  - Identified 3 wrong API endpoints, 4 missing endpoints
+  - Identified critical issues: hardcoded PIN, missing station claiming, missing lock events
+  - Full implementation checklist with 10 phases
+  - Detailed fix specifications with code examples
+  - Testing requirements defined
+  - Progress log section for tracking commits
+
 ### Environment Configuration Fix (P0)
 
 - **Global Environment Consistency** ✅
