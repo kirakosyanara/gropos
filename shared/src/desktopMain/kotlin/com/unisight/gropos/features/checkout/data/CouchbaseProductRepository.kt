@@ -161,6 +161,31 @@ class CouchbaseProductRepository(
     }
     
     /**
+     * Finds a product by productId (master product ID).
+     * 
+     * Per LOOKUP_TABLE.md: Lookup items reference products by productId field,
+     * which may be different from branchProductId (document ID).
+     */
+    override suspend fun getByProductId(productId: Int): Product? = withContext(Dispatchers.IO) {
+        try {
+            val query = QueryBuilder
+                .select(SelectResult.all())
+                .from(DataSource.collection(collection))
+                .where(Expression.property("productId").equalTo(Expression.intValue(productId)))
+            
+            query.execute().use { resultSet ->
+                resultSet.allResults().firstOrNull()?.let { result ->
+                    val dict = result.getDictionary(collection.name)
+                    dict?.let { parseProductDocument(it.toMap()) }
+                }
+            }
+        } catch (e: Exception) {
+            println("CouchbaseProductRepository: Error getting product by productId $productId - ${e.message}")
+            null
+        }
+    }
+    
+    /**
      * Searches products by name.
      * 
      * Per COUCHBASE_LOCAL_STORAGE.md: 

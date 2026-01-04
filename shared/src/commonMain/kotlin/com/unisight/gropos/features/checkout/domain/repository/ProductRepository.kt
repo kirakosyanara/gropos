@@ -46,6 +46,17 @@ interface ProductRepository {
     suspend fun getById(branchProductId: Int): Product?
     
     /**
+     * Finds a product by its productId (master product ID).
+     * 
+     * Per LOOKUP_TABLE.md: Lookup items reference products by productId, 
+     * which may be different from branchProductId.
+     * 
+     * @param productId The master product ID
+     * @return Product if found, null otherwise
+     */
+    suspend fun getByProductId(productId: Int): Product?
+    
+    /**
      * Searches products by name (partial match).
      * 
      * Per DATABASE_SCHEMA.md: Uses full-text index on productName.

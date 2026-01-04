@@ -1348,17 +1348,27 @@ class CheckoutViewModel(
     fun onProductSelected(productUiModel: ProductLookupUiModel) {
         effectiveScope.launch {
             try {
-                // First try by branchProductId (which comes from lookup item's productId)
-                var product = productRepository.getById(productUiModel.branchProductId)
+                // The lookup item's productId is the MASTER product ID, not branchProductId
+                // Try multiple lookup strategies:
                 
-                // If not found by ID, try by barcode (itemNumber) - more reliable
+                // 1. Try by productId (master product ID) - this is what lookup items use
+                var product = productRepository.getByProductId(productUiModel.branchProductId)
+                println("[CheckoutViewModel] Lookup by productId=${productUiModel.branchProductId}: ${if (product != null) "found ${product.productName}" else "not found"}")
+                
+                // 2. If not found, try by barcode (itemNumber) - very reliable
                 if (product == null && !productUiModel.barcode.isNullOrEmpty()) {
-                    println("[CheckoutViewModel] Product not found by ID ${productUiModel.branchProductId}, trying barcode: ${productUiModel.barcode}")
+                    println("[CheckoutViewModel] Trying by barcode: ${productUiModel.barcode}")
                     product = productRepository.getByBarcode(productUiModel.barcode)
                 }
                 
+                // 3. Last resort: try by branchProductId (document ID)
+                if (product == null) {
+                    println("[CheckoutViewModel] Trying by branchProductId: ${productUiModel.branchProductId}")
+                    product = productRepository.getById(productUiModel.branchProductId)
+                }
+                
                 if (product != null) {
-                    println("[CheckoutViewModel] Found product: ${product.productName} (branchProductId=${product.branchProductId})")
+                    println("[CheckoutViewModel] Found product: ${product.productName} (branchProductId=${product.branchProductId}, productId=${product.productId})")
                     
                     // Close lookup dialog first
                     onCloseLookup()
