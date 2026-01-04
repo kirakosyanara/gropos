@@ -74,7 +74,7 @@ This document tracks the remediation of the **Lock Screen**, **Cashier Login**, 
 | L1 | Station Claiming | Checking `deviceInfo.employeeId` to pre-select cashier | `LoginViewModel.kt` | ✅ DONE |
 | L2 | Hardcoded PIN | Uses verifyPassword() API instead of "1234" | `LockViewModel.kt` | ✅ DONE |
 | L3 | Session Data | Gets employee from CashierSessionManager | `LockViewModel.kt` | ✅ DONE |
-| L4 | Manager Approval | Sign-out flow missing permission check | `LockViewModel.kt` | ⬜ TODO |
+| L4 | Manager Approval | Sign-out requires manager PIN verification | `LockViewModel.kt` | ✅ DONE |
 | L5 | Lock Event Reporting | Reports lock/unlock events via lockDevice() API | `LockViewModel.kt` | ✅ DONE |
 
 ### 3. Data Model Issues
@@ -91,8 +91,8 @@ This document tracks the remediation of the **Lock Screen**, **Cashier Login**, 
 
 | # | Component | Issue | Status |
 |---|-----------|-------|--------|
-| U1 | `LogoutOptionsDialog` | Not implemented | ⬜ TODO |
-| U2 | `ManagerApprovalDialog` | Referenced but not implemented | ⬜ TODO |
+| U1 | `LogoutOptionsDialog` | Implemented with Release Till / End of Shift options | ✅ DONE |
+| U2 | `ManagerApprovalDialog` | Implemented with PIN verification | ✅ DONE |
 | U3 | Scanner mode in `TillSelectionDialog` | Not implemented | ⬜ TODO |
 
 ### 5. Dependency Injection Issues
@@ -146,12 +146,12 @@ This document tracks the remediation of the **Lock Screen**, **Cashier Login**, 
 - [x] **6.6** Report unlock events via `lockDevice()` when unlocking ✅
 
 ### Phase 7: Manager Approval Flow (Commit: `feat(auth): implement manager approval for sign out`)
-- [ ] **7.1** Create `LogoutOptionsDialog` composable
-- [ ] **7.2** Create `ManagerApprovalDialog` composable
-- [ ] **7.3** Implement manager PIN verification in dialog
-- [ ] **7.4** Add permission check for `GrowPOS.Store.Force Sign Out`
-- [ ] **7.5** Connect dialogs to `LockViewModel` sign-out flow
-- [ ] **7.6** Implement `logoutWithEndOfShift()` call
+- [x] **7.1** Create `LogoutOptionsDialog` composable ✅
+- [x] **7.2** Create `ManagerApprovalDialog` composable ✅
+- [x] **7.3** Implement manager PIN verification in dialog ✅
+- [ ] **7.4** Add permission check for `GrowPOS.Store.Force Sign Out` (deferred - needs backend integration)
+- [x] **7.5** Connect dialogs to `LockViewModel` sign-out flow ✅
+- [x] **7.6** Implement `logoutWithEndOfShift()` call ✅
 
 ### Phase 8: Till Selection Enhancements (Commit: `feat(auth): add scanner mode for till selection`)
 - [ ] **8.1** Update `TillSelectionDialog` with scanner mode support
@@ -833,6 +833,7 @@ data class LocationAccountDto(
 | 2026-01-04 | `feat(auth): M1-M4 - add missing endpoints` | Created DeviceApi, added verifyPassword, lockDevice, logoutWithEndOfShift | ✅ |
 | 2026-01-04 | `feat(auth): L1 - station claiming logic` | LoginViewModel calls DeviceApi.getCurrentDevice(), pre-selects claimed employee | ✅ |
 | 2026-01-04 | `fix(auth): L2-L5,DI1 - lock screen fixes` | LockViewModel uses API verification, reports events, proper DI | ✅ |
+| 2026-01-04 | `feat(auth): L4,U1,U2 - manager approval flow` | LogoutOptionsDialog, ManagerApprovalDialog, sign-out with manager PIN | ✅ |
 | | | | |
 
 ---

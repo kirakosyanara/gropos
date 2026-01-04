@@ -11,7 +11,6 @@ import cafe.adriel.voyager.navigator.currentOrThrow
 import com.unisight.gropos.core.session.InactivityManager
 import com.unisight.gropos.core.session.LockEventType
 import com.unisight.gropos.features.auth.presentation.LockViewModel
-import com.unisight.gropos.features.auth.presentation.SignOutResult
 import com.unisight.gropos.features.checkout.presentation.ui.CheckoutScreen
 
 /**
@@ -25,6 +24,12 @@ import com.unisight.gropos.features.checkout.presentation.ui.CheckoutScreen
  * PIN verification now uses async API call:
  * - onVerify() starts the verification
  * - UI observes state.unlockSuccess for navigation
+ *
+ * Sign-out flow (L4, U1, U2):
+ * - onSignOut() shows LogoutOptionsDialog
+ * - User selects Release Till or End of Shift
+ * - ManagerApprovalDialog shown for PIN verification
+ * - On success, navigates to LoginScreen
  *
  * Navigation:
  * - Unlock success → Back to previous screen (CheckoutScreen)
@@ -47,11 +52,8 @@ class LockScreen(
         }
         
         // Observe unlockSuccess and navigate when true
-        // This handles the async API verification result
         LaunchedEffect(state.unlockSuccess) {
             if (state.unlockSuccess) {
-                // Return to previous screen (usually CheckoutScreen)
-                // Using pop if we have history, otherwise replace with CheckoutScreen
                 if (navigator.canPop) {
                     navigator.pop()
                 } else {
@@ -60,26 +62,43 @@ class LockScreen(
             }
         }
         
+        // Observe signOutSuccess and navigate to login
+        LaunchedEffect(state.signOutSuccess) {
+            if (state.signOutSuccess) {
+                navigator.replaceAll(LoginScreen())
+            }
+        }
+        
+        // Main lock screen content
         LockContent(
             state = state,
             onPinDigit = viewModel::onPinDigit,
             onPinClear = viewModel::onPinClear,
             onPinBackspace = viewModel::onPinBackspace,
-            onVerify = {
-                // Starts async verification - navigation happens via LaunchedEffect above
-                viewModel.onVerify()
-            },
-            onSignOut = {
-                when (viewModel.onSignOut()) {
-                    SignOutResult.Proceed -> {
-                        navigator.replaceAll(LoginScreen())
-                    }
-                    SignOutResult.RequiresApproval -> {
-                        // TODO: Show manager approval dialog
-                    }
-                }
-            }
+            onVerify = { viewModel.onVerify() },
+            onSignOut = { viewModel.onSignOut() }
         )
+        
+        // Logout Options Dialog (U1)
+        if (state.showLogoutOptions) {
+            LogoutOptionsDialog(
+                employeeName = state.employeeName,
+                onReleaseTill = viewModel::onReleaseTillSelected,
+                onEndOfShift = viewModel::onEndOfShiftSelected,
+                onDismiss = viewModel::onDismissLogoutOptions
+            )
+        }
+        
+        // Manager Approval Dialog (U2)
+        if (state.showManagerApproval) {
+            ManagerApprovalDialog(
+                actionDescription = state.managerApprovalAction,
+                onApprove = viewModel::onManagerApproval,
+                onDismiss = viewModel::onDismissManagerApproval,
+                isVerifying = state.isVerifyingManager,
+                errorMessage = state.managerApprovalError
+            )
+        }
     }
 }
 

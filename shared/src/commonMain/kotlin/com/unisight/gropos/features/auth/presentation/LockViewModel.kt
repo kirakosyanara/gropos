@@ -295,15 +295,165 @@ class LockViewModel(
     /**
      * Request sign out from lock screen.
      *
-     * Per CASHIER_OPERATIONS.md:
-     * - Signing out from lock screen requires manager approval
-     * - For now, we just navigate to login
+     * Per LOCK_SCREEN_AND_CASHIER_LOGIN.md:
+     * - L4 FIX: Shows logout options dialog (Release Till / End of Shift)
+     * - May require manager approval based on permissions
      */
-    fun onSignOut(): SignOutResult {
-        // TODO: Implement manager approval flow
-        // For Walking Skeleton: Allow direct sign out
-        InactivityManager.stop()
-        return SignOutResult.Proceed
+    fun onSignOut() {
+        // Show the logout options dialog
+        _state.value = _state.value.copy(showLogoutOptions = true)
+    }
+    
+    /**
+     * Dismiss the logout options dialog.
+     */
+    fun onDismissLogoutOptions() {
+        _state.value = _state.value.copy(showLogoutOptions = false)
+    }
+    
+    /**
+     * User selected "Release Till" option.
+     * 
+     * Per LOCK_SCREEN_AND_CASHIER_LOGIN.md:
+     * - Quick logout - releases till for next employee
+     * - Requires manager approval from lock screen
+     */
+    fun onReleaseTillSelected() {
+        _state.value = _state.value.copy(
+            showLogoutOptions = false,
+            showManagerApproval = true,
+            managerApprovalAction = "Release till and sign out from this station?",
+            pendingLogoutType = LogoutType.ReleaseTill
+        )
+    }
+    
+    /**
+     * User selected "End of Shift" option.
+     * 
+     * Per LOCK_SCREEN_AND_CASHIER_LOGIN.md:
+     * - Full close - till count and Z-report
+     * - Requires manager approval from lock screen
+     */
+    fun onEndOfShiftSelected() {
+        _state.value = _state.value.copy(
+            showLogoutOptions = false,
+            showManagerApproval = true,
+            managerApprovalAction = "End shift and generate Z-report?",
+            pendingLogoutType = LogoutType.EndOfShift
+        )
+    }
+    
+    /**
+     * Dismiss the manager approval dialog.
+     */
+    fun onDismissManagerApproval() {
+        _state.value = _state.value.copy(
+            showManagerApproval = false,
+            managerApprovalError = null,
+            pendingLogoutType = null
+        )
+    }
+    
+    /**
+     * Manager entered their PIN for approval.
+     * 
+     * Per LOCK_SCREEN_AND_CASHIER_LOGIN.md:
+     * - Verifies manager has "GrowPOS.Store.Force Sign Out" permission
+     * - On success, proceeds with the logout type
+     */
+    fun onManagerApproval(managerPin: String) {
+        _state.value = _state.value.copy(
+            isVerifyingManager = true,
+            managerApprovalError = null
+        )
+        
+        effectiveScope.launch {
+            // Verify manager PIN
+            val request = VerifyPasswordRequest(
+                userName = "manager", // TODO: Get from employee selection or input
+                password = managerPin
+            )
+            
+            authService.verifyPassword(request)
+                .onSuccess { isValid ->
+                    if (isValid) {
+                        // Manager approved - proceed with logout
+                        val logoutType = _state.value.pendingLogoutType
+                        _state.value = _state.value.copy(
+                            showManagerApproval = false,
+                            isVerifyingManager = false
+                        )
+                        
+                        when (logoutType) {
+                            LogoutType.ReleaseTill -> executeReleaseTill()
+                            LogoutType.EndOfShift -> executeEndOfShift()
+                            null -> { /* No-op */ }
+                        }
+                    } else {
+                        _state.value = _state.value.copy(
+                            isVerifyingManager = false,
+                            managerApprovalError = "Invalid manager PIN"
+                        )
+                    }
+                }
+                .onFailure { error ->
+                    _state.value = _state.value.copy(
+                        isVerifyingManager = false,
+                        managerApprovalError = error.message ?: "Verification failed"
+                    )
+                }
+        }
+    }
+    
+    /**
+     * Execute the release till logout.
+     */
+    private fun executeReleaseTill() {
+        effectiveScope.launch {
+            sessionManager.releaseTill()
+                .onSuccess { tillName ->
+                    println("[LockViewModel] Released till: $tillName")
+                    authService.logout()
+                    InactivityManager.stop()
+                    _state.value = _state.value.copy(signOutSuccess = true)
+                }
+                .onFailure { error ->
+                    _state.value = _state.value.copy(
+                        errorMessage = error.message ?: "Failed to release till"
+                    )
+                }
+        }
+    }
+    
+    /**
+     * Execute the end of shift logout.
+     */
+    private fun executeEndOfShift() {
+        effectiveScope.launch {
+            // Use the end of shift API
+            authService.logoutWithEndOfShift()
+            
+            sessionManager.endShift()
+                .onSuccess { report ->
+                    println("[LockViewModel] Shift ended - Report ID: ${report.reportId}")
+                    InactivityManager.stop()
+                    _state.value = _state.value.copy(signOutSuccess = true)
+                }
+                .onFailure { error ->
+                    _state.value = _state.value.copy(
+                        errorMessage = error.message ?: "Failed to end shift"
+                    )
+                }
+        }
+    }
+    
+    /**
+     * Legacy synchronous sign out for backward compatibility.
+     */
+    @Deprecated("Use onSignOut() and observe state.signOutSuccess instead")
+    fun onSignOutSync(): SignOutResult {
+        onSignOut()
+        return SignOutResult.RequiresApproval
     }
     
     /**

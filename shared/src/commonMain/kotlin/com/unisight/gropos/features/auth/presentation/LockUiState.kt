@@ -43,7 +43,29 @@ data class LockUiState(
     val lockType: LockType = LockType.AutoLocked,
     
     /** True when unlock was successful - UI should navigate back */
-    val unlockSuccess: Boolean = false
+    val unlockSuccess: Boolean = false,
+    
+    // Sign-out flow states (L4, U1, U2)
+    /** Show logout options dialog (Release Till / End of Shift) */
+    val showLogoutOptions: Boolean = false,
+    
+    /** Show manager approval dialog */
+    val showManagerApproval: Boolean = false,
+    
+    /** Description of action requiring manager approval */
+    val managerApprovalAction: String = "",
+    
+    /** True when verifying manager PIN */
+    val isVerifyingManager: Boolean = false,
+    
+    /** Manager approval error message */
+    val managerApprovalError: String? = null,
+    
+    /** True when sign-out is complete - UI should navigate to login */
+    val signOutSuccess: Boolean = false,
+    
+    /** Pending logout type (for after manager approval) */
+    val pendingLogoutType: LogoutType? = null
 ) {
     /** Number of masked PIN dots to show */
     val pinDotCount: Int get() = pinInput.length
@@ -65,5 +87,16 @@ enum class LockType {
     
     /** Forced lock by manager */
     ManagerLocked
+}
+
+/**
+ * Types of logout per LOCK_SCREEN_AND_CASHIER_LOGIN.md
+ */
+enum class LogoutType {
+    /** Quick logout - releases till for next employee */
+    ReleaseTill,
+    
+    /** Full close - till count and Z-report */
+    EndOfShift
 }
 
