@@ -44,9 +44,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import coil3.compose.AsyncImage
+import coil3.compose.LocalPlatformContext
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.unisight.gropos.core.components.DangerButton
 import com.unisight.gropos.core.components.OutlineButton
 import com.unisight.gropos.core.theme.GroPOSColors
@@ -398,10 +403,11 @@ private fun ProductsGrid(
 /**
  * Product card in the lookup grid.
  * 
- * Per COMPONENTS.md (ProductGridItem):
+ * Per COMPONENTS.md (ProductGridItem) and LOOKUP_TABLE.md:
  * - Shows image, name, price
  * - Card with rounded corners
  * - Clickable to select
+ * - Product images loaded via Coil AsyncImage
  */
 @Composable
 private fun ProductGridItem(
@@ -409,6 +415,8 @@ private fun ProductGridItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val platformContext = LocalPlatformContext.current
+    
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -425,21 +433,31 @@ private fun ProductGridItem(
                 .padding(GroPOSSpacing.S),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Product Image Placeholder
+            // Product Image (per LOOKUP_TABLE.md - Image-Based Selection)
             Box(
                 modifier = Modifier
-                    .size(80.dp)
-                    .background(
-                        GroPOSColors.LightGray2,
-                        RoundedCornerShape(GroPOSRadius.Small)
-                    ),
+                    .size(120.dp)
+                    .clip(RoundedCornerShape(GroPOSRadius.Small))
+                    .background(GroPOSColors.LightGray2),
                 contentAlignment = Alignment.Center
             ) {
-                // TODO: AsyncImage when image loading is implemented
-                Text(
-                    text = "🛒",
-                    style = MaterialTheme.typography.headlineLarge
-                )
+                if (!product.imageUrl.isNullOrEmpty()) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(platformContext)
+                            .data(product.imageUrl)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = product.name,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    // Fallback when no image URL
+                    Text(
+                        text = "🛒",
+                        style = MaterialTheme.typography.headlineLarge
+                    )
+                }
             }
             
             Spacer(modifier = Modifier.height(GroPOSSpacing.S))

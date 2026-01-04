@@ -44,6 +44,9 @@ sunmi-printer = "1.0.19"
 camerax = "1.3.0"
 mlkit-barcode = "18.3.0"
 
+# Image Loading (Coil 3 Multiplatform - per LOOKUP_TABLE.md)
+coil = "3.0.4"
+
 # Testing
 junit = "4.13.2"
 kotlin-test = "2.0.21"
@@ -107,6 +110,10 @@ camerax-camera2 = { module = "androidx.camera:camera-camera2", version.ref = "ca
 
 # Android Hardware - MLKit Barcode Scanning
 mlkit-barcode = { module = "com.google.android.gms:play-services-mlkit-barcode-scanning", version.ref = "mlkit-barcode" }
+
+# Image Loading - Coil 3 (Multiplatform, per LOOKUP_TABLE.md)
+coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
+coil-network-ktor3 = { module = "io.coil-kt.coil3:coil-network-ktor3", version.ref = "coil" }
 
 # Testing
 junit = { module = "junit:junit", version.ref = "junit" }

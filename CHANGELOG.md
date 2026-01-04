@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-01-04
 
+### Lookup Table Product Images (2026-01-04)
+
+- **Added Coil 3 Multiplatform for image loading** - Per LOOKUP_TABLE.md
+  - Added `coil-compose` and `coil-network-ktor3` dependencies to version catalog
+  - Coil 3.0.4 supports Compose Multiplatform (Desktop, Android)
+  - Uses Ktor3 for network image fetching (matches existing HTTP client)
+
+- **Updated `ProductGridItem` to display product images**
+  - Now uses Coil `AsyncImage` to load product thumbnails from `fileUrl`
+  - Images load with crossfade animation for smooth UX
+  - 120x120dp image size for clear visibility
+  - Fallback to shopping cart emoji when no image URL available
+  - Proper content scaling (Crop) for consistent grid appearance
+
 ### Lookup Table Implementation (2026-01-04)
 
 - **Created `LookupCategoryRepository` and `LookupCategorySyncService`**

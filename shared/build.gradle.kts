@@ -68,6 +68,10 @@ kotlin {
                 implementation(libs.voyager.screenmodel)
                 implementation(libs.voyager.koin)
                 implementation(libs.voyager.transitions)
+                
+                // Image Loading (Coil 3 - per LOOKUP_TABLE.md)
+                implementation(libs.coil.compose)
+                implementation(libs.coil.network.ktor3)
             }
         }
         
