@@ -54,9 +54,9 @@ This document tracks the remediation of the **Lock Screen**, **Cashier Login**, 
 
 | # | Current Endpoint | Correct Endpoint | File | Status |
 |---|------------------|------------------|------|--------|
-| E1 | `/employee/cashiers` | `/api/Employee/GetCashierEmployees` | `RemoteEmployeeRepository.kt` | ⬜ TODO |
-| E2 | `/till` | `/api/account/GetTillAccountList` | `RemoteTillRepository.kt` | ⬜ TODO |
-| E3 | `/employee/login` | `/api/Employee/Login` | `ApiAuthService.kt` | ⬜ TODO |
+| E1 | `/employee/cashiers` | `/api/Employee/GetCashierEmployees` | `RemoteEmployeeRepository.kt` | ✅ FIXED |
+| E2 | `/till` | `/api/account/GetTillAccountList` | `RemoteTillRepository.kt` | ✅ FIXED |
+| E3 | `/employee/login` | `/api/Employee/Login` | `ApiAuthService.kt` | ✅ FIXED |
 
 #### 1.2 Missing Endpoints
 
@@ -118,10 +118,10 @@ This document tracks the remediation of the **Lock Screen**, **Cashier Login**, 
 - [x] **2.6** Create `VerifyPasswordRequest` model ✅
 
 ### Phase 3: Fix Existing Endpoints (Commit: `fix(auth): correct API endpoint paths`)
-- [ ] **3.1** Fix `RemoteEmployeeRepository` endpoint: `/employee/cashiers` → `/api/Employee/GetCashierEmployees`
-- [ ] **3.2** Fix `RemoteTillRepository` endpoint: `/till` → `/api/account/GetTillAccountList`
-- [ ] **3.3** Fix `ApiAuthService` login endpoint: `/employee/login` → `/api/Employee/Login`
-- [ ] **3.4** Update login request to use `CashierLoginRequest`
+- [x] **3.1** Fix `RemoteEmployeeRepository` endpoint: `/employee/cashiers` → `/api/Employee/GetCashierEmployees` ✅
+- [x] **3.2** Fix `RemoteTillRepository` endpoint: `/till` → `/api/account/GetTillAccountList` ✅
+- [x] **3.3** Fix `ApiAuthService` login endpoint: `/employee/login` → `/api/Employee/Login` ✅
+- [ ] **3.4** Update login request to use `CashierLoginRequest` (deferred to Phase 5 - needs till context)
 
 ### Phase 4: Add Missing Endpoints (Commit: `feat(auth): add device current and lock device endpoints`)
 - [ ] **4.1** Create `DeviceApi` interface
@@ -829,7 +829,7 @@ data class LocationAccountDto(
 |------|--------|-------------|--------|
 | 2026-01-03 | - | Document created | ✅ |
 | 2026-01-04 | `fix(auth): D1-D5 - add required DTOs` | Added DeviceEventType, CashierLoginRequest, VerifyPasswordRequest, CurrentDeviceInfoDto, LocationAccountDto | ✅ |
-| | | | |
+| 2026-01-04 | `fix(auth): E1-E3 - correct API endpoints` | Fixed endpoints in RemoteEmployeeRepository, RemoteTillRepository, ApiAuthService | ✅ |
 | | | | |
 
 ---

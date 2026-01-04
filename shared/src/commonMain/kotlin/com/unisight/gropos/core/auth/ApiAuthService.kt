@@ -140,11 +140,13 @@ data class AuthResponse(
  * 
  * **P0 FIX (QA Audit):** Now uses ApiClient for real API calls instead of simulation.
  * 
- * **Per API_INTEGRATION.md:**
- * - POST /employee/login - Employee authentication
- * - POST /employee/refresh - Token refresh
- * - GET /employee/profile - Get user profile
- * - POST /employee/logout - End session
+ * **Per LOCK_SCREEN_AND_CASHIER_LOGIN.md:**
+ * - POST /api/Employee/Login - Cashier authentication with till
+ * - POST /api/Employee/VerifyPassword - PIN verification on lock screen
+ * - POST /api/Employee/LockDevice - Report lock/unlock events
+ * - POST /api/Employee/Logout - End session
+ * - POST /api/Employee/LogoutWithEndOfShift - End-of-shift logout
+ * - GET /api/Employee/GetProfile - Get user profile
  */
 class DefaultApiAuthService(
     private val tokenStorage: TokenStorage,
@@ -152,10 +154,16 @@ class DefaultApiAuthService(
 ) : ApiAuthService {
     
     companion object {
-        private const val ENDPOINT_LOGIN = "/employee/login"
-        private const val ENDPOINT_PROFILE = "/employee/profile"
-        private const val ENDPOINT_REFRESH = "/employee/refresh"
-        private const val ENDPOINT_LOGOUT = "/employee/logout"
+        /**
+         * Per LOCK_SCREEN_AND_CASHIER_LOGIN.md: Correct API endpoints
+         */
+        private const val ENDPOINT_LOGIN = "/api/Employee/Login"
+        private const val ENDPOINT_PROFILE = "/api/Employee/GetProfile"
+        private const val ENDPOINT_REFRESH = "/api/Employee/RefreshToken"
+        private const val ENDPOINT_LOGOUT = "/api/Employee/Logout"
+        private const val ENDPOINT_LOGOUT_END_OF_SHIFT = "/api/Employee/LogoutWithEndOfShift"
+        private const val ENDPOINT_VERIFY_PASSWORD = "/api/Employee/VerifyPassword"
+        private const val ENDPOINT_LOCK_DEVICE = "/api/Employee/LockDevice"
         
         // Default branch ID (should come from SecureStorage in production)
         private const val DEFAULT_BRANCH_ID = 1

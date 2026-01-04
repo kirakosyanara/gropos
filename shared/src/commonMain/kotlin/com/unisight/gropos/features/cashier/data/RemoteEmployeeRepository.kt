@@ -145,10 +145,12 @@ class RemoteEmployeeRepository(
     }
     
     companion object {
-        // TODO: Verify correct endpoint path with backend team
-        // The Azure APIM might require a service prefix like /pos/employee/cashiers
-        // Current documentation says /employee/cashiers but this returns 302 redirect
-        private const val ENDPOINT_CASHIERS = "/employee/cashiers"
+        /**
+         * Per LOCK_SCREEN_AND_CASHIER_LOGIN.md:
+         * GET /api/Employee/GetCashierEmployees
+         * Returns list of scheduled cashiers for this location
+         */
+        private const val ENDPOINT_CASHIERS = "/api/Employee/GetCashierEmployees"
         
         // Temporary PIN for development - TODO: Remove when API is fully integrated
         private const val TEMP_VALID_PIN = "1234"

@@ -1,9 +1,9 @@
 package com.unisight.gropos.features.cashier.data
 
 import com.unisight.gropos.core.network.ApiClient
+import com.unisight.gropos.features.cashier.data.dto.GridDataOfLocationAccountListViewModel
 import com.unisight.gropos.features.cashier.data.dto.TillAssignRequest
 import com.unisight.gropos.features.cashier.data.dto.TillDomainMapper.toDomainList
-import com.unisight.gropos.features.cashier.data.dto.TillListResponse
 import com.unisight.gropos.features.cashier.data.dto.TillOperationResponse
 import com.unisight.gropos.features.cashier.domain.model.Till
 import com.unisight.gropos.features.cashier.domain.repository.TillRepository
@@ -36,7 +36,11 @@ class RemoteTillRepository(
 ) : TillRepository {
     
     companion object {
-        private const val ENDPOINT_TILLS = "/till"
+        /**
+         * Per LOCK_SCREEN_AND_CASHIER_LOGIN.md:
+         * GET /api/account/GetTillAccountList - Get available tills
+         */
+        private const val ENDPOINT_TILLS = "/api/account/GetTillAccountList"
         private const val ENDPOINT_ASSIGN = "/till/{tillId}/assign"
         private const val ENDPOINT_RELEASE = "/till/{tillId}/release"
     }
@@ -44,14 +48,15 @@ class RemoteTillRepository(
     /**
      * Fetches all tills for the current branch/station.
      * 
-     * **API:** GET /till
-     * **Response:** TillListResponse with list of TillDto
+     * **Per LOCK_SCREEN_AND_CASHIER_LOGIN.md:**
+     * **API:** GET /api/account/GetTillAccountList
+     * **Response:** GridDataOfLocationAccountListViewModel with list of LocationAccountDto
      */
     override suspend fun getTills(): Result<List<Till>> {
-        return apiClient.authenticatedRequest<TillListResponse> {
+        return apiClient.authenticatedRequest<GridDataOfLocationAccountListViewModel> {
             get(ENDPOINT_TILLS)
         }.map { response ->
-            response.tills.toDomainList()
+            response.toDomainList()
         }
     }
     
