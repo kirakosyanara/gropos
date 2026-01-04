@@ -150,8 +150,9 @@ val checkoutModule: Module = module {
      * - TransactionRepository: For hold/recall operations
      * - VendorRepository: For vendor payout operations
      * - LookupCategoryRepository: For lookup table categories (optional)
+     * - LookupCategorySyncService: For auto-syncing lookup categories (optional)
      */
-    factory { CheckoutViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), getOrNull()) }
+    factory { CheckoutViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), getOrNull(), getOrNull()) }
     
     /**
      * Customer Display ViewModel/ScreenModel.

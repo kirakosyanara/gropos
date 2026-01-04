@@ -22,6 +22,7 @@ import com.unisight.gropos.features.checkout.domain.repository.CartRepository
 import com.unisight.gropos.features.checkout.domain.repository.LookupCategory
 import com.unisight.gropos.features.checkout.domain.repository.LookupCategoryRepository
 import com.unisight.gropos.features.checkout.domain.repository.ProductRepository
+import com.unisight.gropos.core.sync.LookupCategorySyncService
 import com.unisight.gropos.features.checkout.domain.repository.ScannerRepository
 import com.unisight.gropos.features.checkout.domain.usecase.ScanItemUseCase
 import com.unisight.gropos.features.checkout.presentation.components.ProductLookupState
@@ -74,6 +75,7 @@ class CheckoutViewModel(
     private val transactionRepository: TransactionRepository,
     private val vendorRepository: VendorRepository,
     private val lookupCategoryRepository: LookupCategoryRepository? = null,
+    private val lookupCategorySyncService: LookupCategorySyncService? = null,
     // Inject scope for testability (per testing-strategy.mdc)
     private val scope: CoroutineScope? = null
 ) : ScreenModel {
@@ -1152,6 +1154,28 @@ class CheckoutViewModel(
                 if (lookupCategoryRepository != null) {
                     cachedLookupCategories = lookupCategoryRepository.getAllCategories()
                     
+                    // Auto-sync if no categories exist and sync service is available
+                    if (cachedLookupCategories.isEmpty() && lookupCategorySyncService != null) {
+                        println("[CheckoutViewModel] Lookup: No categories found, auto-syncing...")
+                        _state.value = _state.value.copy(
+                            lookupState = _state.value.lookupState.copy(
+                                error = "Syncing lookup categories..."
+                            )
+                        )
+                        
+                        val syncResult = lookupCategorySyncService.syncAllCategories()
+                        syncResult.fold(
+                            onSuccess = { count ->
+                                println("[CheckoutViewModel] Lookup: Auto-sync completed, $count categories")
+                                // Reload from database after sync
+                                cachedLookupCategories = lookupCategoryRepository.getAllCategories()
+                            },
+                            onFailure = { error ->
+                                println("[CheckoutViewModel] Lookup: Auto-sync failed: ${error.message}")
+                            }
+                        )
+                    }
+                    
                     // Map to simple LookupCategory for UI
                     val categories = cachedLookupCategories.map { category ->
                         LookupCategory(
@@ -1173,7 +1197,7 @@ class CheckoutViewModel(
                             categories = categories,
                             products = allProducts,
                             isLoading = false,
-                            error = if (categories.isEmpty()) "No lookup categories configured. Please sync lookup data." else null
+                            error = if (categories.isEmpty()) "No lookup categories configured in backend." else null
                         )
                     )
                 } else {
