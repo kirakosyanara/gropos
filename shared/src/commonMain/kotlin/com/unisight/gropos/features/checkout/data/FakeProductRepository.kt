@@ -391,6 +391,10 @@ class FakeProductRepository : ProductRepository {
         return products[branchProductId]
     }
     
+    override suspend fun getByProductId(productId: Int): Product? {
+        return products.values.find { it.productId == productId }
+    }
+    
     /**
      * Searches products by name.
      * 
