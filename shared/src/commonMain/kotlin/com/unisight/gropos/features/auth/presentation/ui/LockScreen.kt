@@ -12,20 +12,19 @@ import com.unisight.gropos.core.session.InactivityManager
 import com.unisight.gropos.core.session.LockEventType
 import com.unisight.gropos.features.auth.presentation.LockViewModel
 import com.unisight.gropos.features.auth.presentation.SignOutResult
-import com.unisight.gropos.features.auth.presentation.UnlockResult
 import com.unisight.gropos.features.checkout.presentation.ui.CheckoutScreen
 
 /**
  * Lock Screen - Voyager Screen implementation.
  *
- * Per SCREEN_LAYOUTS.md: Displayed when:
+ * Per LOCK_SCREEN_AND_CASHIER_LOGIN.md: Displayed when:
  * - Inactivity timeout (5 minutes)
  * - Manual lock (F4 key)
  * - Manager lock
  *
- * Per CASHIER_OPERATIONS.md:
- * - PIN entry unlocks and resumes session
- * - Sign Out returns to LoginScreen
+ * PIN verification now uses async API call:
+ * - onVerify() starts the verification
+ * - UI observes state.unlockSuccess for navigation
  *
  * Navigation:
  * - Unlock success → Back to previous screen (CheckoutScreen)
@@ -47,26 +46,28 @@ class LockScreen(
             viewModel.onScreenVisible()
         }
         
+        // Observe unlockSuccess and navigate when true
+        // This handles the async API verification result
+        LaunchedEffect(state.unlockSuccess) {
+            if (state.unlockSuccess) {
+                // Return to previous screen (usually CheckoutScreen)
+                // Using pop if we have history, otherwise replace with CheckoutScreen
+                if (navigator.canPop) {
+                    navigator.pop()
+                } else {
+                    navigator.replaceAll(CheckoutScreen())
+                }
+            }
+        }
+        
         LockContent(
             state = state,
             onPinDigit = viewModel::onPinDigit,
             onPinClear = viewModel::onPinClear,
             onPinBackspace = viewModel::onPinBackspace,
             onVerify = {
-                when (viewModel.onVerify()) {
-                    UnlockResult.Success -> {
-                        // Return to previous screen (usually CheckoutScreen)
-                        // Using pop if we have history, otherwise replace with CheckoutScreen
-                        if (navigator.canPop) {
-                            navigator.pop()
-                        } else {
-                            navigator.replaceAll(CheckoutScreen())
-                        }
-                    }
-                    UnlockResult.Error -> {
-                        // Error is shown in state, do nothing
-                    }
-                }
+                // Starts async verification - navigation happens via LaunchedEffect above
+                viewModel.onVerify()
             },
             onSignOut = {
                 when (viewModel.onSignOut()) {

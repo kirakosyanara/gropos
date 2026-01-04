@@ -3,10 +3,10 @@ package com.unisight.gropos.features.auth.presentation
 /**
  * UI State for the Lock Screen.
  *
- * Per SCREEN_LAYOUTS.md: Lock Screen displays station info, time,
+ * Per LOCK_SCREEN_AND_CASHIER_LOGIN.md: Lock Screen displays station info, time,
  * locked employee details, and PIN entry for unlock.
  *
- * Per CASHIER_OPERATIONS.md: Lock triggers include:
+ * Lock triggers include:
  * - Inactivity (5 minutes, type: AutoLocked)
  * - Manual F4 key (type: Locked)
  * - Manager lock (type: ManagerLocked)
@@ -40,7 +40,10 @@ data class LockUiState(
     val errorMessage: String? = null,
     
     /** Lock type for display/logging */
-    val lockType: LockType = LockType.AutoLocked
+    val lockType: LockType = LockType.AutoLocked,
+    
+    /** True when unlock was successful - UI should navigate back */
+    val unlockSuccess: Boolean = false
 ) {
     /** Number of masked PIN dots to show */
     val pinDotCount: Int get() = pinInput.length

@@ -72,10 +72,10 @@ This document tracks the remediation of the **Lock Screen**, **Cashier Login**, 
 | # | Issue | Description | File | Status |
 |---|-------|-------------|------|--------|
 | L1 | Station Claiming | Checking `deviceInfo.employeeId` to pre-select cashier | `LoginViewModel.kt` | ✅ DONE |
-| L2 | Hardcoded PIN | Lock screen uses `"1234"` instead of API verification | `LockViewModel.kt` | ⬜ TODO |
-| L3 | Session Data | LockViewModel uses placeholder instead of real employee | `LockViewModel.kt` | ⬜ TODO |
+| L2 | Hardcoded PIN | Uses verifyPassword() API instead of "1234" | `LockViewModel.kt` | ✅ DONE |
+| L3 | Session Data | Gets employee from CashierSessionManager | `LockViewModel.kt` | ✅ DONE |
 | L4 | Manager Approval | Sign-out flow missing permission check | `LockViewModel.kt` | ⬜ TODO |
-| L5 | Lock Event Reporting | Lock/unlock events not sent to backend | `LockViewModel.kt` | ⬜ TODO |
+| L5 | Lock Event Reporting | Reports lock/unlock events via lockDevice() API | `LockViewModel.kt` | ✅ DONE |
 
 ### 3. Data Model Issues
 
@@ -99,7 +99,7 @@ This document tracks the remediation of the **Lock Screen**, **Cashier Login**, 
 
 | # | Issue | Description | Status |
 |---|-------|-------------|--------|
-| DI1 | `LockViewModel` | No dependencies injected | ⬜ TODO |
+| DI1 | `LockViewModel` | Injected ApiAuthService, CashierSessionManager | ✅ DONE |
 
 ---
 
@@ -138,12 +138,12 @@ This document tracks the remediation of the **Lock Screen**, **Cashier Login**, 
 - [x] **5.5** Update `LoginUiState` to reflect claimed status ✅
 
 ### Phase 6: Lock Screen Fixes (Commit: `fix(auth): implement proper lock screen verification`)
-- [ ] **6.1** Inject dependencies into `LockViewModel` (employeeApi, appState, sessionState)
-- [ ] **6.2** Update `AuthModule.kt` to wire dependencies
-- [ ] **6.3** Replace hardcoded PIN "1234" with `verifyPassword()` API call
-- [ ] **6.4** Get actual employee/station data from `AppState`
-- [ ] **6.5** Report lock events via `lockDevice()` when locking
-- [ ] **6.6** Report unlock events via `lockDevice()` when unlocking
+- [x] **6.1** Inject dependencies into `LockViewModel` (ApiAuthService, CashierSessionManager) ✅
+- [x] **6.2** Update `AuthModule.kt` to wire dependencies ✅
+- [x] **6.3** Replace hardcoded PIN "1234" with `verifyPassword()` API call ✅
+- [x] **6.4** Get actual employee/station data from `CashierSessionManager` ✅
+- [x] **6.5** Report lock events via `lockDevice()` when locking ✅
+- [x] **6.6** Report unlock events via `lockDevice()` when unlocking ✅
 
 ### Phase 7: Manager Approval Flow (Commit: `feat(auth): implement manager approval for sign out`)
 - [ ] **7.1** Create `LogoutOptionsDialog` composable
@@ -832,6 +832,7 @@ data class LocationAccountDto(
 | 2026-01-04 | `fix(auth): E1-E3 - correct API endpoints` | Fixed endpoints in RemoteEmployeeRepository, RemoteTillRepository, ApiAuthService | ✅ |
 | 2026-01-04 | `feat(auth): M1-M4 - add missing endpoints` | Created DeviceApi, added verifyPassword, lockDevice, logoutWithEndOfShift | ✅ |
 | 2026-01-04 | `feat(auth): L1 - station claiming logic` | LoginViewModel calls DeviceApi.getCurrentDevice(), pre-selects claimed employee | ✅ |
+| 2026-01-04 | `fix(auth): L2-L5,DI1 - lock screen fixes` | LockViewModel uses API verification, reports events, proper DI | ✅ |
 | | | | |
 
 ---

@@ -73,6 +73,8 @@ val authModule = module {
     
     // Presentation Layer - LockViewModel
     // Per LOCK_SCREEN_AND_CASHIER_LOGIN.md:
-    // TODO (Phase 6): Inject ApiAuthService for verifyPassword(), lockDevice()
-    factory { LockViewModel() }
+    // - ApiAuthService: verifyPassword(), lockDevice()
+    // - CashierSessionManager: Get employee data, update session status
+    // L2, L3, L5, DI1 FIX: Proper dependency injection
+    factory { LockViewModel(authService = get(), sessionManager = get()) }
 }
