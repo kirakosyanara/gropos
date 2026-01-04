@@ -1147,35 +1147,48 @@ class CheckoutViewModel(
             )
             
             try {
-                // Use LookupCategoryRepository if available (per LOOKUP_TABLE.md)
+                // Try LookupCategoryRepository first (per LOOKUP_TABLE.md)
+                var usedLookupCategories = false
                 if (lookupCategoryRepository != null) {
                     cachedLookupCategories = lookupCategoryRepository.getAllCategories()
                     
-                    // Map to simple LookupCategory for UI
-                    val categories = cachedLookupCategories.map { category ->
-                        LookupCategory(
-                            id = category.id,
-                            name = category.name,
-                            displayOrder = category.order
+                    // Only use lookup categories if we actually have some
+                    if (cachedLookupCategories.isNotEmpty()) {
+                        usedLookupCategories = true
+                        
+                        // Map to simple LookupCategory for UI
+                        val categories = cachedLookupCategories.map { category ->
+                            LookupCategory(
+                                id = category.id,
+                                name = category.name,
+                                displayOrder = category.order
+                            )
+                        }
+                        
+                        // Get all products from all lookup categories
+                        val allProducts = cachedLookupCategories.flatMap { it.items }
+                            .distinctBy { it.productId }
+                            .map { mapLookupProductToUiModel(it) }
+                        
+                        println("[CheckoutViewModel] Lookup: Using ${categories.size} lookup categories with ${allProducts.size} products")
+                        
+                        _state.value = _state.value.copy(
+                            lookupState = _state.value.lookupState.copy(
+                                categories = categories,
+                                products = allProducts,
+                                isLoading = false
+                            )
                         )
                     }
-                    
-                    // Get all products from all lookup categories
-                    val allProducts = cachedLookupCategories.flatMap { it.items }
-                        .distinctBy { it.productId }
-                        .map { mapLookupProductToUiModel(it) }
-                    
-                    _state.value = _state.value.copy(
-                        lookupState = _state.value.lookupState.copy(
-                            categories = categories,
-                            products = allProducts,
-                            isLoading = false
-                        )
-                    )
-                } else {
-                    // Fallback to ProductRepository for backward compatibility
+                }
+                
+                // Fallback to ProductRepository if no lookup categories
+                if (!usedLookupCategories) {
+                    println("[CheckoutViewModel] Lookup: Falling back to ProductRepository (no lookup categories)")
                     val categories = productRepository.getCategories()
                     val products = productRepository.searchProducts("")
+                    
+                    println("[CheckoutViewModel] Lookup: Found ${categories.size} product categories with ${products.size} products")
                     
                     _state.value = _state.value.copy(
                         lookupState = _state.value.lookupState.copy(
@@ -1277,8 +1290,8 @@ class CheckoutViewModel(
         
         effectiveScope.launch {
             try {
-                // Use cached lookup categories if available (per LOOKUP_TABLE.md)
-                if (lookupCategoryRepository != null && cachedLookupCategories.isNotEmpty()) {
+                // Use cached lookup categories if available and not empty (per LOOKUP_TABLE.md)
+                if (cachedLookupCategories.isNotEmpty()) {
                     val products = if (categoryId != null) {
                         // Get products from the selected category
                         cachedLookupCategories
@@ -1301,7 +1314,7 @@ class CheckoutViewModel(
                         )
                     )
                 } else {
-                    // Fallback to ProductRepository
+                    // Fallback to ProductRepository (no lookup categories synced)
                     val products = if (categoryId != null) {
                         productRepository.getByCategory(categoryId)
                     } else {
