@@ -8,8 +8,12 @@ import com.unisight.gropos.features.cashier.domain.model.Till
 /**
  * UI State for the Login screen.
  * 
- * Per CASHIER_OPERATIONS.md State Machine:
+ * Per LOCK_SCREEN_AND_CASHIER_LOGIN.md State Machine:
  * SPLASH -> EMPLOYEE_SELECT -> PIN_ENTRY -> TILL_ASSIGNMENT -> ACTIVE
+ * 
+ * **Station Claiming (L1):**
+ * When a station is claimed, employeeId is set from device API response
+ * and the employee is pre-selected, skipping EMPLOYEE_SELECT stage.
  * 
  * This is now a data class with a stage enum instead of a sealed interface
  * to simplify state management for the multi-stage login flow.
@@ -47,7 +51,12 @@ data class LoginUiState(
     val showAdminSettings: Boolean = false,
     
     // NFC Badge Scanning State
-    val isNfcScanActive: Boolean = false
+    val isNfcScanActive: Boolean = false,
+    
+    // Station Claiming State (L1)
+    // Per LOCK_SCREEN_AND_CASHIER_LOGIN.md: Station is claimed when deviceInfo.employeeId is set
+    val isStationClaimed: Boolean = false,
+    val claimedTillId: Int? = null
 ) {
     /**
      * Computed: PIN as dots for display

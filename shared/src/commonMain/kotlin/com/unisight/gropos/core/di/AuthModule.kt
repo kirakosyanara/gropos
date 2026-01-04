@@ -19,9 +19,10 @@ import org.koin.dsl.module
 /**
  * Koin module for Authentication & Cashier features.
  * 
- * Per CASHIER_OPERATIONS.md:
+ * Per LOCK_SCREEN_AND_CASHIER_LOGIN.md:
  * - Provides employee list for login screen
  * - Provides till management for session assignment
+ * - Provides station claiming logic (L1)
  * 
  * **DATA SYNC IMPLEMENTATION:**
  * - EmployeeRepository now uses RemoteEmployeeRepository (API-backed)
@@ -29,11 +30,11 @@ import org.koin.dsl.module
  * 
  * Provides:
  * - AuthRepository (FakeAuthRepository for now)
- * - EmployeeRepository (RemoteEmployeeRepository - fetches from /employee/cashiers)
- * - TillRepository (RemoteTillRepository - production-ready)
+ * - EmployeeRepository (RemoteEmployeeRepository - fetches from /api/Employee/GetCashierEmployees)
+ * - TillRepository (RemoteTillRepository - fetches from /api/account/GetTillAccountList)
  * - ValidateLoginUseCase
- * - LoginViewModel (with state machine flow)
- * - LockViewModel
+ * - LoginViewModel (with station claiming and state machine flow)
+ * - LockViewModel (with API PIN verification)
  */
 val authModule = module {
     
@@ -42,13 +43,11 @@ val authModule = module {
     singleOf(::FakeAuthRepository) bind AuthRepository::class
     
     // Data Layer - Employee
-    // DATA SYNC FIX: Now uses RemoteEmployeeRepository with real API calls
-    // Per CASHIER_OPERATIONS.md: GET /employee/cashiers with x-api-key header
+    // Per LOCK_SCREEN_AND_CASHIER_LOGIN.md: GET /api/Employee/GetCashierEmployees
     single<EmployeeRepository> { RemoteEmployeeRepository(get()) }
     
     // Data Layer - Till
-    // P0 FIX: Now uses RemoteTillRepository with real API calls
-    // Per API_INTEGRATION.md: Uses ApiClient for /till endpoints
+    // Per LOCK_SCREEN_AND_CASHIER_LOGIN.md: GET /api/account/GetTillAccountList
     single<TillRepository> { RemoteTillRepository(get()) }
     
     // Hardware Layer - NFC Scanner
@@ -64,12 +63,16 @@ val authModule = module {
     // Domain Layer
     factory { ValidateLoginUseCase(get()) }
     
-    // Presentation Layer
-    // LoginViewModel now uses EmployeeRepository, TillRepository, and NfcScanner
-    // per CASHIER_OPERATIONS.md state machine flow and ANDROID_HARDWARE_GUIDE.md NFC support
-    factory { LoginViewModel(get(), get(), get()) }
+    // Presentation Layer - LoginViewModel
+    // Per LOCK_SCREEN_AND_CASHIER_LOGIN.md:
+    // - EmployeeRepository: GET /api/Employee/GetCashierEmployees
+    // - TillRepository: GET /api/account/GetTillAccountList
+    // - NfcScanner: Badge authentication
+    // - DeviceApi: GET /api/v1/devices/current for station claiming (L1)
+    factory { LoginViewModel(get(), get(), get(), get()) }
     
-    // Lock Screen ViewModel
-    // Per SCREEN_LAYOUTS.md: Displays when session is locked
+    // Presentation Layer - LockViewModel
+    // Per LOCK_SCREEN_AND_CASHIER_LOGIN.md:
+    // TODO (Phase 6): Inject ApiAuthService for verifyPassword(), lockDevice()
     factory { LockViewModel() }
 }

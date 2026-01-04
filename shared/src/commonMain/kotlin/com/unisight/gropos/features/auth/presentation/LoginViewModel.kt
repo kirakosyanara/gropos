@@ -8,6 +8,7 @@ import com.unisight.gropos.features.auth.domain.model.AuthUser
 import com.unisight.gropos.features.auth.domain.model.UserRole
 import com.unisight.gropos.features.cashier.domain.repository.EmployeeRepository
 import com.unisight.gropos.features.cashier.domain.repository.TillRepository
+import com.unisight.gropos.features.device.data.DeviceApi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,9 +22,14 @@ import kotlinx.datetime.toLocalDateTime
 /**
  * ScreenModel (ViewModel) for the Login screen.
  * 
- * Per CASHIER_OPERATIONS.md:
+ * Per LOCK_SCREEN_AND_CASHIER_LOGIN.md:
  * Implements the login state machine:
  * LOADING -> EMPLOYEE_SELECT -> PIN_ENTRY -> TILL_ASSIGNMENT -> SUCCESS
+ * 
+ * **Station Claiming Logic (L1):**
+ * - Calls GET /api/v1/devices/current to check if station is claimed
+ * - If deviceInfo.employeeId is set, pre-selects that employee
+ * - If deviceInfo.locationAccountId is set, pre-assigns that till
  * 
  * Per ANDROID_HARDWARE_GUIDE.md:
  * Supports NFC badge login as alternative to PIN entry.
@@ -31,12 +37,14 @@ import kotlinx.datetime.toLocalDateTime
  * @param employeeRepository Repository for fetching employees
  * @param tillRepository Repository for till management
  * @param nfcScanner Hardware abstraction for NFC badge readers
+ * @param deviceApi API for device status (station claiming)
  * @param coroutineScope Scope for launching coroutines (injectable for tests)
  */
 class LoginViewModel(
     private val employeeRepository: EmployeeRepository,
     private val tillRepository: TillRepository,
     private val nfcScanner: NfcScanner,
+    private val deviceApi: DeviceApi,
     private val coroutineScope: CoroutineScope? = null
 ) : ScreenModel {
     
@@ -53,18 +61,66 @@ class LoginViewModel(
     /**
      * Load scheduled employees for this station.
      * Called on ViewModel initialization.
+     * 
+     * **Per LOCK_SCREEN_AND_CASHIER_LOGIN.md (L1: Station Claiming):**
+     * 1. First, call GET /api/v1/devices/current to check if station is claimed
+     * 2. If deviceInfo.employeeId is set, pre-select that employee
+     * 3. If deviceInfo.locationAccountId is set, pre-assign that till
+     * 4. Otherwise, show full employee selection
      */
     private fun loadEmployees() {
         scope.launch {
             _state.update { it.copy(isLoading = true, stage = LoginStage.LOADING) }
             
+            // STEP 1: Get device info to check for claimed employee (L1)
+            val deviceInfoResult = deviceApi.getCurrentDevice()
+            val deviceInfo = deviceInfoResult.getOrNull()
+            
+            println("[LoginViewModel] Device info: employeeId=${deviceInfo?.employeeId}, tillId=${deviceInfo?.locationAccountId}")
+            
+            // STEP 2: Load employees
             employeeRepository.getEmployees()
                 .onSuccess { employees ->
+                    val employeeUiModels = employees.map { emp -> emp.toUiModel() }
+                    
+                    // STEP 3: Check if station is claimed (L1)
+                    if (deviceInfo?.employeeId != null) {
+                        val claimedEmployee = employeeUiModels.find { 
+                            it.id == deviceInfo.employeeId 
+                        }
+                        
+                        if (claimedEmployee != null) {
+                            println("[LoginViewModel] Station CLAIMED by employee: ${claimedEmployee.fullName}")
+                            
+                            // Pre-select claimed employee with till assignment if available
+                            val employeeWithTill = claimedEmployee.copy(
+                                assignedTillId = deviceInfo.locationAccountId ?: claimedEmployee.assignedTillId
+                            )
+                            
+                            _state.update {
+                                it.copy(
+                                    employees = employeeUiModels,
+                                    selectedEmployee = employeeWithTill,
+                                    stage = LoginStage.PIN_ENTRY, // Skip to PIN entry
+                                    isLoading = false,
+                                    isStationClaimed = true,
+                                    claimedTillId = deviceInfo.locationAccountId,
+                                    currentTime = getCurrentTime()
+                                )
+                            }
+                            return@onSuccess
+                        }
+                    }
+                    
+                    // Station is FREE - show employee selection
+                    println("[LoginViewModel] Station FREE - showing employee selection")
                     _state.update { 
                         it.copy(
-                            employees = employees.map { emp -> emp.toUiModel() },
+                            employees = employeeUiModels,
                             stage = LoginStage.EMPLOYEE_SELECT,
                             isLoading = false,
+                            isStationClaimed = false,
+                            claimedTillId = null,
                             currentTime = getCurrentTime()
                         )
                     }

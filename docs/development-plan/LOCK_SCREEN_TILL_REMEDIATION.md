@@ -71,7 +71,7 @@ This document tracks the remediation of the **Lock Screen**, **Cashier Login**, 
 
 | # | Issue | Description | File | Status |
 |---|-------|-------------|------|--------|
-| L1 | Station Claiming | Not checking `deviceInfo.employeeId` to pre-select cashier | `LoginViewModel.kt` | ⬜ TODO |
+| L1 | Station Claiming | Checking `deviceInfo.employeeId` to pre-select cashier | `LoginViewModel.kt` | ✅ DONE |
 | L2 | Hardcoded PIN | Lock screen uses `"1234"` instead of API verification | `LockViewModel.kt` | ⬜ TODO |
 | L3 | Session Data | LockViewModel uses placeholder instead of real employee | `LockViewModel.kt` | ⬜ TODO |
 | L4 | Manager Approval | Sign-out flow missing permission check | `LockViewModel.kt` | ⬜ TODO |
@@ -131,11 +131,11 @@ This document tracks the remediation of the **Lock Screen**, **Cashier Login**, 
 - [x] **4.5** Add `logoutWithEndOfShift()` to `ApiAuthService` ✅
 
 ### Phase 5: Station Claiming Logic (Commit: `feat(auth): implement station claiming on login`)
-- [ ] **5.1** Inject `DeviceApi` into `LoginViewModel`
-- [ ] **5.2** Call `getCurrentDevice()` in `loadEmployees()`
-- [ ] **5.3** Check `deviceInfo.employeeId` for claimed status
-- [ ] **5.4** Auto-select claimed employee and populate till assignment
-- [ ] **5.5** Update `LoginUiState` to reflect claimed status
+- [x] **5.1** Inject `DeviceApi` into `LoginViewModel` ✅
+- [x] **5.2** Call `getCurrentDevice()` in `loadEmployees()` ✅
+- [x] **5.3** Check `deviceInfo.employeeId` for claimed status ✅
+- [x] **5.4** Auto-select claimed employee and populate till assignment ✅
+- [x] **5.5** Update `LoginUiState` to reflect claimed status ✅
 
 ### Phase 6: Lock Screen Fixes (Commit: `fix(auth): implement proper lock screen verification`)
 - [ ] **6.1** Inject dependencies into `LockViewModel` (employeeApi, appState, sessionState)
@@ -831,6 +831,7 @@ data class LocationAccountDto(
 | 2026-01-04 | `fix(auth): D1-D5 - add required DTOs` | Added DeviceEventType, CashierLoginRequest, VerifyPasswordRequest, CurrentDeviceInfoDto, LocationAccountDto | ✅ |
 | 2026-01-04 | `fix(auth): E1-E3 - correct API endpoints` | Fixed endpoints in RemoteEmployeeRepository, RemoteTillRepository, ApiAuthService | ✅ |
 | 2026-01-04 | `feat(auth): M1-M4 - add missing endpoints` | Created DeviceApi, added verifyPassword, lockDevice, logoutWithEndOfShift | ✅ |
+| 2026-01-04 | `feat(auth): L1 - station claiming logic` | LoginViewModel calls DeviceApi.getCurrentDevice(), pre-selects claimed employee | ✅ |
 | | | | |
 
 ---
