@@ -4,7 +4,50 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [Unreleased] - 2026-01-03
+## [Unreleased] - 2026-01-04
+
+### Lock Screen & Till Flow Remediation (COMPLETED)
+
+- **API Endpoints Fixed (E1-E3)** ✅
+  - `RemoteEmployeeRepository`: `/employee/cashiers` → `/api/Employee/GetCashierEmployees`
+  - `RemoteTillRepository`: `/till` → `/api/account/GetTillAccountList`
+  - `ApiAuthService`: `/employee/login` → `/api/Employee/Login`
+
+- **Missing Endpoints Added (M1-M4)** ✅
+  - `DeviceApi.getCurrentDevice()`: GET `/api/v1/devices/current` for station claiming
+  - `ApiAuthService.verifyPassword()`: POST `/api/Employee/VerifyPassword` for lock screen PIN
+  - `ApiAuthService.lockDevice()`: POST `/api/Employee/LockDevice` for lock/unlock events
+  - `ApiAuthService.logoutWithEndOfShift()`: POST `/api/Employee/LogoutWithEndOfShift`
+
+- **Station Claiming Logic (L1)** ✅
+  - `LoginViewModel` now calls `DeviceApi.getCurrentDevice()` on load
+  - If `deviceInfo.employeeId` is set, pre-selects that employee
+  - If `deviceInfo.locationAccountId` is set, pre-assigns the till
+  - Added `isStationClaimed` and `claimedTillId` to `LoginUiState`
+
+- **Lock Screen Fixes (L2, L3, L5, DI1)** ✅
+  - `LockViewModel` now properly injected with `ApiAuthService` and `CashierSessionManager`
+  - PIN verification uses API instead of hardcoded "1234"
+  - Employee data fetched from session manager instead of placeholder
+  - Lock/unlock events reported to backend via `lockDevice()` API
+
+- **Manager Approval Flow (L4, U1, U2)** ✅
+  - Created `LogoutOptionsDialog` (Release Till / End of Shift)
+  - Created `ManagerApprovalDialog` with PIN verification
+  - Sign-out from lock screen requires manager PIN approval
+  - Integrated with `sessionManager.releaseTill()` and `endShift()`
+
+- **Data Models Added (D1-D5)** ✅
+  - `DeviceEventType` enum: SignedIn, SignedOut, Locked, Unlocked, AutoLocked
+  - `CashierLoginRequest`: userName, password, locationAccountId, branchId, deviceId
+  - `VerifyPasswordRequest`: userName, password, branchId, deviceId
+  - `DeviceLockRequest`: Updated to use `DeviceEventType` enum
+  - `CurrentDeviceInfoDto`: Device info with employeeId, locationAccountId
+  - `LocationAccountDto`, `GridDataOfLocationAccountListViewModel`: Till list format
+
+- **Tests Updated** ✅
+  - `LoginViewModelTest`: Added station claiming test cases with `FakeDeviceApi`
+  - `TokenRefreshManagerTest`: `FakeApiAuthService` implements new interface methods
 
 ### Lock Screen & Till Flow Remediation (Planning)
 

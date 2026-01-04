@@ -1,7 +1,7 @@
 # Lock Screen & Till Flow Remediation
 
 > **Branch:** `fix/lock-screen-till-remediation`  
-> **Status:** 🟡 IN PROGRESS  
+> **Status:** 🟢 COMPLETE  
 > **Last Updated:** 2026-01-04  
 > **Source of Truth:** `docs/development-plan/features/LOCK_SCREEN_AND_CASHIER_LOGIN.md`
 
@@ -165,9 +165,9 @@ This document tracks the remediation of the **Lock Screen**, **Cashier Login**, 
 - [ ] **9.4** Add tests for environment switching (deferred - covered by integration tests)
 
 ### Phase 10: Documentation & Cleanup
-- [ ] **10.1** Update CHANGELOG.md
-- [ ] **10.2** Mark this document as COMPLETE
-- [ ] **10.3** Create PR description
+- [x] **10.1** Update CHANGELOG.md ✅
+- [x] **10.2** Mark this document as COMPLETE ✅
+- [x] **10.3** Create PR description ✅
 
 ---
 
@@ -835,14 +835,20 @@ data class LocationAccountDto(
 | 2026-01-04 | `fix(auth): L2-L5,DI1 - lock screen fixes` | LockViewModel uses API verification, reports events, proper DI | ✅ |
 | 2026-01-04 | `feat(auth): L4,U1,U2 - manager approval flow` | LogoutOptionsDialog, ManagerApprovalDialog, sign-out with manager PIN | ✅ |
 | 2026-01-04 | `test(auth): add station claiming tests` | LoginViewModelTest updated with L1 station claiming test cases | ✅ |
-| | | | |
+| 2026-01-04 | `docs(auth): update CHANGELOG and complete remediation` | CHANGELOG updated, document marked COMPLETE | ✅ |
 
 ---
 
-## Commit History (To Be Updated)
+## Commit History
 
 ```
-(commits will be logged here as they are made)
+23bc547 fix(auth): D1-D5 - add required DTOs for lock screen and till flow
+11811c3 fix(auth): E1-E3 - correct API endpoint paths
+5f7bf38 feat(auth): M1-M4 - add missing API endpoints
+e0c107e feat(auth): L1 - implement station claiming logic on login
+f94e34c fix(auth): L2-L5,DI1 - implement proper lock screen verification
+07e7f1b feat(auth): L4,U1,U2 - implement manager approval for sign out
+ae7ead4 test(auth): add station claiming tests for LoginViewModel
 ```
 
 ---
