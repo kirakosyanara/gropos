@@ -2,6 +2,7 @@ package com.unisight.gropos.features.checkout.data
 
 import com.couchbase.lite.ArrayExpression
 import com.couchbase.lite.Collection
+import com.couchbase.lite.ConcurrencyControl
 import com.couchbase.lite.DataSource
 import com.couchbase.lite.Expression
 import com.couchbase.lite.MutableArray
@@ -403,7 +404,11 @@ class CouchbaseProductRepository(
     // ========================================================================
     
     /**
-     * Inserts a product document into the database.
+     * Upserts a product document into the database.
+     * 
+     * Uses ConcurrencyControl.LAST_WRITE_WINS to implement true upsert behavior:
+     * - Creates new document if it doesn't exist
+     * - Updates existing document if it does exist (no conflict errors)
      * 
      * **Per BACKEND_INTEGRATION_STATUS.md:**
      * Writes using LEGACY field names for backend compatibility:
@@ -512,12 +517,14 @@ class CouchbaseProductRepository(
             product.createdDate?.let { doc.setString("createdDate", it) }
             product.updatedDate?.let { doc.setString("updatedDate", it) }
             
-            // Save to LEGACY collection for backend compatibility
-            legacyCollection.save(doc)
-            println("CouchbaseProductRepository: Inserted product ${product.branchProductId} - ${product.productName}")
+            // Use LAST_WRITE_WINS to implement upsert - avoids LiteCoreException: conflict
+            // This ensures the new data always wins, whether inserting or updating
+            legacyCollection.save(doc, ConcurrencyControl.LAST_WRITE_WINS)
+            println("CouchbaseProductRepository: Upserted product ${product.branchProductId} - ${product.productName}")
             true
         } catch (e: Exception) {
-            println("CouchbaseProductRepository: Error inserting product ${product.branchProductId} - ${e.message}")
+            println("CouchbaseProductRepository: Error upserting product ${product.branchProductId} - ${e.message}")
+            e.printStackTrace()
             false
         }
     }

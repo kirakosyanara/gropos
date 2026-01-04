@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-01-04
 
+### Product Upsert Fix (2026-01-04)
+
+- **Fixed `LiteCoreException: conflict` errors** - Product sync now uses upsert
+  - Changed `CouchbaseProductRepository.insertProduct()` to use `ConcurrencyControl.LAST_WRITE_WINS`
+  - This implements true upsert behavior: creates new documents, updates existing ones
+  - Eliminates conflict errors when syncing products that already exist in the database
+  - Applied to both Desktop (JVM) and Android platform implementations
+
 ### Sync Progress UI and Conditional Sync (2026-01-04)
 
 - **Added `SYNCING` stage to Login flow** - Per COUCHBASE_SYNCHRONIZATION_DETAILED.md
