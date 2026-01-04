@@ -41,17 +41,29 @@ class LoginScreen : Screen {
         // Navigate to CheckoutScreen on successful login
         LaunchedEffect(state.stage) {
             if (state.stage == LoginStage.SUCCESS) {
-                // Start inactivity monitoring
-                // Per CASHIER_OPERATIONS.md: Timer starts after successful login
-                InactivityManager.start()
+                println("[LoginScreen] SUCCESS stage reached - starting navigation...")
                 
-                // Start HeartbeatService for background data sync
-                // Per SYNC_MECHANISM.md: Background sync starts after login
-                heartbeatService.start()
-                println("[LoginScreen] HeartbeatService started")
+                try {
+                    // Start inactivity monitoring
+                    // Per CASHIER_OPERATIONS.md: Timer starts after successful login
+                    InactivityManager.start()
+                    println("[LoginScreen] InactivityManager started")
+                    
+                    // Start HeartbeatService for background data sync
+                    // Per SYNC_MECHANISM.md: Background sync starts after login
+                    // Note: start() is non-blocking (launches a coroutine internally)
+                    heartbeatService.start()
+                    println("[LoginScreen] HeartbeatService started")
+                    
+                } catch (e: Exception) {
+                    println("[LoginScreen] ERROR starting services: ${e.message}")
+                    e.printStackTrace()
+                }
                 
                 // Replace entire navigation stack to prevent back navigation to login
+                println("[LoginScreen] Navigating to CheckoutScreen...")
                 navigator.replaceAll(CheckoutScreen())
+                println("[LoginScreen] Navigation complete")
             }
         }
         

@@ -68,6 +68,9 @@ class LoginViewModel(
     val state: StateFlow<LoginUiState> = _state.asStateFlow()
     
     init {
+        println("[LoginViewModel] INIT - Starting...")
+        println("[LoginViewModel] INIT - initialSyncService: ${if (initialSyncService != null) "AVAILABLE" else "NULL"}")
+        println("[LoginViewModel] INIT - secureStorage: ${if (secureStorage != null) "AVAILABLE" else "NULL"}")
         checkAndPerformInitialSync()
     }
     
@@ -83,13 +86,18 @@ class LoginViewModel(
         scope.launch {
             val syncCompleted = secureStorage?.isInitialSyncCompleted() ?: false
             
-            println("[LoginViewModel] Initial sync completed: $syncCompleted")
+            println("[LoginViewModel] Checking sync status...")
+            println("[LoginViewModel]   secureStorage available: ${secureStorage != null}")
+            println("[LoginViewModel]   initialSyncService available: ${initialSyncService != null}")
+            println("[LoginViewModel]   Initial sync completed: $syncCompleted")
             
             if (!syncCompleted && initialSyncService != null) {
                 // Need to perform initial sync
+                println("[LoginViewModel] >>> TRIGGERING SYNC <<<")
                 performInitialSync()
             } else {
                 // Sync already done, load employees directly
+                println("[LoginViewModel] Skipping sync - loading employees directly")
                 loadEmployees()
             }
         }
@@ -99,9 +107,11 @@ class LoginViewModel(
      * Perform initial data synchronization.
      * 
      * Shows SYNCING stage with progress updates.
+     * Ensures user sees the sync screen for at least 2 seconds.
      */
     private suspend fun performInitialSync() {
         println("[LoginViewModel] Starting initial sync...")
+        val startTime = Clock.System.now().toEpochMilliseconds()
         
         // Transition to SYNCING stage
         _state.update { 
@@ -116,22 +126,44 @@ class LoginViewModel(
             )
         }
         
+        println("[LoginViewModel] Set stage to SYNCING")
+        
+        // Small delay to ensure UI renders the SYNCING stage
+        kotlinx.coroutines.delay(100)
+        
         // Collect sync progress updates
         val syncService = initialSyncService ?: run {
             // No sync service available, skip to employee loading
+            println("[LoginViewModel] No sync service, skipping to employee loading")
             loadEmployees()
             return
         }
         
-        // Subscribe to progress updates
-        scope.launch {
+        // Subscribe to progress updates in background
+        val progressJob = scope.launch {
             syncService.progress.collect { progress ->
+                println("[LoginViewModel] Sync progress: step ${progress.currentStep}/${progress.totalSteps} - ${progress.currentEntity}")
                 updateSyncProgress(progress)
             }
         }
         
         // Perform the sync
+        println("[LoginViewModel] Calling syncService.performInitialSync()...")
         val result = syncService.performInitialSync()
+        
+        // Calculate how long the sync took
+        val elapsed = Clock.System.now().toEpochMilliseconds() - startTime
+        println("[LoginViewModel] Sync took ${elapsed}ms")
+        
+        // Ensure minimum display time of 2 seconds so user can see the UI
+        val minDisplayTime = 2000L
+        if (elapsed < minDisplayTime) {
+            val remaining = minDisplayTime - elapsed
+            println("[LoginViewModel] Waiting ${remaining}ms for minimum display time")
+            kotlinx.coroutines.delay(remaining)
+        }
+        
+        progressJob.cancel()
         
         result.fold(
             onSuccess = {
