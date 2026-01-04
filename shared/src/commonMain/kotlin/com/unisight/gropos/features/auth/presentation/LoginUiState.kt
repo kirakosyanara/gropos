@@ -122,8 +122,19 @@ data class TillUiModel(
     val id: Int,
     val name: String,
     val assignedTo: String?,
+    val assignedEmployeeId: Int?,
     val isAvailable: Boolean
-)
+) {
+    /**
+     * Check if this till is selectable by the given employee.
+     * A till is selectable if:
+     * 1. It's available (no one assigned), OR
+     * 2. It's assigned to this employee (their own till)
+     */
+    fun isSelectableBy(employeeId: Int): Boolean {
+        return isAvailable || assignedEmployeeId == employeeId
+    }
+}
 
 /**
  * Extension to convert domain Employee to UI model
@@ -145,5 +156,6 @@ fun Till.toUiModel() = TillUiModel(
     id = id,
     name = name,
     assignedTo = assignedEmployeeName,
+    assignedEmployeeId = assignedEmployeeId,
     isAvailable = isAvailable
 )

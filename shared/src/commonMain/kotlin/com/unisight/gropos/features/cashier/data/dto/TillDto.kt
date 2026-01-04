@@ -65,13 +65,32 @@ data class LocationAccountDto(
 /**
  * Grid response wrapper for till account list.
  * 
- * Per LOCK_SCREEN_AND_CASHIER_LOGIN.md:
- * - Response format for GET /api/account/GetTillAccountList
+ * Per TILL_MANAGEMENT.md and actual API response:
+ * - Response format: { "success": { "totalRows": N, "rows": [...] } }
  */
 @Serializable
 data class GridDataOfLocationAccountListViewModel(
-    val rows: List<LocationAccountDto>? = null,
-    val totalCount: Int? = null
+    @SerialName("success")
+    val success: TillGridData? = null
+) {
+    /**
+     * Get the tills from the success.rows field
+     */
+    fun getTills(): List<LocationAccountDto> {
+        return success?.rows ?: emptyList()
+    }
+}
+
+/**
+ * Inner grid data containing the actual till rows.
+ */
+@Serializable
+data class TillGridData(
+    @SerialName("totalRows")
+    val totalRows: Int? = null,
+    
+    @SerialName("rows")
+    val rows: List<LocationAccountDto>? = null
 )
 
 /**
@@ -158,9 +177,17 @@ object TillDomainMapper {
     
     /**
      * Converts GridDataOfLocationAccountListViewModel to domain models.
+     * Per TILL_MANAGEMENT.md: Response is { "success": { "rows": [...] } }
      */
     fun GridDataOfLocationAccountListViewModel.toDomainList(): List<Till> {
-        return rows?.map { it.toDomain() } ?: emptyList()
+        return getTills().map { it.toDomain() }
+    }
+    
+    /**
+     * Get the total row count from the response.
+     */
+    fun GridDataOfLocationAccountListViewModel.getTotalRows(): Int {
+        return success?.totalRows ?: 0
     }
 }
 

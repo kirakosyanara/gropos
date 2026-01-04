@@ -88,10 +88,14 @@ val networkModule = module {
             secureStorage.saveEnvironment(environment.name)
         }
         
-        println("[NetworkModule] Initializing with environment: ${environment.name} -> ${environment.baseUrl}")
+        println("[NetworkModule] Initializing with environment: ${environment.name}")
+        println("[NetworkModule]   APIM Gateway (Registration/Heartbeat): ${environment.baseUrl}")
+        println("[NetworkModule]   App Service (Cashiers/Login/Products): ${environment.posApiBaseUrl}")
         
+        // HYBRID architecture: APIM for registration, App Service for POS operations
         ApiClientConfig(
             baseUrl = environment.baseUrl,
+            posApiBaseUrl = environment.posApiBaseUrl,
             clientVersion = "1.0.0",
             requestTimeoutMs = 30_000,
             connectTimeoutMs = 10_000,

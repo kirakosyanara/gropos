@@ -1,11 +1,13 @@
 package com.unisight.gropos.features.cashier.data
 
 import com.unisight.gropos.core.network.ApiClient
-import com.unisight.gropos.features.cashier.data.dto.EmployeeDto
+import com.unisight.gropos.features.cashier.data.dto.EmployeeListResponse
 import com.unisight.gropos.features.cashier.data.dto.EmployeeDtoMapper.toDomainList
 import com.unisight.gropos.features.cashier.domain.model.Employee
 import com.unisight.gropos.features.cashier.domain.repository.EmployeeRepository
 import io.ktor.client.request.get
+import io.ktor.client.request.setBody
+import io.ktor.client.request.url
 import io.ktor.http.path
 
 /**
@@ -54,16 +56,18 @@ class RemoteEmployeeRepository(
         println("[RemoteEmployeeRepository] Endpoint: $ENDPOINT_CASHIERS")
         
         return try {
-            // Use the new request method which adds x-api-key header dynamically
-            // NOTE: Use pathSegments to set the path on the base URL
-            val response = apiClient.request<List<EmployeeDto>> {
+            // Use authenticatedRequest for POS API endpoints
+            // CRITICAL: Set the full POS API URL directly (App Service, not APIM)
+            val fullUrl = apiClient.config.posApiBaseUrl + ENDPOINT_CASHIERS
+            println("[RemoteEmployeeRepository] Full URL: $fullUrl")
+            val response = apiClient.authenticatedRequest<EmployeeListResponse> {
                 method = io.ktor.http.HttpMethod.Get
-                url.pathSegments = ENDPOINT_CASHIERS.split("/").filter { it.isNotEmpty() }
+                url(fullUrl)
             }
             
             response.fold(
-                onSuccess = { dtos ->
-                    val employees = dtos.toDomainList()
+                onSuccess = { wrapper ->
+                    val employees = wrapper.success.toDomainList()
                     cachedEmployees = employees
                     println("[RemoteEmployeeRepository] SUCCESS: Fetched ${employees.size} employees from backend")
                     Result.success(employees)
@@ -83,32 +87,59 @@ class RemoteEmployeeRepository(
     }
     
     /**
-     * Verify employee PIN.
+     * Verify employee PIN by calling the Login API.
      * 
-     * Per CASHIER_OPERATIONS.md:
-     * - API: POST /employee/gropos-login
+     * Per pos.json API spec:
+     * - API: POST /api/Employee/Login
+     * - Request: { userName, password, branchId, ... }
      * - Validates PIN and returns employee profile + tokens
-     * 
-     * Note: This is a simplified implementation. In production,
-     * this should call the gropos-login endpoint and return the
-     * authenticated employee.
      */
     override suspend fun verifyPin(employeeId: Int, pin: String): Result<Employee> {
-        // For now, find employee from cache and verify locally
-        // In production, this would call POST /employee/gropos-login
+        println("[RemoteEmployeeRepository] Verifying PIN for employeeId: $employeeId")
+        
+        // Find employee from cache to get their username/email
         val employee = cachedEmployees?.find { it.id == employeeId }
             ?: return Result.failure(IllegalArgumentException("Employee not found"))
         
-        // TODO: Replace with actual API call to /employee/gropos-login
-        // For now, accept PIN "1234" or badge token matching employee ID
-        val isValidPin = pin == TEMP_VALID_PIN
-        val isBadgeToken = pin == employeeId.toString()
-        
-        if (!isValidPin && !isBadgeToken) {
-            return Result.failure(IllegalArgumentException("Invalid PIN"))
+        val userName = employee.email
+        if (userName.isNullOrBlank()) {
+            println("[RemoteEmployeeRepository] ERROR: Employee has no email/username")
+            return Result.failure(IllegalArgumentException("Employee has no username configured"))
         }
         
-        return Result.success(employee)
+        println("[RemoteEmployeeRepository] Calling Login API for: $userName")
+        
+        // Call the actual login API
+        val fullUrl = apiClient.config.posApiBaseUrl + ENDPOINT_LOGIN
+        println("[RemoteEmployeeRepository] Login URL: $fullUrl")
+        
+        return try {
+            val response = apiClient.authenticatedRequest<LoginResponseDto> {
+                method = io.ktor.http.HttpMethod.Post
+                url(fullUrl)
+                setBody(PinLoginRequest(
+                    userName = userName,
+                    password = pin,
+                    branchId = DEFAULT_BRANCH_ID
+                ))
+            }
+            
+            response.fold(
+                onSuccess = { loginResponse ->
+                    println("[RemoteEmployeeRepository] Login SUCCESS for $userName")
+                    // Return the employee from cache (API already validated)
+                    Result.success(employee)
+                },
+                onFailure = { error ->
+                    println("[RemoteEmployeeRepository] Login FAILED: ${error.message}")
+                    Result.failure(IllegalArgumentException("Invalid PIN"))
+                }
+            )
+        } catch (e: Exception) {
+            println("[RemoteEmployeeRepository] Login EXCEPTION: ${e.message}")
+            e.printStackTrace()
+            Result.failure(IllegalArgumentException("Login failed: ${e.message}"))
+        }
     }
     
     /**
@@ -153,8 +184,42 @@ class RemoteEmployeeRepository(
          */
         private const val ENDPOINT_CASHIERS = "/api/Employee/GetCashierEmployees"
         
-        // Temporary PIN for development - TODO: Remove when API is fully integrated
-        private const val TEMP_VALID_PIN = "1234"
+        /**
+         * Per pos.json API spec:
+         * POST /api/Employee/Login
+         * Authenticates employee with PIN
+         */
+        private const val ENDPOINT_LOGIN = "/api/Employee/Login"
+        
+        /**
+         * Default branch ID - should come from device registration
+         */
+        private const val DEFAULT_BRANCH_ID = 2
     }
 }
+
+/**
+ * Login request DTO for PIN verification.
+ * Per pos.json API spec: POST /api/Employee/Login
+ */
+@kotlinx.serialization.Serializable
+data class PinLoginRequest(
+    val userName: String,
+    val password: String,
+    val branchId: Int,
+    val clientName: String = "device"
+)
+
+/**
+ * Login response DTO.
+ * The API returns tokens on successful login.
+ */
+@kotlinx.serialization.Serializable
+data class LoginResponseDto(
+    val accessToken: String? = null,
+    val refreshToken: String? = null,
+    val expiresIn: Int? = null,
+    val success: Boolean? = null,
+    val message: String? = null
+)
 

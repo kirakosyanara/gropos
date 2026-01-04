@@ -167,7 +167,7 @@ class LockViewModel(
      */
     fun onPinDigit(digit: String) {
         val currentPin = _state.value.pinInput
-        if (currentPin.length < 8) { // Max 8 digits per spec
+        if (currentPin.length < 20) { // Max 20 digits per spec
             _state.value = _state.value.copy(
                 pinInput = currentPin + digit,
                 errorMessage = null

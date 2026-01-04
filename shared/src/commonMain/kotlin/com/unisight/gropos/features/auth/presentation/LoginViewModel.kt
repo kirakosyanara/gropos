@@ -157,7 +157,7 @@ class LoginViewModel(
      */
     fun onPinDigit(digit: String) {
         val currentPin = _state.value.pinInput
-        if (currentPin.length < 8) { // Max 8 digits per spec
+        if (currentPin.length < 20) { // Max 20 digits per spec
             _state.update { it.copy(pinInput = currentPin + digit, errorMessage = null) }
         }
     }
@@ -195,12 +195,16 @@ class LoginViewModel(
             
             employeeRepository.verifyPin(employee.id, pin)
                 .onSuccess { verifiedEmployee ->
+                    println("[LoginViewModel] PIN verification SUCCESS for ${employee.fullName}")
+                    println("[LoginViewModel] Employee assignedTillId: ${employee.assignedTillId}")
                     // Check if employee has assigned till
                     if (employee.assignedTillId != null && employee.assignedTillId > 0) {
                         // Already has till, complete login
+                        println("[LoginViewModel] Employee has till, completing login...")
                         completeLogin(employee, employee.assignedTillId)
                     } else {
                         // Need till assignment
+                        println("[LoginViewModel] Employee needs till assignment, loading tills...")
                         loadTillsForAssignment()
                     }
                 }
@@ -221,9 +225,15 @@ class LoginViewModel(
      * Transitions to TILL_ASSIGNMENT stage.
      */
     private fun loadTillsForAssignment() {
+        println("[LoginViewModel] loadTillsForAssignment() called")
         scope.launch {
+            println("[LoginViewModel] Fetching tills from repository...")
             tillRepository.getTills()
                 .onSuccess { tills ->
+                    println("[LoginViewModel] SUCCESS: Got ${tills.size} tills")
+                    tills.forEach { till ->
+                        println("[LoginViewModel]   Till: id=${till.id}, name=${till.name}")
+                    }
                     _state.update { 
                         it.copy(
                             tills = tills.map { till -> till.toUiModel() },
@@ -233,6 +243,7 @@ class LoginViewModel(
                     }
                 }
                 .onFailure { error ->
+                    println("[LoginViewModel] FAILED to load tills: ${error.message}")
                     _state.update { 
                         it.copy(
                             isLoading = false,
@@ -245,38 +256,47 @@ class LoginViewModel(
     
     /**
      * User selects a till.
+     * 
+     * Per TILL_MANAGEMENT.md: Till assignment happens as part of the login API call,
+     * not as a separate endpoint. The tillId is passed to the login API.
+     * 
+     * Business Rules:
+     * - Cashier can select available (unassigned) tills
+     * - Cashier can select their OWN assigned till
+     * - Cashier CANNOT select tills assigned to other employees
      */
     fun onTillSelected(tillId: Int) {
+        println("[LoginViewModel] onTillSelected: tillId=$tillId")
+        
         val till = _state.value.tills.find { it.id == tillId }
+        val employee = _state.value.selectedEmployee
         
         if (till == null) {
+            println("[LoginViewModel] ERROR: Till not found")
             _state.update { it.copy(errorMessage = "Till not found") }
             return
         }
         
-        if (!till.isAvailable) {
+        if (employee == null) {
+            println("[LoginViewModel] ERROR: No employee selected")
+            return
+        }
+        
+        // Check if till is selectable by this employee
+        val isOwnTill = till.assignedEmployeeId == employee.id
+        val isSelectable = till.isAvailable || isOwnTill
+        
+        if (!isSelectable) {
+            println("[LoginViewModel] ERROR: Till not available - assigned to ${till.assignedTo}")
             _state.update { it.copy(errorMessage = "This till is already assigned to ${till.assignedTo}") }
             return
         }
         
-        val employee = _state.value.selectedEmployee ?: return
+        println("[LoginViewModel] Till ${till.name} selected for ${employee.fullName} (isOwnTill=$isOwnTill)")
         
-        scope.launch {
-            _state.update { it.copy(isLoading = true) }
-            
-            tillRepository.assignTill(tillId, employee.id, employee.fullName)
-                .onSuccess {
-                    completeLogin(employee, tillId)
-                }
-                .onFailure { error ->
-                    _state.update { 
-                        it.copy(
-                            isLoading = false,
-                            errorMessage = error.message ?: "Failed to assign till"
-                        )
-                    }
-                }
-        }
+        // Per TILL_MANAGEMENT.md: Complete login with selected till
+        // The till assignment is handled as part of the login API call
+        completeLogin(employee, tillId)
     }
     
     /**

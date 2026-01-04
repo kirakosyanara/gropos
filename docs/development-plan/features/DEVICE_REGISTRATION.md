@@ -1122,7 +1122,7 @@ class ApiManager(
             defaultRequest {
                 url(baseUrl)
                 contentType(ContentType.Application.Json)
-                header("version", BuildConfig.VERSION_NAME)
+                header("version", "v1")
                 
                 // Add authentication headers
                 apiKey?.let { header("x-api-key", it) }

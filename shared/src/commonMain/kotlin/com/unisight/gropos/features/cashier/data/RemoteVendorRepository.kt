@@ -6,6 +6,7 @@ import com.unisight.gropos.features.cashier.data.dto.VendorListResponse
 import com.unisight.gropos.features.cashier.domain.model.Vendor
 import com.unisight.gropos.features.cashier.domain.repository.VendorRepository
 import io.ktor.client.request.get
+import io.ktor.client.request.url
 
 /**
  * Remote implementation of VendorRepository using REST API.
@@ -51,8 +52,11 @@ class RemoteVendorRepository(
         // Return cached if available
         cachedVendors?.let { return it }
         
+        // Use authenticatedRequest for POS API endpoints
+        val fullUrl = apiClient.config.posApiBaseUrl + ENDPOINT_VENDORS
         val result = apiClient.authenticatedRequest<VendorListResponse> {
-            get(ENDPOINT_VENDORS)
+            method = io.ktor.http.HttpMethod.Get
+            url(fullUrl)
         }
         
         return result.fold(

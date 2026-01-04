@@ -6,6 +6,56 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-01-04
 
+### Till Selection Logic Fixed (2026-01-04)
+
+- **Fixed: Cashiers can now select their own assigned till**
+  - Added `assignedEmployeeId` to `TillUiModel`
+  - Added `isSelectableBy(employeeId)` method to determine till selectability
+  - Till is selectable if: (1) Available (unassigned), OR (2) Assigned to the current employee
+  
+- **UI Improvements**
+  - Own till highlighted with green background and "(Your Till)" label
+  - Available tills show "(Available)"
+  - Other employees' tills show their name and are not clickable
+
+- **Business Rule per TILL_MANAGEMENT.md**
+  - Cashiers must always confirm which till they are using (testing: list selection, production: barcode scan)
+  - This prevents cashiers from accidentally using the wrong till
+
+### API Integration Fixed - Cashiers Loading Successfully (2026-01-03)
+
+- **HYBRID Architecture Implemented**
+  - APIM (`apim-service-unisight-*`) for: Device Registration, Heartbeat
+  - App Service (`app-pos-api-*`) for: Cashiers, Login, Products, POS operations
+
+- **DTO Fixes**
+  - Added `EmployeeListResponse` wrapper for `{"success": [...]}` response format
+  - Fixed `EmployeeDto.id` field name (was `userId`)
+
+- **Result: 14 employees fetched successfully from backend**
+
+### API Architecture Clarification (2026-01-03)
+
+- **CRITICAL FIX: All Requests Through APIM Gateway**
+  - Per authentication architecture documentation, ALL requests must go through APIM
+  - APIM validates `x-api-key` and forwards to App Service backend
+  - App Service endpoints (`app-pos-api-*`) should NOT be called directly
+  
+- **Removed `posApiBaseUrl`**
+  - Reverted split-URL architecture
+  - All endpoints now use `baseUrl` (APIM gateway)
+  - This ensures proper API key validation at the gateway level
+
+- **Environment URLs (APIM Gateway)**
+  - Development: `https://apim-service-unisight-dev.azure-api.net`
+  - Staging: `https://apim-service-unisight-staging.azure-api.net`
+  - Production: `https://apim-service-unisight-prod.azure-api.net`
+
+- **Documentation Updates**
+  - Created `docs/development-plan/architecture/AUTHENTICATION_ARCHITECTURE.md` - authoritative reference
+  - Updated `docs/development-plan/architecture/API.md` - APIM gateway examples
+  - Updated `docs/development-plan/architecture/API_GET_CASHIER_EMPLOYEES.md` - APIM gateway URLs
+
 ### Lock Screen & Till Flow Remediation (COMPLETED)
 
 - **API Endpoints Fixed (E1-E3)** ✅

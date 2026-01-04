@@ -4,12 +4,14 @@ import com.unisight.gropos.core.network.ApiClient
 import com.unisight.gropos.features.cashier.data.dto.GridDataOfLocationAccountListViewModel
 import com.unisight.gropos.features.cashier.data.dto.TillAssignRequest
 import com.unisight.gropos.features.cashier.data.dto.TillDomainMapper.toDomainList
+import com.unisight.gropos.features.cashier.data.dto.TillDomainMapper.getTotalRows
 import com.unisight.gropos.features.cashier.data.dto.TillOperationResponse
 import com.unisight.gropos.features.cashier.domain.model.Till
 import com.unisight.gropos.features.cashier.domain.repository.TillRepository
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
+import io.ktor.client.request.url
 
 /**
  * Remote implementation of TillRepository using REST API.
@@ -53,10 +55,34 @@ class RemoteTillRepository(
      * **Response:** GridDataOfLocationAccountListViewModel with list of LocationAccountDto
      */
     override suspend fun getTills(): Result<List<Till>> {
-        return apiClient.authenticatedRequest<GridDataOfLocationAccountListViewModel> {
-            get(ENDPOINT_TILLS)
-        }.map { response ->
-            response.toDomainList()
+        // Use authenticatedRequest for POS API endpoints
+        val fullUrl = apiClient.config.posApiBaseUrl + ENDPOINT_TILLS
+        println("[RemoteTillRepository] Fetching tills from: $fullUrl")
+        
+        return try {
+            val result = apiClient.authenticatedRequest<GridDataOfLocationAccountListViewModel> {
+                method = io.ktor.http.HttpMethod.Get
+                url(fullUrl)
+            }
+            
+            result.fold(
+                onSuccess = { response ->
+                    val tills = response.toDomainList()
+                    println("[RemoteTillRepository] SUCCESS: Fetched ${tills.size} tills (totalRows: ${response.getTotalRows()})")
+                    tills.forEach { till ->
+                        println("[RemoteTillRepository]   Till: id=${till.id}, name=${till.name}, assigned=${till.assignedEmployeeName}")
+                    }
+                    Result.success(tills)
+                },
+                onFailure = { error ->
+                    println("[RemoteTillRepository] API ERROR: ${error.message}")
+                    Result.failure(error)
+                }
+            )
+        } catch (e: Exception) {
+            println("[RemoteTillRepository] EXCEPTION: ${e.message}")
+            e.printStackTrace()
+            Result.failure(e)
         }
     }
     
@@ -86,11 +112,12 @@ class RemoteTillRepository(
      */
     override suspend fun assignTill(tillId: Int, employeeId: Int, employeeName: String): Result<Unit> {
         val endpoint = ENDPOINT_ASSIGN.replace("{tillId}", tillId.toString())
+        val fullUrl = apiClient.config.posApiBaseUrl + endpoint
         
         return apiClient.authenticatedRequest<TillOperationResponse> {
-            post(endpoint) {
-                setBody(TillAssignRequest(employeeId, employeeName))
-            }
+            method = io.ktor.http.HttpMethod.Post
+            url(fullUrl)
+            setBody(TillAssignRequest(employeeId, employeeName))
         }.mapCatching { response ->
             if (!response.success) {
                 throw TillOperationException(
@@ -111,9 +138,11 @@ class RemoteTillRepository(
      */
     override suspend fun releaseTill(tillId: Int): Result<Unit> {
         val endpoint = ENDPOINT_RELEASE.replace("{tillId}", tillId.toString())
+        val fullUrl = apiClient.config.posApiBaseUrl + endpoint
         
         return apiClient.authenticatedRequest<TillOperationResponse> {
-            post(endpoint)
+            method = io.ktor.http.HttpMethod.Post
+            url(fullUrl)
         }.mapCatching { response ->
             if (!response.success) {
                 throw TillOperationException(

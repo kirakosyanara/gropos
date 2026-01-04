@@ -221,14 +221,15 @@ class DefaultApiAuthService(
         
         return try {
             // Per API_INTEGRATION.md: POST /employee/login with credentials
-            val tokenResult = apiClient.deviceRequest<TokenResponseDto> {
-                post(ENDPOINT_LOGIN) {
-                    setBody(CredentialLoginRequest(
-                        username = username,
-                        password = password,
-                        branchId = DEFAULT_BRANCH_ID
-                    ))
-                }
+            // Use authenticatedRequest for POS API endpoints (App Service, not APIM)
+            val tokenResult = apiClient.authenticatedRequest<TokenResponseDto> {
+                method = io.ktor.http.HttpMethod.Post
+                url.pathSegments = ENDPOINT_LOGIN.split("/").filter { it.isNotEmpty() }
+                setBody(CredentialLoginRequest(
+                    username = username,
+                    password = password,
+                    branchId = DEFAULT_BRANCH_ID
+                ))
             }
             
             tokenResult.fold(
@@ -293,14 +294,14 @@ class DefaultApiAuthService(
         _authState.value = AuthState.Authenticating
         
         return try {
-            // Per API_INTEGRATION.md: POST /employee/login with PIN
-            val tokenResult = apiClient.deviceRequest<TokenResponseDto> {
-                post(ENDPOINT_LOGIN) {
-                    setBody(LoginRequest(
-                        pin = pin,
-                        branchId = DEFAULT_BRANCH_ID
-                    ))
-                }
+            // Use authenticatedRequest for POS API endpoints (App Service, not APIM)
+            val tokenResult = apiClient.authenticatedRequest<TokenResponseDto> {
+                method = io.ktor.http.HttpMethod.Post
+                url.pathSegments = ENDPOINT_LOGIN.split("/").filter { it.isNotEmpty() }
+                setBody(LoginRequest(
+                    pin = pin,
+                    branchId = DEFAULT_BRANCH_ID
+                ))
             }
             
             tokenResult.fold(
@@ -371,14 +372,14 @@ class DefaultApiAuthService(
         } ?: return Result.failure(AuthException("No refresh token available"))
         
         return try {
-            // Per API_INTEGRATION.md: POST /employee/refresh
-            val tokenResult = apiClient.deviceRequest<TokenResponseDto> {
-                post(ENDPOINT_REFRESH) {
-                    setBody(RefreshTokenRequest(
-                        token = refreshTokenValue,
-                        clientName = "device"
-                    ))
-                }
+            // Use authenticatedRequest for POS API endpoints (App Service, not APIM)
+            val tokenResult = apiClient.authenticatedRequest<TokenResponseDto> {
+                method = io.ktor.http.HttpMethod.Post
+                url.pathSegments = ENDPOINT_REFRESH.split("/").filter { it.isNotEmpty() }
+                setBody(RefreshTokenRequest(
+                    token = refreshTokenValue,
+                    clientName = "device"
+                ))
             }
             
             tokenResult.fold(
@@ -429,7 +430,8 @@ class DefaultApiAuthService(
             // Per LOCK_SCREEN_AND_CASHIER_LOGIN.md: POST /api/Employee/Logout
             // Fire and forget - we clear local state regardless of API response
             apiClient.authenticatedRequest<Unit> {
-                post(ENDPOINT_LOGOUT)
+                method = io.ktor.http.HttpMethod.Post
+                url.pathSegments = ENDPOINT_LOGOUT.split("/").filter { it.isNotEmpty() }
             }
             
             tokenStorage.clearTokens()
@@ -456,7 +458,8 @@ class DefaultApiAuthService(
     override suspend fun logoutWithEndOfShift(): Result<Unit> {
         return try {
             apiClient.authenticatedRequest<Unit> {
-                post(ENDPOINT_LOGOUT_END_OF_SHIFT)
+                method = io.ktor.http.HttpMethod.Post
+                url.pathSegments = ENDPOINT_LOGOUT_END_OF_SHIFT.split("/").filter { it.isNotEmpty() }
             }
             
             tokenStorage.clearTokens()
@@ -483,9 +486,9 @@ class DefaultApiAuthService(
     override suspend fun verifyPassword(request: VerifyPasswordRequest): Result<Boolean> {
         return try {
             apiClient.authenticatedRequest<Boolean> {
-                post(ENDPOINT_VERIFY_PASSWORD) {
-                    setBody(request)
-                }
+                method = io.ktor.http.HttpMethod.Post
+                url.pathSegments = ENDPOINT_VERIFY_PASSWORD.split("/").filter { it.isNotEmpty() }
+                setBody(request)
             }
         } catch (e: Exception) {
             println("ApiAuthService: PIN verification failed: ${e.message}")
@@ -502,9 +505,9 @@ class DefaultApiAuthService(
     override suspend fun lockDevice(request: DeviceLockRequest): Result<DeviceEventResponse> {
         return try {
             apiClient.authenticatedRequest<DeviceEventResponse> {
-                post(ENDPOINT_LOCK_DEVICE) {
-                    setBody(request)
-                }
+                method = io.ktor.http.HttpMethod.Post
+                url.pathSegments = ENDPOINT_LOCK_DEVICE.split("/").filter { it.isNotEmpty() }
+                setBody(request)
             }
         } catch (e: Exception) {
             println("ApiAuthService: Lock device failed: ${e.message}")
@@ -520,7 +523,8 @@ class DefaultApiAuthService(
      */
     private suspend fun fetchUserProfile(): Result<AuthUser> {
         return apiClient.authenticatedRequest<UserProfileDto> {
-            get(ENDPOINT_PROFILE)
+            method = io.ktor.http.HttpMethod.Get
+            url.pathSegments = ENDPOINT_PROFILE.split("/").filter { it.isNotEmpty() }
         }.map { it.toDomain() }
     }
     

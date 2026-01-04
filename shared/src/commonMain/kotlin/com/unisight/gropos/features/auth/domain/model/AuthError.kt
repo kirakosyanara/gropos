@@ -9,11 +9,11 @@ package com.unisight.gropos.features.auth.domain.model
 sealed class AuthError : Exception() {
     
     /**
-     * PIN format is invalid (must be exactly 4 digits).
+     * PIN format is invalid (must be 4-20 digits).
      */
     data object InvalidPinFormat : AuthError() {
         private fun readResolve(): Any = InvalidPinFormat
-        override val message: String = "PIN must be exactly 4 digits"
+        override val message: String = "PIN must be 4-20 digits"
     }
     
     /**

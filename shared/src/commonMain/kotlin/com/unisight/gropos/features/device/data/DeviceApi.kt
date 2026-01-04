@@ -3,6 +3,7 @@ package com.unisight.gropos.features.device.data
 import com.unisight.gropos.core.network.ApiClient
 import com.unisight.gropos.features.device.data.dto.CurrentDeviceInfoDto
 import io.ktor.client.request.get
+import io.ktor.client.request.url
 
 /**
  * API interface for device-related operations.
@@ -63,10 +64,13 @@ class RemoteDeviceApi(
      * login screen should pre-select that employee.
      */
     override suspend fun getCurrentDevice(): Result<CurrentDeviceInfoDto> {
-        println("[DeviceApi] Fetching current device info from $ENDPOINT_DEVICE_CURRENT")
+        val fullUrl = apiClient.config.posApiBaseUrl + ENDPOINT_DEVICE_CURRENT
+        println("[DeviceApi] Fetching current device info from $fullUrl")
         
+        // Use authenticatedRequest for POS API endpoints
         return apiClient.authenticatedRequest {
-            get(ENDPOINT_DEVICE_CURRENT)
+            method = io.ktor.http.HttpMethod.Get
+            url(fullUrl)
         }
     }
 }

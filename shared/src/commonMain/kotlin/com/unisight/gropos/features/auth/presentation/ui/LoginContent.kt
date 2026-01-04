@@ -297,6 +297,7 @@ private fun RightAuthSection(
                 
                 TillSelectionDialog(
                     tills = state.tills,
+                    currentEmployeeId = state.selectedEmployee?.id ?: 0,
                     onTillSelected = onTillSelected,
                     onDismiss = onBackPressed
                 )
@@ -540,7 +541,7 @@ private fun PinEntryContent(
                 
                 // PIN Dots Display
                 Text(
-                    text = if (pinDots.isEmpty()) "_ _ _ _" else pinDots,
+                    text = if (pinDots.isEmpty()) "Enter PIN" else pinDots,
                     style = MaterialTheme.typography.headlineLarge,
                     fontWeight = FontWeight.Bold,
                     color = GroPOSColors.TextPrimary,

@@ -48,15 +48,35 @@ enum class AdminTab(val displayName: String) {
 /**
  * Environment types for API targeting.
  * 
- * **Per API_INTEGRATION.md:**
- * - These URLs must match the Azure API Management endpoints
+ * **API Architecture (per Java codebase analysis 2026-01-03):**
+ * HYBRID architecture with TWO endpoints:
+ * 
+ * 1. `baseUrl` (APIM Gateway) - Device Registration, Heartbeat
+ * 2. `posApiBaseUrl` (App Service Direct) - Cashiers, Login, Products, etc.
+ * 
  * - Environment selection persists to SecureStorage
  * - Changing environment requires app restart to reconfigure ApiClient
  */
-enum class EnvironmentType(val displayName: String, val baseUrl: String) {
-    PRODUCTION("Production", "https://apim-service-unisight-prod.azure-api.net"),
-    STAGING("Staging", "https://apim-service-unisight-staging.azure-api.net"),
-    DEVELOPMENT("Development", "https://apim-service-unisight-dev.azure-api.net");
+enum class EnvironmentType(
+    val displayName: String,
+    val baseUrl: String,       // APIM gateway (Device Registration, Heartbeat)
+    val posApiBaseUrl: String  // App Service direct (Cashiers, Login, Products)
+) {
+    PRODUCTION(
+        displayName = "Production",
+        baseUrl = "https://apim-service-unisight-prod.azure-api.net",
+        posApiBaseUrl = "https://app-pos-api-prod-001.azurewebsites.net"
+    ),
+    STAGING(
+        displayName = "Staging",
+        baseUrl = "https://apim-service-unisight-staging.azure-api.net",
+        posApiBaseUrl = "https://app-pos-api-staging-001.azurewebsites.net"
+    ),
+    DEVELOPMENT(
+        displayName = "Development",
+        baseUrl = "https://apim-service-unisight-dev.azure-api.net",
+        posApiBaseUrl = "https://app-pos-api-dev-001.azurewebsites.net"
+    );
     
     companion object {
         /**

@@ -244,7 +244,7 @@ class RegistrationViewModel(
         viewModelScope.launch {
             try {
                 val response = registrationApi.createQRCodeRegistration(
-                    version = BuildConfig.VERSION_NAME,
+                    version = "v1",
                     macAddress = getDeviceMacAddress()
                 )
                 
@@ -274,7 +274,7 @@ class RegistrationViewModel(
                 try {
                     val status = registrationApi.getDeviceRegistrationStatusById(
                         assignedGuid = assignedGuid,
-                        version = BuildConfig.VERSION_NAME
+                        version = "v1"
                     )
                     
                     when {

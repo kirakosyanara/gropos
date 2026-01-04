@@ -6,17 +6,29 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * DTO for employee data from GET /employee/cashiers endpoint.
+ * Response wrapper for GET /api/Employee/GetCashierEmployees endpoint.
  * 
- * Per CASHIER_OPERATIONS.md Section "Fetching Cashier List":
- * - API: GET /employee/cashiers
+ * The API returns: {"success": [...employees...]}
+ */
+@Serializable
+data class EmployeeListResponse(
+    @SerialName("success")
+    val success: List<EmployeeDto> = emptyList()
+)
+
+/**
+ * DTO for employee data from GET /api/Employee/GetCashierEmployees endpoint.
+ * 
+ * Per Java codebase analysis:
+ * - API: GET /api/Employee/GetCashierEmployees
  * - Auth: x-api-key header (device API key)
- * - Returns list of scheduled cashiers for this device/branch
+ * - Returns: {"success": [...employees...]}
  */
 @Serializable
 data class EmployeeDto(
-    @SerialName("userId")
-    val userId: Int? = null,
+    // API returns "id" not "userId"
+    @SerialName("id")
+    val id: Int? = null,
     
     @SerialName("email")
     val email: String? = null,
@@ -48,10 +60,10 @@ object EmployeeDtoMapper {
      * Per DATA_MODELS.md: Domain Employee has id, firstName, lastName, role, etc.
      */
     fun EmployeeDto.toDomain(): Employee? {
-        val id = userId ?: return null  // userId is required
+        val employeeId = id ?: return null  // id is required
         
         return Employee(
-            id = id,
+            id = employeeId,
             firstName = firstName ?: "",
             lastName = lastName ?: "",
             email = email ?: "",

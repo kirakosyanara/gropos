@@ -33,14 +33,20 @@ import com.unisight.gropos.core.theme.GroPOSColors
 import com.unisight.gropos.features.auth.presentation.TillUiModel
 
 /**
- * Till Selection Dialog per DIALOGS.md
+ * Till Selection Dialog per DIALOGS.md and TILL_MANAGEMENT.md
  * 
- * Displayed when a cashier needs to select a till during login.
+ * Displayed when a cashier needs to select/confirm a till during login.
  * Shows list of all tills with availability status.
+ * 
+ * Per business rules:
+ * - Cashier can select available (unassigned) tills
+ * - Cashier can select their OWN assigned till
+ * - Cashier CANNOT select tills assigned to other employees
  */
 @Composable
 fun TillSelectionDialog(
     tills: List<TillUiModel>,
+    currentEmployeeId: Int,
     onTillSelected: (Int) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
@@ -109,10 +115,13 @@ fun TillSelectionDialog(
                         .height(250.dp)
                 ) {
                     items(tills, key = { it.id }) { till ->
+                        val isSelectable = till.isSelectableBy(currentEmployeeId)
                         TillListItem(
                             till = till,
+                            isSelectable = isSelectable,
+                            isOwnTill = till.assignedEmployeeId == currentEmployeeId,
                             onClick = { 
-                                if (till.isAvailable) {
+                                if (isSelectable) {
                                     onTillSelected(till.id) 
                                 }
                             }
@@ -143,17 +152,24 @@ fun TillSelectionDialog(
 @Composable
 private fun TillListItem(
     till: TillUiModel,
+    isSelectable: Boolean,
+    isOwnTill: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val backgroundColor = if (till.isAvailable) Color.Transparent else Color(0xFFF5F5F5)
-    val textColor = if (till.isAvailable) GroPOSColors.TextPrimary else GroPOSColors.TextSecondary
+    // Determine colors based on selectability
+    val backgroundColor = when {
+        isOwnTill -> Color(0xFFE8F5E9)  // Light green for own till
+        isSelectable -> Color.Transparent
+        else -> Color(0xFFF5F5F5)  // Gray for unavailable
+    }
+    val textColor = if (isSelectable) GroPOSColors.TextPrimary else GroPOSColors.TextSecondary
     
     Row(
         modifier = modifier
             .fillMaxWidth()
             .background(backgroundColor)
-            .clickable(enabled = till.isAvailable, onClick = onClick)
+            .clickable(enabled = isSelectable, onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 14.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
@@ -168,13 +184,21 @@ private fun TillListItem(
             text = till.name,
             style = MaterialTheme.typography.bodyMedium,
             color = textColor,
-            fontWeight = if (till.isAvailable) FontWeight.Medium else FontWeight.Normal,
+            fontWeight = if (isSelectable) FontWeight.Medium else FontWeight.Normal,
             modifier = Modifier.weight(1f)
         )
         Text(
-            text = if (till.isAvailable) "(Available)" else till.assignedTo ?: "Assigned",
+            text = when {
+                isOwnTill -> "(Your Till)"
+                till.isAvailable -> "(Available)"
+                else -> till.assignedTo ?: "Assigned"
+            },
             style = MaterialTheme.typography.bodySmall,
-            color = if (till.isAvailable) GroPOSColors.PrimaryGreen else GroPOSColors.TextSecondary,
+            color = when {
+                isOwnTill -> GroPOSColors.PrimaryGreen
+                till.isAvailable -> GroPOSColors.PrimaryGreen
+                else -> GroPOSColors.TextSecondary
+            },
             modifier = Modifier.width(120.dp),
             textAlign = TextAlign.End
         )

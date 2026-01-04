@@ -5,6 +5,7 @@ import com.unisight.gropos.features.checkout.data.dto.ProductApiDto
 import com.unisight.gropos.features.checkout.data.dto.ProductApiDtoMapper.toDomainList
 import com.unisight.gropos.features.checkout.domain.model.Product
 import com.unisight.gropos.features.checkout.domain.repository.ProductRepository
+import io.ktor.client.request.url
 import io.ktor.http.HttpMethod
 import io.ktor.http.path
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -126,15 +127,19 @@ class ProductSyncService(
      */
     private suspend fun fetchProductPage(offset: String): Result<List<Product>> {
         return try {
-            // Use the new request method which adds x-api-key header dynamically
-            // NOTE: Use pathSegments to set the path on the base URL
-            val response = apiClient.request<List<ProductApiDto>> {
+            // Use authenticatedRequest for POS API endpoints
+            // Build URL with query parameters
+            val baseUrl = apiClient.config.posApiBaseUrl + ENDPOINT_PRODUCTS
+            val fullUrl = if (offset.isNotEmpty()) {
+                "$baseUrl?offset=$offset&limit=$PAGE_SIZE"
+            } else {
+                "$baseUrl?limit=$PAGE_SIZE"
+            }
+            println("[ProductSyncService] Fetching from: $fullUrl")
+            
+            val response = apiClient.authenticatedRequest<List<ProductApiDto>> {
                 method = HttpMethod.Get
-                url.pathSegments = ENDPOINT_PRODUCTS.split("/").filter { it.isNotEmpty() }
-                if (offset.isNotEmpty()) {
-                    url.parameters.append("offset", offset)
-                }
-                url.parameters.append("limit", PAGE_SIZE.toString())
+                url(fullUrl)
             }
             
             response.map { dtos ->

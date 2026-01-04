@@ -119,6 +119,8 @@ The Lottery API uses the same authentication mechanism as all other GroPOS APIs.
 
 ### Example Request with Authentication
 
+> **IMPORTANT:** All requests go through the APIM Gateway. Never call the App Service directly.
+
 ```http
 POST /lottery/sale HTTP/1.1
 Host: apim-service-unisight-dev.azure-api.net

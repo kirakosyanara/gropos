@@ -168,14 +168,16 @@ class NetworkConfigTest {
         // When - simulate what NetworkModule does
         val storedEnv = storage.getEnvironment()
         val environment = EnvironmentType.fromString(storedEnv)
-        // API key is now provided dynamically via apiKeyProvider, not in config
+        // HYBRID architecture: APIM for registration, App Service for POS operations
         val config = ApiClientConfig(
             baseUrl = environment.baseUrl,
+            posApiBaseUrl = environment.posApiBaseUrl,
             clientVersion = "1.0.0"
         )
         
-        // Then
+        // Then - baseUrl is APIM, posApiBaseUrl is App Service
         assertEquals("https://apim-service-unisight-dev.azure-api.net", config.baseUrl)
+        assertEquals("https://app-pos-api-dev-001.azurewebsites.net", config.posApiBaseUrl)
     }
     
     @Test
@@ -187,14 +189,16 @@ class NetworkConfigTest {
         // When
         val storedEnv = storage.getEnvironment()
         val environment = EnvironmentType.fromString(storedEnv)
-        // API key is now provided dynamically via apiKeyProvider, not in config
+        // HYBRID architecture: APIM for registration, App Service for POS operations
         val config = ApiClientConfig(
             baseUrl = environment.baseUrl,
+            posApiBaseUrl = environment.posApiBaseUrl,
             clientVersion = "1.0.0"
         )
         
-        // Then
+        // Then - baseUrl is APIM, posApiBaseUrl is App Service
         assertEquals("https://apim-service-unisight-staging.azure-api.net", config.baseUrl)
+        assertEquals("https://app-pos-api-staging-001.azurewebsites.net", config.posApiBaseUrl)
     }
     
     @Test
@@ -206,14 +210,16 @@ class NetworkConfigTest {
         // When
         val storedEnv = storage.getEnvironment()
         val environment = EnvironmentType.fromString(storedEnv)
-        // API key is now provided dynamically via apiKeyProvider, not in config
+        // HYBRID architecture: APIM for registration, App Service for POS operations
         val config = ApiClientConfig(
             baseUrl = environment.baseUrl,
+            posApiBaseUrl = environment.posApiBaseUrl,
             clientVersion = "1.0.0"
         )
         
-        // Then
+        // Then - baseUrl is APIM, posApiBaseUrl is App Service
         assertEquals("https://apim-service-unisight-prod.azure-api.net", config.baseUrl)
+        assertEquals("https://app-pos-api-prod-001.azurewebsites.net", config.posApiBaseUrl)
     }
     
     @Test
@@ -224,14 +230,16 @@ class NetworkConfigTest {
         // When
         val storedEnv = storage.getEnvironment() // null
         val environment = EnvironmentType.fromString(storedEnv)
-        // API key is now provided dynamically via apiKeyProvider, not in config
+        // HYBRID architecture: APIM for registration, App Service for POS operations
         val config = ApiClientConfig(
             baseUrl = environment.baseUrl,
+            posApiBaseUrl = environment.posApiBaseUrl,
             clientVersion = "1.0.0"
         )
         
-        // Then - should default to DEV for safety
+        // Then - should default to DEV for both URLs
         assertEquals("https://apim-service-unisight-dev.azure-api.net", config.baseUrl)
+        assertEquals("https://app-pos-api-dev-001.azurewebsites.net", config.posApiBaseUrl)
     }
     
     // ========================================================================
@@ -282,6 +290,32 @@ class NetworkConfigTest {
         EnvironmentType.entries.forEach { env ->
             assert(env.baseUrl.contains("azure-api.net")) {
                 "${env.name} URL should point to Azure APIM: ${env.baseUrl}"
+            }
+        }
+    }
+    
+    // ========================================================================
+    // Hybrid Architecture Tests (per Java codebase analysis 2026-01-03)
+    // APIM for Registration/Heartbeat, App Service for POS operations
+    // ========================================================================
+    
+    @Test
+    fun `All environments have APIM baseUrl for registration and heartbeat`() {
+        EnvironmentType.entries.forEach { env ->
+            assert(env.baseUrl.contains("apim-service-unisight")) {
+                "${env.name} baseUrl must use APIM for registration: ${env.baseUrl}"
+            }
+        }
+    }
+    
+    @Test
+    fun `All environments have App Service posApiBaseUrl for POS operations`() {
+        EnvironmentType.entries.forEach { env ->
+            assert(env.posApiBaseUrl.contains("app-pos-api")) {
+                "${env.name} posApiBaseUrl must use App Service for POS: ${env.posApiBaseUrl}"
+            }
+            assert(env.posApiBaseUrl.contains("azurewebsites.net")) {
+                "${env.name} posApiBaseUrl must be Azure App Service: ${env.posApiBaseUrl}"
             }
         }
     }

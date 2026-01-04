@@ -337,7 +337,7 @@ private fun RightPanel(
         // PIN Display
         PinDisplay(
             pinLength = state.pinDotCount,
-            maxLength = 8,
+            maxLength = 20,
             modifier = Modifier.testTag(LockScreenTestTags.PIN_DISPLAY)
         )
         
