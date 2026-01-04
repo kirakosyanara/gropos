@@ -6,6 +6,41 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-01-04
 
+### Sync Progress UI and Conditional Sync (2026-01-04)
+
+- **Added `SYNCING` stage to Login flow** - Per COUCHBASE_SYNCHRONIZATION_DETAILED.md
+  - New `LoginStage.SYNCING` shows detailed sync progress to user
+  - `SyncProgressUiModel` displays: current entity, step count, progress %, error state
+  - User now sees exactly what's happening during initial data load
+
+- **Created `SyncingContent` composable** - Beautiful sync progress UI
+  - Large progress indicator with percentage
+  - Current entity name being synced
+  - Progress bar with step count
+  - Error state handling with clear messaging
+  - Info text: "This only happens once on initial setup or after clearing the database"
+
+- **Added sync completion tracking to SecureStorage**
+  - `saveInitialSyncCompleted(Boolean)` / `isInitialSyncCompleted()` 
+  - `saveLastSyncTimestamp(Long)` / `getLastSyncTimestamp()`
+  - Persists across app restarts via Java Preferences (Desktop)
+
+- **Conditional sync: Only on initial load or after database wipe**
+  - LoginViewModel checks `secureStorage.isInitialSyncCompleted()` on startup
+  - If false, performs initial sync with progress UI
+  - If true, skips directly to employee loading
+  - Sync flag cleared when database is wiped via admin settings
+
+- **Updated SettingsViewModel database wipe**
+  - Now clears `initialSyncCompleted` flag when wiping database
+  - Updated user message: "Data will sync on next login"
+  - Ensures fresh sync after every database reset
+
+- **Updated LoginViewModel with sync dependencies**
+  - Added optional `InitialSyncService` and `SecureStorage` parameters
+  - Updated Koin DI to inject new dependencies
+  - Graceful fallback if sync service unavailable
+
 ### Data Sync Infrastructure Implementation (2026-01-04)
 
 - **Created `DefaultSyncEngine`** - Production implementation of SyncEngine interface

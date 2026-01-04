@@ -164,12 +164,17 @@ class SettingsViewModel(
                 // This ensures NetworkModule reads the correct base URL on next app start.
                 secureStorage.saveEnvironment(newEnv.name)
                 
+                // **SYNC FIX:** Clear initial sync flag to trigger resync on next login
+                // Per COUCHBASE_SYNCHRONIZATION_DETAILED.md: Database wipe triggers resync
+                secureStorage.saveInitialSyncCompleted(false)
+                println("[ADMIN] Initial sync flag cleared - will resync on next login")
+                
                 // Determine if restart message is needed
                 val envChanged = _state.value.currentEnvironment != newEnv
                 val restartMessage = if (envChanged) {
-                    "Database wiped. Environment changed to ${newEnv.displayName}. Please restart the application to apply network changes."
+                    "Database wiped. Environment changed to ${newEnv.displayName}. Data will sync on next login. Please restart the application."
                 } else {
-                    "Database wiped successfully. Restart the application."
+                    "Database wiped successfully. Data will sync on next login. Please restart the application."
                 }
                 
                 _state.update { 

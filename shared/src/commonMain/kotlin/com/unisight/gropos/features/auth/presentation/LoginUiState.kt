@@ -56,7 +56,11 @@ data class LoginUiState(
     // Station Claiming State (L1)
     // Per LOCK_SCREEN_AND_CASHIER_LOGIN.md: Station is claimed when deviceInfo.employeeId is set
     val isStationClaimed: Boolean = false,
-    val claimedTillId: Int? = null
+    val claimedTillId: Int? = null,
+    
+    // Sync Progress State (Per COUCHBASE_SYNCHRONIZATION_DETAILED.md)
+    // Shows progress during initial data sync or after database wipe
+    val syncProgress: SyncProgressUiModel = SyncProgressUiModel()
 ) {
     /**
      * Computed: PIN as dots for display
@@ -79,6 +83,12 @@ enum class LoginStage {
     LOADING,
     
     /**
+     * Syncing data from cloud - shown on initial load or after database wipe
+     * Per COUCHBASE_SYNCHRONIZATION_DETAILED.md: Shows detailed progress
+     */
+    SYNCING,
+    
+    /**
      * Show grid of employees to select from
      */
     EMPLOYEE_SELECT,
@@ -97,6 +107,48 @@ enum class LoginStage {
      * Login complete, navigate to home
      */
     SUCCESS
+}
+
+/**
+ * UI model for sync progress display.
+ * 
+ * Per COUCHBASE_SYNCHRONIZATION_DETAILED.md Section 5:
+ * - Shows current entity being synced
+ * - Displays progress percentage
+ * - Provides estimated time remaining
+ */
+data class SyncProgressUiModel(
+    val isActive: Boolean = false,
+    val currentStep: Int = 0,
+    val totalSteps: Int = 13,  // 1 (employees) + 12 (DataLoader entities)
+    val currentEntity: String = "",
+    val statusMessage: String = "Initializing...",
+    val estimatedTimeRemaining: String? = null,
+    val hasError: Boolean = false,
+    val errorMessage: String? = null
+) {
+    /**
+     * Progress as a fraction (0.0 to 1.0) for progress bar
+     */
+    val progressFraction: Float
+        get() = if (totalSteps > 0) currentStep.toFloat() / totalSteps else 0f
+    
+    /**
+     * Progress as percentage (0 to 100)
+     */
+    val progressPercent: Int
+        get() = (progressFraction * 100).toInt()
+    
+    /**
+     * Human-readable progress text
+     */
+    val progressText: String
+        get() = when {
+            hasError -> "Sync Failed"
+            currentStep >= totalSteps -> "Complete!"
+            currentStep == 0 -> "Preparing..."
+            else -> "Step $currentStep of $totalSteps"
+        }
 }
 
 /**

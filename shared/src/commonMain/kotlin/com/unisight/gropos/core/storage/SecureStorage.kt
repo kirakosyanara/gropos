@@ -77,6 +77,35 @@ interface SecureStorage {
     fun getEnvironment(): String?
     
     /**
+     * Saves whether initial sync has been completed.
+     * 
+     * **Per COUCHBASE_SYNCHRONIZATION_DETAILED.md:**
+     * - Set to true after successful initial data load
+     * - Set to false after database wipe
+     * - Used to skip sync on subsequent logins
+     */
+    fun saveInitialSyncCompleted(completed: Boolean)
+    
+    /**
+     * Checks if initial sync has been completed.
+     * 
+     * @return true if initial sync was completed, false if sync is needed
+     */
+    fun isInitialSyncCompleted(): Boolean
+    
+    /**
+     * Saves the timestamp of last successful sync.
+     */
+    fun saveLastSyncTimestamp(timestamp: Long)
+    
+    /**
+     * Gets the timestamp of last successful sync.
+     * 
+     * @return timestamp in milliseconds, or null if never synced
+     */
+    fun getLastSyncTimestamp(): Long?
+    
+    /**
      * Clears all stored device credentials.
      * 
      * Called during device wipe or environment change.
@@ -127,6 +156,20 @@ class InMemorySecureStorage : SecureStorage {
     
     override fun getEnvironment(): String? = storage[KEY_ENVIRONMENT] as? String
     
+    override fun saveInitialSyncCompleted(completed: Boolean) {
+        storage[KEY_INITIAL_SYNC_COMPLETED] = completed
+    }
+    
+    override fun isInitialSyncCompleted(): Boolean {
+        return storage[KEY_INITIAL_SYNC_COMPLETED] as? Boolean ?: false
+    }
+    
+    override fun saveLastSyncTimestamp(timestamp: Long) {
+        storage[KEY_LAST_SYNC_TIMESTAMP] = timestamp
+    }
+    
+    override fun getLastSyncTimestamp(): Long? = storage[KEY_LAST_SYNC_TIMESTAMP] as? Long
+    
     override fun clearAll() {
         storage.clear()
     }
@@ -137,6 +180,8 @@ class InMemorySecureStorage : SecureStorage {
         private const val KEY_BRANCH_ID = "branchId"
         private const val KEY_BRANCH_NAME = "branchName"
         private const val KEY_ENVIRONMENT = "environment"
+        private const val KEY_INITIAL_SYNC_COMPLETED = "initialSyncCompleted"
+        private const val KEY_LAST_SYNC_TIMESTAMP = "lastSyncTimestamp"
     }
 }
 

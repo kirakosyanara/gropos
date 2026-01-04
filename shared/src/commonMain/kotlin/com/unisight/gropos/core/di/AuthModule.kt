@@ -69,7 +69,19 @@ val authModule = module {
     // - TillRepository: GET /api/account/GetTillAccountList
     // - NfcScanner: Badge authentication
     // - DeviceApi: GET /api/v1/devices/current for station claiming (L1)
-    factory { LoginViewModel(get(), get(), get(), get()) }
+    // Per COUCHBASE_SYNCHRONIZATION_DETAILED.md:
+    // - InitialSyncService: Performs initial data sync on first login
+    // - SecureStorage: Tracks whether sync has been completed
+    factory { 
+        LoginViewModel(
+            employeeRepository = get(),
+            tillRepository = get(),
+            nfcScanner = get(),
+            deviceApi = get(),
+            initialSyncService = getOrNull(),  // Optional - only available if syncModule loaded
+            secureStorage = get()
+        ) 
+    }
     
     // Presentation Layer - LockViewModel
     // Per LOCK_SCREEN_AND_CASHIER_LOGIN.md:

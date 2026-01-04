@@ -55,6 +55,7 @@ import com.unisight.gropos.core.theme.GroPOSSpacing
 import com.unisight.gropos.features.auth.presentation.EmployeeUiModel
 import com.unisight.gropos.features.auth.presentation.LoginStage
 import com.unisight.gropos.features.auth.presentation.LoginUiState
+import com.unisight.gropos.features.auth.presentation.SyncProgressUiModel
 import com.unisight.gropos.features.auth.presentation.components.ScanBadgeDialog
 
 /**
@@ -259,6 +260,7 @@ private fun RightAuthSection(
     ) {
         when (state.stage) {
             LoginStage.LOADING -> LoadingContent()
+            LoginStage.SYNCING -> SyncingContent(syncProgress = state.syncProgress)
             LoginStage.EMPLOYEE_SELECT -> EmployeeSelectContent(
                 employees = state.employees,
                 errorMessage = state.errorMessage,
@@ -330,6 +332,181 @@ private fun LoadingContent() {
                 text = "Loading employees...",
                 style = MaterialTheme.typography.titleMedium,
                 color = GroPOSColors.TextSecondary
+            )
+        }
+    }
+}
+
+// ============================================================================
+// SYNCING Stage - Initial Data Synchronization
+// Per COUCHBASE_SYNCHRONIZATION_DETAILED.md: Shows detailed sync progress
+// ============================================================================
+
+@Composable
+private fun SyncingContent(
+    syncProgress: SyncProgressUiModel
+) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = GroPOSSpacing.XXL),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Title
+            Text(
+                text = "Initializing Database",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = GroPOSColors.TextPrimary
+            )
+            
+            Spacer(modifier = Modifier.height(GroPOSSpacing.S))
+            
+            Text(
+                text = "Please wait while we sync your data",
+                style = MaterialTheme.typography.bodyLarge,
+                color = GroPOSColors.TextSecondary
+            )
+            
+            Spacer(modifier = Modifier.height(GroPOSSpacing.XXL))
+            
+            // Progress Card
+            WhiteBox(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier.padding(GroPOSSpacing.XL),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // Spinner or error icon
+                    if (syncProgress.hasError) {
+                        Surface(
+                            modifier = Modifier.size(80.dp),
+                            shape = CircleShape,
+                            color = GroPOSColors.DangerRed.copy(alpha = 0.1f)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = "✕",
+                                    style = MaterialTheme.typography.displaySmall,
+                                    color = GroPOSColors.DangerRed
+                                )
+                            }
+                        }
+                    } else {
+                        CircularProgressIndicator(
+                            progress = { syncProgress.progressFraction },
+                            modifier = Modifier.size(80.dp),
+                            color = GroPOSColors.PrimaryGreen,
+                            trackColor = GroPOSColors.LightGray2,
+                            strokeWidth = 6.dp
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(GroPOSSpacing.L))
+                    
+                    // Current entity being synced
+                    Text(
+                        text = syncProgress.statusMessage,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (syncProgress.hasError) GroPOSColors.DangerRed else GroPOSColors.TextPrimary,
+                        textAlign = TextAlign.Center
+                    )
+                    
+                    if (syncProgress.currentEntity.isNotEmpty() && !syncProgress.hasError) {
+                        Spacer(modifier = Modifier.height(GroPOSSpacing.XS))
+                        Text(
+                            text = "Syncing ${syncProgress.currentEntity}...",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = GroPOSColors.TextSecondary,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(GroPOSSpacing.L))
+                    
+                    // Progress bar
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(8.dp),
+                        shape = RoundedCornerShape(4.dp),
+                        color = GroPOSColors.LightGray2
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(fraction = syncProgress.progressFraction.coerceIn(0f, 1f))
+                                .fillMaxHeight()
+                                .background(
+                                    color = if (syncProgress.hasError) GroPOSColors.DangerRed else GroPOSColors.PrimaryGreen,
+                                    shape = RoundedCornerShape(4.dp)
+                                )
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(GroPOSSpacing.M))
+                    
+                    // Progress percentage and step count
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = syncProgress.progressText,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = GroPOSColors.TextSecondary
+                        )
+                        Text(
+                            text = "${syncProgress.progressPercent}%",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold,
+                            color = GroPOSColors.TextSecondary
+                        )
+                    }
+                    
+                    // Error message if any
+                    if (syncProgress.hasError && syncProgress.errorMessage != null) {
+                        Spacer(modifier = Modifier.height(GroPOSSpacing.L))
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(GroPOSRadius.Medium),
+                            color = Color(0xFFFFDAD6)
+                        ) {
+                            Text(
+                                text = syncProgress.errorMessage,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = GroPOSColors.DangerRed,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(GroPOSSpacing.M)
+                            )
+                        }
+                    }
+                    
+                    // Estimated time remaining
+                    if (syncProgress.estimatedTimeRemaining != null && !syncProgress.hasError) {
+                        Spacer(modifier = Modifier.height(GroPOSSpacing.M))
+                        Text(
+                            text = "Estimated time: ${syncProgress.estimatedTimeRemaining}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = GroPOSColors.TextSecondary
+                        )
+                    }
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(GroPOSSpacing.XL))
+            
+            // Info text
+            Text(
+                text = "This only happens once on initial setup\nor after clearing the database.",
+                style = MaterialTheme.typography.bodySmall,
+                color = GroPOSColors.TextSecondary,
+                textAlign = TextAlign.Center
             )
         }
     }

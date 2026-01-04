@@ -2,6 +2,10 @@ package com.unisight.gropos.features.auth.presentation
 
 import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
+import com.unisight.gropos.core.storage.SecureStorage
+import com.unisight.gropos.core.sync.InitialSyncService
+import com.unisight.gropos.core.sync.SyncProgress
+import com.unisight.gropos.core.sync.SyncState
 import com.unisight.gropos.features.auth.domain.hardware.NfcResult
 import com.unisight.gropos.features.auth.domain.hardware.NfcScanner
 import com.unisight.gropos.features.auth.domain.model.AuthUser
@@ -24,7 +28,12 @@ import kotlinx.datetime.toLocalDateTime
  * 
  * Per LOCK_SCREEN_AND_CASHIER_LOGIN.md:
  * Implements the login state machine:
- * LOADING -> EMPLOYEE_SELECT -> PIN_ENTRY -> TILL_ASSIGNMENT -> SUCCESS
+ * LOADING -> SYNCING -> EMPLOYEE_SELECT -> PIN_ENTRY -> TILL_ASSIGNMENT -> SUCCESS
+ * 
+ * **Per COUCHBASE_SYNCHRONIZATION_DETAILED.md:**
+ * - On initial load (or after database wipe), shows SYNCING stage
+ * - Displays detailed progress to the user
+ * - Only syncs once per installation (tracked via SecureStorage)
  * 
  * **Station Claiming Logic (L1):**
  * - Calls GET /api/v1/devices/current to check if station is claimed
@@ -38,6 +47,8 @@ import kotlinx.datetime.toLocalDateTime
  * @param tillRepository Repository for till management
  * @param nfcScanner Hardware abstraction for NFC badge readers
  * @param deviceApi API for device status (station claiming)
+ * @param initialSyncService Service for initial data synchronization
+ * @param secureStorage Storage for tracking sync completion status
  * @param coroutineScope Scope for launching coroutines (injectable for tests)
  */
 class LoginViewModel(
@@ -45,6 +56,8 @@ class LoginViewModel(
     private val tillRepository: TillRepository,
     private val nfcScanner: NfcScanner,
     private val deviceApi: DeviceApi,
+    private val initialSyncService: InitialSyncService? = null,
+    private val secureStorage: SecureStorage? = null,
     private val coroutineScope: CoroutineScope? = null
 ) : ScreenModel {
     
@@ -55,7 +68,132 @@ class LoginViewModel(
     val state: StateFlow<LoginUiState> = _state.asStateFlow()
     
     init {
-        loadEmployees()
+        checkAndPerformInitialSync()
+    }
+    
+    /**
+     * Check if initial sync is needed and perform it if necessary.
+     * 
+     * **Per COUCHBASE_SYNCHRONIZATION_DETAILED.md:**
+     * - Sync is needed on first launch (isInitialSyncCompleted = false)
+     * - Sync is needed after database wipe (flag is cleared)
+     * - Skip sync on subsequent logins
+     */
+    private fun checkAndPerformInitialSync() {
+        scope.launch {
+            val syncCompleted = secureStorage?.isInitialSyncCompleted() ?: false
+            
+            println("[LoginViewModel] Initial sync completed: $syncCompleted")
+            
+            if (!syncCompleted && initialSyncService != null) {
+                // Need to perform initial sync
+                performInitialSync()
+            } else {
+                // Sync already done, load employees directly
+                loadEmployees()
+            }
+        }
+    }
+    
+    /**
+     * Perform initial data synchronization.
+     * 
+     * Shows SYNCING stage with progress updates.
+     */
+    private suspend fun performInitialSync() {
+        println("[LoginViewModel] Starting initial sync...")
+        
+        // Transition to SYNCING stage
+        _state.update { 
+            it.copy(
+                stage = LoginStage.SYNCING,
+                syncProgress = SyncProgressUiModel(
+                    isActive = true,
+                    currentStep = 0,
+                    totalSteps = 13,
+                    statusMessage = "Connecting to server..."
+                )
+            )
+        }
+        
+        // Collect sync progress updates
+        val syncService = initialSyncService ?: run {
+            // No sync service available, skip to employee loading
+            loadEmployees()
+            return
+        }
+        
+        // Subscribe to progress updates
+        scope.launch {
+            syncService.progress.collect { progress ->
+                updateSyncProgress(progress)
+            }
+        }
+        
+        // Perform the sync
+        val result = syncService.performInitialSync()
+        
+        result.fold(
+            onSuccess = {
+                println("[LoginViewModel] Initial sync completed successfully")
+                
+                // Mark sync as completed
+                secureStorage?.saveInitialSyncCompleted(true)
+                secureStorage?.saveLastSyncTimestamp(Clock.System.now().toEpochMilliseconds())
+                
+                // Update UI with completion
+                _state.update {
+                    it.copy(
+                        syncProgress = it.syncProgress.copy(
+                            currentStep = it.syncProgress.totalSteps,
+                            statusMessage = "Sync complete!",
+                            isActive = false
+                        )
+                    )
+                }
+                
+                // Small delay to show completion, then load employees
+                kotlinx.coroutines.delay(500)
+                loadEmployees()
+            },
+            onFailure = { error ->
+                println("[LoginViewModel] Initial sync failed: ${error.message}")
+                
+                // Show error but allow continuing
+                _state.update {
+                    it.copy(
+                        syncProgress = it.syncProgress.copy(
+                            hasError = true,
+                            errorMessage = error.message ?: "Sync failed. Please try again.",
+                            statusMessage = "Sync Failed",
+                            isActive = false
+                        )
+                    )
+                }
+                
+                // Still try to load employees (offline mode)
+                kotlinx.coroutines.delay(2000)
+                loadEmployees()
+            }
+        )
+    }
+    
+    /**
+     * Update UI with sync progress.
+     */
+    private fun updateSyncProgress(progress: SyncProgress) {
+        _state.update {
+            it.copy(
+                syncProgress = SyncProgressUiModel(
+                    isActive = true,
+                    currentStep = progress.currentStep,
+                    totalSteps = progress.totalSteps,
+                    currentEntity = progress.currentEntity,
+                    statusMessage = progress.statusMessage,
+                    hasError = false
+                )
+            )
+        }
     }
     
     /**

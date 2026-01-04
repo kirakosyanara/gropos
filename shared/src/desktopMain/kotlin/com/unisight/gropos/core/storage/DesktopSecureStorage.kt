@@ -85,12 +85,35 @@ class DesktopSecureStorage : SecureStorage {
         return env
     }
     
+    override fun saveInitialSyncCompleted(completed: Boolean) {
+        prefs.putBoolean(KEY_INITIAL_SYNC_COMPLETED, completed)
+        prefs.flush()
+        println("[DesktopSecureStorage] Saved initialSyncCompleted: $completed")
+    }
+    
+    override fun isInitialSyncCompleted(): Boolean {
+        return prefs.getBoolean(KEY_INITIAL_SYNC_COMPLETED, false)
+    }
+    
+    override fun saveLastSyncTimestamp(timestamp: Long) {
+        prefs.putLong(KEY_LAST_SYNC_TIMESTAMP, timestamp)
+        prefs.flush()
+        println("[DesktopSecureStorage] Saved lastSyncTimestamp: $timestamp")
+    }
+    
+    override fun getLastSyncTimestamp(): Long? {
+        val ts = prefs.getLong(KEY_LAST_SYNC_TIMESTAMP, -1L)
+        return if (ts == -1L) null else ts
+    }
+    
     override fun clearAll() {
         prefs.remove(KEY_STATION_ID)
         prefs.remove(KEY_API_KEY)
         prefs.remove(KEY_BRANCH_ID)
         prefs.remove(KEY_BRANCH_NAME)
         prefs.remove(KEY_ENVIRONMENT)
+        prefs.remove(KEY_INITIAL_SYNC_COMPLETED)
+        prefs.remove(KEY_LAST_SYNC_TIMESTAMP)
         prefs.flush()
         println("[DesktopSecureStorage] Cleared all device credentials")
     }
@@ -103,6 +126,8 @@ class DesktopSecureStorage : SecureStorage {
         private const val KEY_BRANCH_ID = "branchId"
         private const val KEY_BRANCH_NAME = "branchName"
         private const val KEY_ENVIRONMENT = "environment"
+        private const val KEY_INITIAL_SYNC_COMPLETED = "initialSyncCompleted"
+        private const val KEY_LAST_SYNC_TIMESTAMP = "lastSyncTimestamp"
     }
 }
 
