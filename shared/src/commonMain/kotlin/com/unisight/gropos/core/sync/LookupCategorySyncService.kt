@@ -3,6 +3,7 @@ package com.unisight.gropos.core.sync
 import com.unisight.gropos.core.network.ApiClient
 import com.unisight.gropos.features.checkout.data.dto.LookupGroupDto
 import com.unisight.gropos.features.checkout.data.dto.LookupGroupItemDto
+import com.unisight.gropos.features.checkout.data.dto.LookupGroupResponseWrapper
 import com.unisight.gropos.features.checkout.domain.model.LookupCategoryWithItems
 import com.unisight.gropos.features.checkout.domain.model.LookupProduct
 import com.unisight.gropos.features.checkout.domain.repository.LookupCategoryRepository
@@ -160,7 +161,9 @@ class LookupCategorySyncService(
                 return Result.failure(Exception("API Error ($status): $rawBody"))
             }
             
-            val categories: List<LookupGroupDto> = httpResponse.body()
+            // API returns {"success": [...]} wrapper
+            val responseWrapper: LookupGroupResponseWrapper = httpResponse.body()
+            val categories = responseWrapper.success ?: emptyList()
             println("[LookupCategorySyncService] Received ${categories.size} categories from API")
             
             // Convert to domain models

@@ -3,6 +3,17 @@ package com.unisight.gropos.features.checkout.data.dto
 import kotlinx.serialization.Serializable
 
 /**
+ * API response wrapper for Lookup Categories.
+ * 
+ * The backend returns: {"success": [{...}, {...}]}
+ * This wrapper handles the "success" key.
+ */
+@Serializable
+data class LookupGroupResponseWrapper(
+    val success: List<LookupGroupDto>? = null
+)
+
+/**
  * API response model for Lookup Group (Category).
  * 
  * Per LOOKUP_TABLE.md - Data Models section:
