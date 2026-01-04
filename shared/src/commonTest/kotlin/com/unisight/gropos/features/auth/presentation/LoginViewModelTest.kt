@@ -7,6 +7,8 @@ import com.unisight.gropos.features.cashier.domain.model.Employee
 import com.unisight.gropos.features.cashier.domain.model.Till
 import com.unisight.gropos.features.cashier.domain.repository.EmployeeRepository
 import com.unisight.gropos.features.cashier.domain.repository.TillRepository
+import com.unisight.gropos.features.device.data.DeviceApi
+import com.unisight.gropos.features.device.data.dto.CurrentDeviceInfoDto
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -17,12 +19,17 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.test.assertFalse
 
 /**
  * Integration tests for LoginViewModel.
  * 
- * Per CASHIER_OPERATIONS.md: Tests the login state machine:
+ * Per LOCK_SCREEN_AND_CASHIER_LOGIN.md: Tests the login state machine:
  * LOADING -> EMPLOYEE_SELECT -> PIN_ENTRY -> TILL_ASSIGNMENT -> SUCCESS
+ * 
+ * Includes tests for Station Claiming (L1):
+ * - When device has claimed employee, skip to PIN_ENTRY
+ * - When device is FREE, show EMPLOYEE_SELECT
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class LoginViewModelTest {
@@ -123,6 +130,35 @@ class LoginViewModelTest {
         override fun cancelScan() { /* no-op */ }
     }
     
+    /**
+     * Fake DeviceApi for testing station claiming.
+     * 
+     * Per LOCK_SCREEN_AND_CASHIER_LOGIN.md:
+     * - claimedEmployeeId: If set, station is CLAIMED
+     * - claimedTillId: If set, till is pre-assigned
+     */
+    private class FakeDeviceApi(
+        private val claimedEmployeeId: Int? = null,
+        private val claimedTillId: Int? = null
+    ) : DeviceApi {
+        override suspend fun getCurrentDevice(): Result<CurrentDeviceInfoDto> {
+            return Result.success(
+                CurrentDeviceInfoDto(
+                    id = 1,
+                    branchId = 1,
+                    branch = "Test Branch",
+                    name = "Register 1",
+                    location = "Front",
+                    employeeId = claimedEmployeeId,
+                    employee = claimedEmployeeId?.let { "Claimed Employee" },
+                    locationAccountId = claimedTillId,
+                    locationAccount = claimedTillId?.let { "Till $it" },
+                    lastHeartbeat = null
+                )
+            )
+        }
+    }
+    
     // ========================================================================
     // Helper to create ViewModel with test scope
     // ========================================================================
@@ -131,12 +167,14 @@ class LoginViewModelTest {
         employeeRepo: EmployeeRepository = FakeEmployeeRepository(testEmployees),
         tillRepo: TillRepository = FakeTillRepository(testTills),
         nfcScanner: NfcScanner = FakeNfcScanner(),
+        deviceApi: DeviceApi = FakeDeviceApi(), // Station is FREE by default
         testScope: TestScope
     ): LoginViewModel {
         return LoginViewModel(
             employeeRepository = employeeRepo,
             tillRepository = tillRepo,
             nfcScanner = nfcScanner,
+            deviceApi = deviceApi,
             coroutineScope = testScope
         )
     }
@@ -331,5 +369,73 @@ class LoginViewModelTest {
         assertEquals(LoginStage.PIN_ENTRY, viewModel.state.value.stage)
         assertNotNull(viewModel.state.value.errorMessage)
         assertEquals("", viewModel.state.value.pinInput) // PIN cleared after failure
+    }
+    
+    // ========================================================================
+    // Station Claiming Tests (L1)
+    // ========================================================================
+    
+    @Test
+    fun `loadEmployees with FREE station should show EMPLOYEE_SELECT`() = runTest(
+        UnconfinedTestDispatcher()
+    ) {
+        // Given - Station is FREE (no claimed employee)
+        val viewModel = createViewModel(
+            deviceApi = FakeDeviceApi(claimedEmployeeId = null),
+            testScope = this
+        )
+        advanceUntilIdle()
+        
+        // Then
+        assertEquals(LoginStage.EMPLOYEE_SELECT, viewModel.state.value.stage)
+        assertFalse(viewModel.state.value.isStationClaimed)
+        assertNull(viewModel.state.value.selectedEmployee)
+    }
+    
+    @Test
+    fun `loadEmployees with CLAIMED station should skip to PIN_ENTRY`() = runTest(
+        UnconfinedTestDispatcher()
+    ) {
+        // Given - Station is CLAIMED by employee ID 1 (Jane Cashier)
+        val viewModel = createViewModel(
+            deviceApi = FakeDeviceApi(claimedEmployeeId = 1, claimedTillId = 5),
+            testScope = this
+        )
+        advanceUntilIdle()
+        
+        // Then - Should skip EMPLOYEE_SELECT and go to PIN_ENTRY
+        assertEquals(LoginStage.PIN_ENTRY, viewModel.state.value.stage)
+        assertTrue(viewModel.state.value.isStationClaimed)
+        assertNotNull(viewModel.state.value.selectedEmployee)
+        assertEquals(1, viewModel.state.value.selectedEmployee?.id)
+        assertEquals(5, viewModel.state.value.claimedTillId)
+    }
+    
+    @Test
+    fun `claimed station with pre-assigned till should complete login without till selection`() = runTest(
+        UnconfinedTestDispatcher()
+    ) {
+        // Given - Station CLAIMED with till already assigned
+        val viewModel = createViewModel(
+            deviceApi = FakeDeviceApi(claimedEmployeeId = 1, claimedTillId = 2),
+            testScope = this
+        )
+        advanceUntilIdle()
+        
+        // Pre-selected employee with till
+        assertEquals(LoginStage.PIN_ENTRY, viewModel.state.value.stage)
+        assertEquals(2, viewModel.state.value.selectedEmployee?.assignedTillId)
+        
+        // Enter valid PIN
+        viewModel.onPinDigit("1")
+        viewModel.onPinDigit("2")
+        viewModel.onPinDigit("3")
+        viewModel.onPinDigit("4")
+        viewModel.onPinSubmit()
+        advanceUntilIdle()
+        
+        // Then - Should go directly to SUCCESS (till was pre-assigned)
+        assertEquals(LoginStage.SUCCESS, viewModel.state.value.stage)
+        assertEquals(2, viewModel.state.value.selectedTillId)
     }
 }

@@ -408,6 +408,19 @@ class FakeApiAuthService : ApiAuthService {
         return Result.success(Unit)
     }
     
+    override suspend fun logoutWithEndOfShift(): Result<Unit> {
+        _authState.value = AuthState.Unauthenticated
+        return Result.success(Unit)
+    }
+    
+    override suspend fun verifyPassword(request: VerifyPasswordRequest): Result<Boolean> {
+        return Result.success(true)
+    }
+    
+    override suspend fun lockDevice(request: DeviceLockRequest): Result<DeviceEventResponse> {
+        return Result.success(DeviceEventResponse(success = true))
+    }
+    
     override fun setBearerToken(token: String, user: AuthUser) {
         _authState.value = AuthState.Authenticated(
             user = user,

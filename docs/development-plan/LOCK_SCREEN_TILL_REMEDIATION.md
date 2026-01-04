@@ -159,10 +159,10 @@ This document tracks the remediation of the **Lock Screen**, **Cashier Login**, 
 - [ ] **8.3** Add till barcode validation logic
 
 ### Phase 9: Testing (Commit: `test(auth): add tests for lock screen and login flows`)
-- [ ] **9.1** Update `LoginViewModelTest` with station claiming tests
-- [ ] **9.2** Update `LockViewModelTest` with PIN verification tests
-- [ ] **9.3** Add tests for manager approval flow
-- [ ] **9.4** Add tests for environment switching (dev/staging/prod)
+- [x] **9.1** Update `LoginViewModelTest` with station claiming tests ✅
+- [ ] **9.2** Update `LockViewModelTest` with PIN verification tests (deferred - needs mock setup)
+- [ ] **9.3** Add tests for manager approval flow (deferred - needs mock setup)
+- [ ] **9.4** Add tests for environment switching (deferred - covered by integration tests)
 
 ### Phase 10: Documentation & Cleanup
 - [ ] **10.1** Update CHANGELOG.md
@@ -834,6 +834,7 @@ data class LocationAccountDto(
 | 2026-01-04 | `feat(auth): L1 - station claiming logic` | LoginViewModel calls DeviceApi.getCurrentDevice(), pre-selects claimed employee | ✅ |
 | 2026-01-04 | `fix(auth): L2-L5,DI1 - lock screen fixes` | LockViewModel uses API verification, reports events, proper DI | ✅ |
 | 2026-01-04 | `feat(auth): L4,U1,U2 - manager approval flow` | LogoutOptionsDialog, ManagerApprovalDialog, sign-out with manager PIN | ✅ |
+| 2026-01-04 | `test(auth): add station claiming tests` | LoginViewModelTest updated with L1 station claiming test cases | ✅ |
 | | | | |
 
 ---
