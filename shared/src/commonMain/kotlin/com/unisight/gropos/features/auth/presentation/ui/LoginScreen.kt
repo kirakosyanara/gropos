@@ -15,6 +15,9 @@ import com.unisight.gropos.features.auth.presentation.LoginViewModel
 import com.unisight.gropos.features.checkout.presentation.ui.CheckoutScreen
 import com.unisight.gropos.features.settings.presentation.AdminSettingsDialog
 import com.unisight.gropos.features.settings.presentation.SettingsViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 /**
@@ -41,7 +44,9 @@ class LoginScreen : Screen {
         // Navigate to CheckoutScreen on successful login
         LaunchedEffect(state.stage) {
             if (state.stage == LoginStage.SUCCESS) {
+                println("[LoginScreen] ========================================")
                 println("[LoginScreen] SUCCESS stage reached - starting navigation...")
+                println("[LoginScreen] ========================================")
                 
                 try {
                     // Start inactivity monitoring
@@ -51,19 +56,30 @@ class LoginScreen : Screen {
                     
                     // Start HeartbeatService for background data sync
                     // Per SYNC_MECHANISM.md: Background sync starts after login
-                    // Note: start() is non-blocking (launches a coroutine internally)
-                    heartbeatService.start()
-                    println("[LoginScreen] HeartbeatService started")
+                    // IMPORTANT: start() is a suspend fun that can block - launch in background!
+                    CoroutineScope(Dispatchers.IO).launch {
+                        try {
+                            heartbeatService.start()
+                            println("[LoginScreen] HeartbeatService started in background")
+                        } catch (e: Exception) {
+                            println("[LoginScreen] HeartbeatService FAILED: ${e.message}")
+                        }
+                    }
+                    println("[LoginScreen] HeartbeatService launch initiated (non-blocking)")
+                    
+                    // Replace entire navigation stack to prevent back navigation to login
+                    println("[LoginScreen] Navigating to CheckoutScreen...")
+                    println("[LoginScreen] Creating CheckoutScreen instance...")
+                    val checkoutScreen = CheckoutScreen()
+                    println("[LoginScreen] CheckoutScreen created, calling replaceAll...")
+                    navigator.replaceAll(checkoutScreen)
+                    println("[LoginScreen] replaceAll() called successfully")
                     
                 } catch (e: Exception) {
-                    println("[LoginScreen] ERROR starting services: ${e.message}")
+                    println("[LoginScreen] !!!! NAVIGATION ERROR !!!!")
+                    println("[LoginScreen] Exception: ${e::class.simpleName}: ${e.message}")
                     e.printStackTrace()
                 }
-                
-                // Replace entire navigation stack to prevent back navigation to login
-                println("[LoginScreen] Navigating to CheckoutScreen...")
-                navigator.replaceAll(CheckoutScreen())
-                println("[LoginScreen] Navigation complete")
             }
         }
         

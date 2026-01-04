@@ -26,9 +26,13 @@ class CheckoutScreen : Screen {
     
     @Composable
     override fun Content() {
+        println("[CheckoutScreen] Content() composing...")
         val navigator = LocalNavigator.currentOrThrow
+        println("[CheckoutScreen] Getting ViewModel...")
         val viewModel = koinScreenModel<CheckoutViewModel>()
+        println("[CheckoutScreen] ViewModel obtained, collecting state...")
         val state by viewModel.state.collectAsState()
+        println("[CheckoutScreen] State collected, rendering content...")
         
         CheckoutContent(
             state = state,
