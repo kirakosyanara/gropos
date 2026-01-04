@@ -6,6 +6,265 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2026-01-04
 
+### Fixed
+
+- **P0 FIX: Transaction Status Mapping - Status 5 (Hold) Being Sent Instead of 4 (Completed)**
+  - **Problem:** Backend returned `TransactionFailureId: 90` because `transactionStatusId: 5` (Hold) 
+    was being sent instead of `4` (Completed).
+  - **Root Cause:** The `TransactionStatusApi.fromLocalStatus()` function had legacy mapping logic 
+    that mapped input `4` → output `5` (Hold), assuming OLD local values where `4` meant "ON_HOLD". 
+    However, the domain model `Transaction.COMPLETED = 4` is already API-aligned.
+  - **Fix:** Updated `fromLocalStatus()` to pass through API-aligned values directly since the domain 
+    model now uses the same status values as the API (COMPLETED = 4, HOLD = 5).
+  - **File:** `TransactionEnums.kt`
+
+- **P0 FIX: Empty `scanDate` Field in Transaction Items**
+  - **Problem:** Transaction items were being sent with `"scanDate": ""` (empty string), which may 
+    cause backend validation failures.
+  - **Root Cause:** `CartItem` was being created without setting `scanDateTime` - it defaulted to `null`.
+  - **Fix:** Updated `Cart.addProduct()` to populate `scanDateTime` with ISO-8601 timestamp when 
+    adding new items to the cart.
+  - **File:** `Cart.kt`
+
+- **CRITICAL FIX: Login Flow - Till Selection Before PIN Entry (per BEARER_TOKEN_MANAGEMENT.md)**
+  - **Problem:** Login API was failing with "Base account not found, deleted, or permission denied for Id: 0"
+    because the `locationAccountId` (tillId) was not being sent during PIN verification.
+  - **Root Cause:** The login flow was: Employee → PIN → Till → Login. But the backend's Login API 
+    requires `locationAccountId` even for PIN verification - there is no separate PIN-only endpoint.
+  - **Per BEARER_TOKEN_MANAGEMENT.md (lines 341-388):** Login requires `selectedEmployee`, `pin`, 
+    AND `selectedTillId` all to be present before calling the login API.
+  - **Fix:**
+    - Changed login flow to: **Employee → Till → PIN → Login**
+    - `onEmployeeSelected()`: Now checks if employee has pre-assigned till. If yes, goes to PIN_ENTRY 
+      with tillId set. If no, goes to TILL_ASSIGNMENT to select a till first.
+    - `onTillSelected()`: Now stores `selectedTillId` and transitions to PIN_ENTRY (instead of 
+      completing login directly).
+    - `onPinSubmit()`: Now calls `login()` directly with `selectedTillId` already set. Removed 
+      the separate `verifyPin()` call which was failing due to missing tillId.
+    - `onBackPressed()`: Updated for new flow - from PIN_ENTRY, goes back to TILL_ASSIGNMENT 
+      (if till was manually selected) or EMPLOYEE_SELECT (if till was pre-assigned).
+    - Removed obsolete `loadTillsForAssignment()` method, replaced with `loadTillsForEmployee()`.
+    - Updated NFC badge login to use same pattern - requires tillId before badge scan.
+  - **Result:** Login flow now correctly sends all required fields (userName, password, 
+    locationAccountId, branchId, deviceId) in a single login API call.
+
+- **FIX: Login Response DTO Structure (Nested `success` Object)**
+  - **Problem:** After fixing the login flow, the API returned 200 OK but deserialization failed with
+    "Unexpected JSON token at offset 11: Expected beginning of the string, but got { at path: $.success"
+  - **Root Cause:** The API returns a nested structure `{"success": {"access_token": "...", ...}}`
+    but the DTO expected a flat structure with `accessToken` at the top level.
+  - **Fix:**
+    - Updated `LoginResponseDto` to wrap a nested `LoginSuccessDto` object under the `success` field
+    - Added `LoginSuccessDto` with `access_token`, `refresh_token`, `expires_in`, `token_type` fields
+    - Added `LoginMessageDto` for error responses
+    - Added convenience getters for backward compatibility (`accessToken`, `refreshToken`, `expiresIn`)
+  - **Result:** Login API response now deserializes correctly, tokens are saved, and user navigates
+    to CheckoutScreen successfully.
+
+### Changed
+
+- **Documentation Reorganization:** Restructured `/docs` folder for better organization
+  - Created `docs/qa-reports/` folder for QA audits and testing documentation
+    - Moved `HARDCODED_VALUES_AUDIT.md`
+    - Moved `POST_REMEDIATION_AUDIT.md`
+    - Moved `QA_AUDIT_AND_STATUS_REPORT.md`
+    - Moved `UAT_RELEASE_CANDIDATE.md`
+    - Added `README.md` index
+  - Created `docs/development-plan/remediation/` folder for remediation plans
+    - Moved `DEVICE_REGISTRATION_REMEDIATION.md`
+    - Moved `LOCK_SCREEN_TILL_REMEDIATION.md`
+    - Moved `TRANSACTION_API_SUBMISSION_IMPLEMENTATION_PLAN.md`
+    - Moved `phase_4/` subfolder with all Phase 4 remediation docs
+    - Added `README.md` index
+
+### Fixed
+
+- **CRITICAL FIX: Automatic Re-Registration When Device is Deleted (410 Gone)**
+  - **Problem:** When the backend returns `410 Gone` with "Device has been deleted", the app 
+    was still showing the cashier login screen instead of triggering device re-registration.
+  - **Root Cause:** The `LoginViewModel.loadEmployees()` method was checking the device status 
+    but not handling the 410 error case to clear local registration and redirect to registration.
+  - **Fix:**
+    - Added `requiresReRegistration` boolean to `LoginUiState`
+    - Added `DEVICE_DELETED` enum value to `LoginStage`
+    - Added `DeviceRepository` dependency to `LoginViewModel`
+    - Modified `loadEmployees()` to detect 410 "Device has been deleted" error:
+      1. Calls `deviceRepository.clearRegistration()` to wipe local credentials
+      2. Sets `stage = DEVICE_DELETED` and `requiresReRegistration = true`
+    - Added `LaunchedEffect` in `LoginScreen` to navigate to `RegistrationScreen` when 
+      `requiresReRegistration` is true
+    - Updated `AuthModule` to inject `DeviceRepository` into `LoginViewModel`
+  - **Result:** App now automatically detects when device registration is invalid and 
+    redirects to the QR registration flow.
+
+- **CRITICAL FIX: ApiClient Not Checking HTTP Status Codes Before Returning Success**
+  - **Problem:** `ApiClient.authenticatedRequest()`, `deviceRequest()`, and `request()` methods 
+    were NOT checking if HTTP responses were successful (2xx status) before deserializing 
+    the response body and returning `Result.success()`.
+  - **Impact:** Non-2xx responses (like `410 Gone`, `404 Not Found`, `500 Server Error`) 
+    were incorrectly treated as successful API calls, causing downstream code to receive 
+    empty/default DTOs and proceed as if the operation succeeded.
+  - **Root Cause:** The methods called `response.body<T>()` immediately without checking 
+    `response.status.isSuccess()`. Ktor does not throw exceptions for 4xx/5xx by default.
+  - **Fix:**
+    - Added `response.status.isSuccess()` check before deserializing body in all three methods
+    - Returns `Result.failure(ApiException.HttpError(...))` for non-2xx responses
+    - Added new `ApiException.HttpError` subclass to capture status code, description, and body
+    - Added required imports: `io.ktor.client.statement.bodyAsText`, `io.ktor.http.isSuccess`
+  - **Result:** Non-successful HTTP responses now correctly return `Result.failure()`, 
+    preventing false positive success handling in login, transaction submission, and other APIs.
+
+- **P0 FIX: Full CashierLoginRequest Implementation per BEARER_TOKEN_MANAGEMENT.md**
+  - **Problem:** Login was using incomplete `PinLoginRequest` missing required fields for token generation
+  - **Per BEARER_TOKEN_MANAGEMENT.md (lines 282-290):** Full `CashierLoginRequest` requires:
+    - `userName`, `password`, `clientName = "device"`
+    - `authenticationKey = null`
+    - `locationAccountId` (tillId) - CRITICAL for token generation
+    - `branchId`, `deviceId` (stationId) - CRITICAL for token generation
+  - **Fix:**
+    - Renamed `PinLoginRequest` to `CashierLoginRequest` with all required fields
+    - Added `login()` method to `EmployeeRepository` interface with full parameters
+    - Implemented `login()` in `RemoteEmployeeRepository` and `FakeEmployeeRepository`
+    - Updated `LoginViewModel.completeLogin()` to call new `login()` method after till selection
+    - Created `LoginResult` data class with `accessToken`, `refreshToken`, `expiresIn`
+  - **Result:** Full login flow now matches BEARER_TOKEN_MANAGEMENT.md specification
+
+- **P0 FIX: Bearer Token Missing from Transaction API Requests**
+  - **Problem:** Transaction API calls returning `401 Unauthorized` because Bearer token was not being sent
+  - **Root Cause:** `RemoteEmployeeRepository.verifyPin()` was not saving the access token after successful login
+  - **Per END_OF_TRANSACTION_API_SUBMISSION.md (line 159):** `Authorization: Bearer {JWT_TOKEN}` is **required** for transaction creation
+  - **Fix:** 
+    - Added `TokenStorage` dependency to `RemoteEmployeeRepository`
+    - After successful login, now saves access token via `tokenStorage.saveAccessToken()`
+    - Also saves refresh token if available
+    - Updated `AuthModule.kt` to pass `TokenStorage` to `RemoteEmployeeRepository`
+  - **Result:** Bearer token now included in transaction API requests
+
+- **P0 FIX: Transaction API Version Header**
+  - **Problem:** Sending `version: 1.0` instead of `version: v1` per END_OF_TRANSACTION_API_SUBMISSION.md
+  - **Per Documentation (line 120-122):** "Version Header: version: v1" - The version is passed as a header parameter, NOT as a URL prefix
+  - **Fix:** Changed `API_VERSION` constant from `"1.0"` to `"v1"` in DefaultTransactionApiService.kt
+  - **Updated Comments:** Added documentation references to END_OF_TRANSACTION_API_SUBMISSION.md
+
+- **P0 FIX: Transaction Submission - Immediate POST, Not Queued**
+  - **Problem:** Transactions were being queued for HeartbeatService processing instead of POSTing immediately
+  - **Correct Behavior per END_OF_TRANSACTION_API_SUBMISSION.md:**
+    - Transaction is POSTed to API **IMMEDIATELY** after payment completes
+    - HeartbeatService is for **RECEIVING** updates, NOT sending transactions
+    - Queue is ONLY used for retry when immediate POST fails (offline/error)
+  - **Fix:**
+    - Rewrote `PaymentViewModel.completeTransaction()` to call API immediately
+    - Added `submitTransactionToApi()` for immediate POST
+    - Added `queueForRetry()` called ONLY when immediate POST fails
+    - Injected `TransactionApiService` into `PaymentViewModel`
+    - Updated `PaymentModule` to provide `TransactionApiService`
+  - **New Flow:**
+    1. Save transaction locally (crash safety)
+    2. IMMEDIATELY POST to `/transactions/create-transaction`
+    3. On success: mark as synced in local DB
+    4. On failure: queue for retry later
+    5. Print receipt, clear cart
+
+- **P0 FIX: Transaction API Endpoint Corrections**
+  - **Fixed Endpoint Path:** Changed from `/api/v1/transactions/create-transaction` to `/transactions/create-transaction` per TRANSACTION_API_SUBMISSION_IMPLEMENTATION_PLAN.md
+  - **Fixed Base URL:** Changed from App Service (`posApiBaseUrl`) to APIM Gateway (`baseUrl`) per END_OF_TRANSACTION_API_SUBMISSION.md
+  - URL now correctly: `https://apim-service-unisight-dev.azure-api.net/transactions/create-transaction`
+  - Added logging: `[TransactionApiService] POST to: {url}` for debugging
+
+- **P0 FIX: Transaction Sync Handler - DI Conflict Resolution**
+  - **Problem:** DatabaseModule (Desktop/Android) was registering a placeholder `QueueItemSyncHandler` that logged items but never called the actual API. This overrode the real `TransactionSyncHandler` from SyncModule.
+  - **Root Cause:** DI module load order: `databaseModule` → `appModules()` (includes `syncModule`). With `allowOverride(true)`, last registration wins. But `QueuePersistence` in `syncModule` was `InMemoryQueuePersistence`, overriding the crash-safe `CouchbaseQueuePersistence` from `databaseModule`.
+  - **Fix:**
+    - Removed placeholder `QueueItemSyncHandler` from DatabaseModule (Desktop and Android)
+    - Removed duplicate `OfflineQueueService` from DatabaseModule (Desktop and Android)
+    - Removed `InMemoryQueuePersistence` registration from SyncModule
+    - Now: SyncModule provides real `TransactionSyncHandler` and `OfflineQueueService`
+    - Now: DatabaseModule provides `CouchbaseQueuePersistence` for crash-safe storage
+  - **Result:** Transactions now properly sync to backend via real API calls
+
+### Transaction Sync Engine Implementation (2026-01-04)
+
+- **Implemented Phase 4, Step 4: Transaction Sync Engine**
+  - Per TRANSACTION_API_SUBMISSION_IMPLEMENTATION_PLAN.md: Complete transaction submission to backend
+  - Branch: `feat/transaction-sync`
+
+- **Created 7 API DTOs for backend contract:**
+  - `TransactionApiDtos.kt`: CreateTransactionRequest, AddEditTransactionRequest, AddEditTransactionItemRequest, AddEditTransactionItemTaxRequest, AddEditTransactionPaymentRequest, PaxDataRequest, TransactionContextDto, TransactionDiscountDto, TransactionVoidDto
+  - `TransactionResponseDtos.kt`: CreateTransactionResponse, TransactionSyncResponse, TransactionApiError, TransactionValidationError
+  - `TransactionEnums.kt`: TransactionStatusApi, PaymentTypeApi, PaymentStatusApi, DiscountTypeApi, SyncStatus
+  - **Constraint:** All monetary values as String to prevent floating-point precision loss
+
+- **Updated Domain Models with ~30 missing fields:**
+  - `Transaction`: Added customerId, paymentDate, rowCount, uniqueProductCount, uniqueSaleProductCount, totalPurchaseCount, costTotal, savingsTotal, fee, syncStatus, remoteId, locationAccountId, shiftId, deviceId, originalTransactionId/Guid, metadata
+  - `TransactionItem`: Added transactionGuid, transactionItemGuid, quantitySold, quantityReturned, rowNumber, isManualQuantity, itemNumber, cost, costTotal, finalPrice, finalPriceTaxSum, taxPercentSum, snapPaidAmount, snapPaidPercent, subjectToTaxTotal, nonSNAPTotal, paidTotal, savingsPerUnit, taxes (List<TransactionItemTax>)
+  - `TransactionPayment`: Added transactionGuid, transactionPaymentGuid, paymentTypeId, accountTypeId, statusId, creditCardNumber, paxData
+  - `TransactionItemTax`: New data class for itemized tax breakdown
+  - `PaxData`: New data class for PAX terminal response data
+  - **Status values NOW ALIGNED with backend API** (per Gap Analysis)
+
+- **Created Domain → DTO Mappers:**
+  - `TransactionToDtoMapper.kt`: Extension functions toCreateTransactionRequest(), toAddEditTransactionRequest(), toAddEditTransactionItemRequest(), toAddEditTransactionPaymentRequest(), toPaxDataRequest()
+  - Monetary values converted with proper scale (2 for prices, 3 for quantities/costs)
+
+- **Built TransactionApiService:**
+  - `TransactionApiService.kt`: Interface with createTransaction() and syncTransaction()
+  - `DefaultTransactionApiService.kt`: Implementation calling POST /api/v1/transactions/create-transaction
+  - Proper error handling and response parsing
+  - Zero-Trust: Does NOT log transaction payload (only GUID for tracing)
+
+- **Implemented TransactionSyncHandler:**
+  - `TransactionSyncHandler.kt`: QueueItemSyncHandler implementation
+  - Deserializes queued transaction payload
+  - Calls TransactionApiService
+  - Error classification: 400→Abandon, 401→Retry, 409→Success (idempotent), 5xx→Retry
+  - Marks transactions as synced via TransactionRepository
+
+- **Updated TransactionRepository interface:**
+  - Added markAsSynced(guid, remoteId)
+  - Added markSyncFailed(guid, errorMessage)
+  - Added getUnsynced(limit)
+  - Added deleteById(id)
+  - Updated FakeTransactionRepository with implementations
+
+- **Updated CartToTransactionMapper:**
+  - Now populates all new fields for API submission
+  - Calculates rowCount, uniqueProductCount, uniqueSaleProductCount, totalPurchaseCount, costTotal, savingsTotal
+  - Generates GUIDs for transaction and all items/payments
+  - Builds tax breakdown per item
+
+- **Wired PaymentViewModel for transaction sync:**
+  - Added OfflineQueueService and Json dependencies
+  - New enqueueForSync() method called after local save
+  - Optimistic UI: Cart cleared immediately after local save
+  - Sync happens in background via queue
+
+- **Updated DI Modules:**
+  - `SyncModule.kt`: Added TransactionApiService, TransactionSyncHandler, QueuePersistence, OfflineQueueService, OfflineQueueConfig, Json
+  - `PaymentModule.kt`: Added offlineQueue and json dependencies to PaymentViewModel
+
+- **Updated AppliedPayment model:**
+  - Added referenceNumber, cardType, paxData fields for full terminal data support
+
+### Transaction API Submission Gap Analysis (2026-01-03)
+
+- **Created comprehensive implementation plan for transaction API submission**
+  - Per END_OF_TRANSACTION_API_SUBMISSION.md: Analyzed current implementation vs documented spec
+  - New document: `docs/development-plan/TRANSACTION_API_SUBMISSION_IMPLEMENTATION_PLAN.md`
+  
+- **Critical Findings Documented:**
+  - Current app saves transactions locally but does NOT transmit to backend API
+  - Missing API DTOs: `CreateTransactionRequest`, `AddEditTransactionRequest`, etc.
+  - Missing `QueueItemSyncHandler` implementation for offline queue processing
+  - Transaction/Payment status enums misaligned with backend values
+  - Multiple domain model fields missing per API contract
+
+- **Implementation Plan Covers 5 Phases:**
+  - Phase 1: API DTOs (4-6 hours)
+  - Phase 2: Domain Model Alignment (6-8 hours)
+  - Phase 3: Transaction API Service (4-6 hours)
+  - Phase 4: Queue Integration (4-6 hours)
+  - Phase 5: End-to-End Wiring (4-6 hours)
+
 ### Lookup Table Product Images (2026-01-04)
 
 - **Added Coil 3 Multiplatform for image loading** - Per LOOKUP_TABLE.md

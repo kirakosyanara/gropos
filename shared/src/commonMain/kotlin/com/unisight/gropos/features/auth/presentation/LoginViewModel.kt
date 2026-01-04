@@ -13,6 +13,8 @@ import com.unisight.gropos.features.auth.domain.model.UserRole
 import com.unisight.gropos.features.cashier.domain.repository.EmployeeRepository
 import com.unisight.gropos.features.cashier.domain.repository.TillRepository
 import com.unisight.gropos.features.device.data.DeviceApi
+import com.unisight.gropos.features.device.domain.repository.DeviceRepository
+import com.unisight.gropos.core.network.ApiException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -56,6 +58,7 @@ class LoginViewModel(
     private val tillRepository: TillRepository,
     private val nfcScanner: NfcScanner,
     private val deviceApi: DeviceApi,
+    private val deviceRepository: DeviceRepository,
     private val initialSyncService: InitialSyncService? = null,
     private val secureStorage: SecureStorage? = null,
     private val coroutineScope: CoroutineScope? = null
@@ -244,6 +247,36 @@ class LoginViewModel(
             
             // STEP 1: Get device info to check for claimed employee (L1)
             val deviceInfoResult = deviceApi.getCurrentDevice()
+            
+            // CRITICAL: Check if device has been deleted (410 Gone)
+            // If so, clear local registration and trigger re-registration flow
+            if (deviceInfoResult.isFailure) {
+                val error = deviceInfoResult.exceptionOrNull()
+                
+                // Check for 410 "Device has been deleted" error
+                if (error is ApiException.HttpError && error.statusCode == 410) {
+                    println("[LoginViewModel] DEVICE DELETED (410) - Clearing registration and requiring re-registration")
+                    println("[LoginViewModel] Error body: ${error.body}")
+                    
+                    // Clear local device registration
+                    deviceRepository.clearRegistration()
+                    
+                    // Update state to trigger navigation to RegistrationScreen
+                    _state.update { 
+                        it.copy(
+                            stage = LoginStage.DEVICE_DELETED,
+                            requiresReRegistration = true,
+                            isLoading = false,
+                            errorMessage = "Device registration is no longer valid. Please re-register."
+                        )
+                    }
+                    return@launch
+                }
+                
+                // For other errors, log and continue (may work offline)
+                println("[LoginViewModel] Device info check failed: ${error?.message}")
+            }
+            
             val deviceInfo = deviceInfoResult.getOrNull()
             
             println("[LoginViewModel] Device info: employeeId=${deviceInfo?.employeeId}, tillId=${deviceInfo?.locationAccountId}")
@@ -309,16 +342,74 @@ class LoginViewModel(
     
     /**
      * User selects an employee from the grid.
-     * Transitions to PIN_ENTRY stage.
+     * 
+     * **Per BEARER_TOKEN_MANAGEMENT.md:**
+     * The Login API requires: userName, password, clientName, locationAccountId, branchId, deviceId
+     * This means we need the tillId BEFORE we can verify the PIN.
+     * 
+     * Flow:
+     * - If employee has pre-assigned till → go to PIN_ENTRY (skip till selection)
+     * - If employee has no till → go to TILL_ASSIGNMENT first
      */
     fun onEmployeeSelected(employee: EmployeeUiModel) {
-        _state.update { 
-            it.copy(
-                selectedEmployee = employee,
-                stage = LoginStage.PIN_ENTRY,
-                pinInput = "",
-                errorMessage = null
-            )
+        println("[LoginViewModel] Employee selected: ${employee.fullName}, assignedTillId=${employee.assignedTillId}")
+        
+        // Check if employee already has an assigned till
+        if (employee.assignedTillId != null && employee.assignedTillId > 0) {
+            // Employee has till - go directly to PIN entry
+            println("[LoginViewModel] Employee has pre-assigned till ${employee.assignedTillId}, skipping till selection")
+            _state.update { 
+                it.copy(
+                    selectedEmployee = employee,
+                    selectedTillId = employee.assignedTillId,
+                    stage = LoginStage.PIN_ENTRY,
+                    pinInput = "",
+                    errorMessage = null
+                )
+            }
+        } else {
+            // Employee needs to select a till first
+            println("[LoginViewModel] Employee needs till assignment, loading tills...")
+            _state.update { 
+                it.copy(
+                    selectedEmployee = employee,
+                    selectedTillId = null,
+                    pinInput = "",
+                    errorMessage = null
+                )
+            }
+            loadTillsForEmployee()
+        }
+    }
+    
+    /**
+     * Load available tills for assignment.
+     * Called after employee selection when employee has no pre-assigned till.
+     */
+    private fun loadTillsForEmployee() {
+        scope.launch {
+            _state.update { it.copy(isLoading = true) }
+            
+            tillRepository.getTills()
+                .onSuccess { tills ->
+                    println("[LoginViewModel] Loaded ${tills.size} tills for selection")
+                    _state.update { 
+                        it.copy(
+                            tills = tills.map { till -> till.toUiModel() },
+                            stage = LoginStage.TILL_ASSIGNMENT,
+                            isLoading = false
+                        )
+                    }
+                }
+                .onFailure { error ->
+                    println("[LoginViewModel] Failed to load tills: ${error.message}")
+                    _state.update { 
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = error.message ?: "Failed to load tills"
+                        )
+                    }
+                }
         }
     }
     
@@ -348,11 +439,22 @@ class LoginViewModel(
     
     /**
      * User submits the PIN.
-     * Verifies PIN, then checks if till assignment is needed.
+     * 
+     * **Per BEARER_TOKEN_MANAGEMENT.md:**
+     * The Login API requires: userName, password, clientName, locationAccountId, branchId, deviceId
+     * All values must be sent together in a single login call.
+     * 
+     * At this point we have:
+     * - selectedEmployee (from employee selection)
+     * - selectedTillId (from till selection or pre-assigned)
+     * - pinInput (just entered)
+     * 
+     * We call the login API directly - it validates the PIN AND returns tokens.
      */
     fun onPinSubmit() {
         val currentState = _state.value
         val employee = currentState.selectedEmployee ?: return
+        val tillId = currentState.selectedTillId
         val pin = currentState.pinInput
         
         if (pin.length < 4) {
@@ -360,75 +462,26 @@ class LoginViewModel(
             return
         }
         
-        scope.launch {
-            _state.update { it.copy(isLoading = true, errorMessage = null) }
-            
-            employeeRepository.verifyPin(employee.id, pin)
-                .onSuccess { verifiedEmployee ->
-                    println("[LoginViewModel] PIN verification SUCCESS for ${employee.fullName}")
-                    println("[LoginViewModel] Employee assignedTillId: ${employee.assignedTillId}")
-                    // Check if employee has assigned till
-                    if (employee.assignedTillId != null && employee.assignedTillId > 0) {
-                        // Already has till, complete login
-                        println("[LoginViewModel] Employee has till, completing login...")
-                        completeLogin(employee, employee.assignedTillId)
-                    } else {
-                        // Need till assignment
-                        println("[LoginViewModel] Employee needs till assignment, loading tills...")
-                        loadTillsForAssignment()
-                    }
-                }
-                .onFailure { error ->
-                    _state.update { 
-                        it.copy(
-                            isLoading = false,
-                            pinInput = "", // Clear PIN on failure
-                            errorMessage = "Invalid PIN. Please try again."
-                        )
-                    }
-                }
+        if (tillId == null || tillId <= 0) {
+            println("[LoginViewModel] ERROR: No till selected")
+            _state.update { it.copy(errorMessage = "No till selected. Please go back and select a till.") }
+            return
         }
+        
+        println("[LoginViewModel] PIN submitted for ${employee.fullName}, tillId=$tillId")
+        
+        // Call login directly - no separate verifyPin needed
+        // The login API validates PIN AND returns tokens in one call
+        completeLogin(employee, tillId)
     }
     
-    /**
-     * Load available tills for assignment.
-     * Transitions to TILL_ASSIGNMENT stage.
-     */
-    private fun loadTillsForAssignment() {
-        println("[LoginViewModel] loadTillsForAssignment() called")
-        scope.launch {
-            println("[LoginViewModel] Fetching tills from repository...")
-            tillRepository.getTills()
-                .onSuccess { tills ->
-                    println("[LoginViewModel] SUCCESS: Got ${tills.size} tills")
-                    tills.forEach { till ->
-                        println("[LoginViewModel]   Till: id=${till.id}, name=${till.name}")
-                    }
-                    _state.update { 
-                        it.copy(
-                            tills = tills.map { till -> till.toUiModel() },
-                            stage = LoginStage.TILL_ASSIGNMENT,
-                            isLoading = false
-                        )
-                    }
-                }
-                .onFailure { error ->
-                    println("[LoginViewModel] FAILED to load tills: ${error.message}")
-                    _state.update { 
-                        it.copy(
-                            isLoading = false,
-                            errorMessage = error.message ?: "Failed to load tills"
-                        )
-                    }
-                }
-        }
-    }
     
     /**
      * User selects a till.
      * 
-     * Per TILL_MANAGEMENT.md: Till assignment happens as part of the login API call,
-     * not as a separate endpoint. The tillId is passed to the login API.
+     * **Per BEARER_TOKEN_MANAGEMENT.md:**
+     * The Login API requires locationAccountId (tillId). Since till selection now
+     * happens BEFORE PIN entry, this method stores the tillId and transitions to PIN_ENTRY.
      * 
      * Business Rules:
      * - Cashier can select available (unassigned) tills
@@ -464,64 +517,135 @@ class LoginViewModel(
         
         println("[LoginViewModel] Till ${till.name} selected for ${employee.fullName} (isOwnTill=$isOwnTill)")
         
-        // Per TILL_MANAGEMENT.md: Complete login with selected till
-        // The till assignment is handled as part of the login API call
-        completeLogin(employee, tillId)
+        // Store selected till and transition to PIN entry
+        // The actual login API call happens when PIN is submitted
+        _state.update { 
+            it.copy(
+                selectedTillId = tillId,
+                stage = LoginStage.PIN_ENTRY,
+                pinInput = "",
+                errorMessage = null
+            )
+        }
     }
     
     /**
      * Complete the login process.
+     * Per BEARER_TOKEN_MANAGEMENT.md: Calls full login with CashierLoginRequest to get tokens.
      * Creates AuthUser and transitions to SUCCESS stage.
      */
     private fun completeLogin(employee: EmployeeUiModel, tillId: Int) {
-        // Map role string back to enum
-        val role = when (employee.role.lowercase()) {
-            "administrator" -> UserRole.ADMIN
-            "manager" -> UserRole.MANAGER
-            "supervisor" -> UserRole.SUPERVISOR
-            else -> UserRole.CASHIER
-        }
-        
-        val authUser = AuthUser(
-            id = employee.id.toString(),
-            username = employee.fullName,
-            role = role,
-            permissions = emptyList(), // Will be loaded separately
-            isManager = role == UserRole.MANAGER || role == UserRole.SUPERVISOR || role == UserRole.ADMIN,
-            jobTitle = employee.role,
-            imageUrl = employee.imageUrl
-        )
-        
-        _state.update { 
-            it.copy(
-                stage = LoginStage.SUCCESS,
-                authenticatedUser = authUser,
-                selectedTillId = tillId,
-                isLoading = false
-            )
+        scope.launch {
+            _state.update { it.copy(isLoading = true, errorMessage = null) }
+            
+            // Get branch and device info from SecureStorage
+            val branchId = secureStorage?.getBranchId() ?: 2  // Default to branch 2 if not available
+            // Note: deviceId should be numeric station ID. Using 0 as fallback.
+            // The actual station ID should come from device registration info.
+            val deviceId = 0  // TODO: Get numeric device/station ID from registration
+            
+            val pin = _state.value.pinInput
+            
+            println("[LoginViewModel] Calling full login with tillId=$tillId, branchId=$branchId, deviceId=$deviceId")
+            
+            // Per BEARER_TOKEN_MANAGEMENT.md: Call login with full CashierLoginRequest
+            employeeRepository.login(
+                employeeId = employee.id,
+                pin = pin,
+                tillId = tillId,
+                branchId = branchId,
+                deviceId = deviceId
+            ).onSuccess { loginResult ->
+                println("[LoginViewModel] Full login SUCCESS - tokens received")
+                println("[LoginViewModel] Access token saved for authenticated requests")
+                
+                // Map role string back to enum
+                val role = when (employee.role.lowercase()) {
+                    "administrator" -> UserRole.ADMIN
+                    "manager" -> UserRole.MANAGER
+                    "supervisor" -> UserRole.SUPERVISOR
+                    else -> UserRole.CASHIER
+                }
+                
+                val authUser = AuthUser(
+                    id = employee.id.toString(),
+                    username = employee.fullName,
+                    role = role,
+                    permissions = emptyList(), // Will be loaded separately
+                    isManager = role == UserRole.MANAGER || role == UserRole.SUPERVISOR || role == UserRole.ADMIN,
+                    jobTitle = employee.role,
+                    imageUrl = employee.imageUrl
+                )
+                
+                _state.update { 
+                    it.copy(
+                        stage = LoginStage.SUCCESS,
+                        authenticatedUser = authUser,
+                        selectedTillId = tillId,
+                        isLoading = false
+                    )
+                }
+            }.onFailure { error ->
+                println("[LoginViewModel] Full login FAILED: ${error.message}")
+                _state.update { 
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = "Login failed: ${error.message}"
+                    )
+                }
+            }
         }
     }
     
     /**
      * User presses back button.
      * Navigates to previous stage.
+     * 
+     * **Flow per BEARER_TOKEN_MANAGEMENT.md:**
+     * EMPLOYEE_SELECT -> TILL_ASSIGNMENT -> PIN_ENTRY -> SUCCESS
+     * 
+     * Back navigation:
+     * - PIN_ENTRY: If employee had pre-assigned till, go to EMPLOYEE_SELECT
+     *              Otherwise, go back to TILL_ASSIGNMENT
+     * - TILL_ASSIGNMENT: Go back to EMPLOYEE_SELECT
      */
     fun onBackPressed() {
-        when (_state.value.stage) {
+        val currentState = _state.value
+        
+        when (currentState.stage) {
             LoginStage.PIN_ENTRY -> {
-                _state.update { 
-                    it.copy(
-                        stage = LoginStage.EMPLOYEE_SELECT,
-                        selectedEmployee = null,
-                        pinInput = "",
-                        errorMessage = null
-                    )
+                val employee = currentState.selectedEmployee
+                val hadPreAssignedTill = employee?.assignedTillId != null && employee.assignedTillId > 0
+                
+                if (hadPreAssignedTill) {
+                    // Employee had pre-assigned till, go back to employee selection
+                    _state.update { 
+                        it.copy(
+                            stage = LoginStage.EMPLOYEE_SELECT,
+                            selectedEmployee = null,
+                            selectedTillId = null,
+                            pinInput = "",
+                            errorMessage = null
+                        )
+                    }
+                } else {
+                    // Employee selected till manually, go back to till selection
+                    _state.update { 
+                        it.copy(
+                            stage = LoginStage.TILL_ASSIGNMENT,
+                            selectedTillId = null,
+                            pinInput = "",
+                            errorMessage = null
+                        )
+                    }
                 }
             }
             LoginStage.TILL_ASSIGNMENT -> {
                 _state.update { 
                     it.copy(
-                        stage = LoginStage.PIN_ENTRY,
+                        stage = LoginStage.EMPLOYEE_SELECT,
+                        selectedEmployee = null,
+                        selectedTillId = null,
                         tills = emptyList(),
                         errorMessage = null
                     )
@@ -605,33 +729,26 @@ class LoginViewModel(
     /**
      * Handles successful NFC badge read.
      *
+     * **Per BEARER_TOKEN_MANAGEMENT.md:**
      * Uses the badge token as PIN for authentication.
+     * NFC badge scan is only available on PIN_ENTRY screen, which means
+     * the till has already been selected (or pre-assigned).
      */
     private fun handleNfcLoginSuccess(employee: EmployeeUiModel, token: String) {
-        scope.launch {
-            _state.update { it.copy(isLoading = true, errorMessage = null) }
-            
-            // Verify the token as PIN
-            employeeRepository.verifyPin(employee.id, token)
-                .onSuccess { _ ->
-                    // Check if employee has assigned till
-                    if (employee.assignedTillId != null && employee.assignedTillId > 0) {
-                        // Already has till, complete login
-                        completeLogin(employee, employee.assignedTillId)
-                    } else {
-                        // Need till assignment
-                        loadTillsForAssignment()
-                    }
-                }
-                .onFailure { _ ->
-                    _state.update { 
-                        it.copy(
-                            isLoading = false,
-                            errorMessage = "Badge not recognized. Please try again or use PIN."
-                        )
-                    }
-                }
+        val tillId = _state.value.selectedTillId
+        
+        if (tillId == null || tillId <= 0) {
+            _state.update { 
+                it.copy(errorMessage = "No till selected. Please select a till first.")
+            }
+            return
         }
+        
+        // Set the badge token as the PIN and complete login
+        _state.update { it.copy(pinInput = token) }
+        
+        // Use the token as PIN and call login directly
+        completeLogin(employee, tillId)
     }
     
     // ========================================================================

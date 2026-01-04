@@ -229,6 +229,96 @@ class CouchbaseTransactionRepository(
         }
     }
     
+    // ========================================================================
+    // Sync Operations
+    // Per TRANSACTION_API_SUBMISSION_IMPLEMENTATION_PLAN.md
+    // ========================================================================
+    
+    override suspend fun markAsSynced(transactionGuid: String, remoteId: Int): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val doc = collection.getDocument(transactionGuid)
+            if (doc != null) {
+                val mutableDoc = doc.toMutable()
+                mutableDoc.setInt("syncStatus", com.unisight.gropos.features.transaction.domain.model.Transaction.SYNC_COMPLETED)
+                mutableDoc.setInt("remoteId", remoteId)
+                collection.save(mutableDoc)
+                android.util.Log.d("TransactionRepo", "Marked $transactionGuid as synced (remoteId: $remoteId)")
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            android.util.Log.e("TransactionRepo", "Error marking transaction as synced", e)
+            Result.failure(e)
+        }
+    }
+    
+    override suspend fun markSyncFailed(transactionGuid: String, errorMessage: String?): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val doc = collection.getDocument(transactionGuid)
+            if (doc != null) {
+                val mutableDoc = doc.toMutable()
+                mutableDoc.setInt("syncStatus", com.unisight.gropos.features.transaction.domain.model.Transaction.SYNC_FAILED)
+                errorMessage?.let { mutableDoc.setString("syncErrorMessage", it) }
+                collection.save(mutableDoc)
+                android.util.Log.d("TransactionRepo", "Marked $transactionGuid as sync failed")
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            android.util.Log.e("TransactionRepo", "Error marking transaction as sync failed", e)
+            Result.failure(e)
+        }
+    }
+    
+    override suspend fun getUnsynced(limit: Int): List<Transaction> = withContext(Dispatchers.IO) {
+        try {
+            val query = QueryBuilder
+                .select(SelectResult.all())
+                .from(DataSource.collection(collection))
+                .where(
+                    Expression.property("syncStatus")
+                        .equalTo(Expression.intValue(com.unisight.gropos.features.transaction.domain.model.Transaction.SYNC_PENDING))
+                        .or(Expression.property("syncStatus")
+                            .equalTo(Expression.intValue(com.unisight.gropos.features.transaction.domain.model.Transaction.SYNC_FAILED)))
+                )
+                .orderBy(Ordering.property("completedDateTime").ascending())
+                .limit(Expression.intValue(limit))
+            
+            query.execute().use { resultSet ->
+                resultSet.allResults().mapNotNull { result ->
+                    val dict = result.getDictionary(collection.name)
+                    dict?.let { mapToTransaction(it.toMap()) }
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("TransactionRepo", "Error getting unsynced transactions", e)
+            emptyList()
+        }
+    }
+    
+    override suspend fun deleteById(id: Long): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            // Query by id field to find the document
+            val query = QueryBuilder
+                .select(SelectResult.expression(Expression.property("guid")))
+                .from(DataSource.collection(collection))
+                .where(Expression.property("id").equalTo(Expression.longValue(id)))
+            
+            query.execute().use { resultSet ->
+                resultSet.allResults().firstOrNull()?.let { result ->
+                    val guid = result.getString("guid")
+                    if (guid != null) {
+                        val doc = collection.getDocument(guid)
+                        doc?.let { collection.delete(it) }
+                        android.util.Log.d("TransactionRepo", "Deleted transaction $id (guid: $guid)")
+                    }
+                }
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            android.util.Log.e("TransactionRepo", "Error deleting transaction by ID", e)
+            Result.failure(e)
+        }
+    }
+    
     /**
      * Searches transactions by various criteria.
      * 
@@ -406,6 +496,8 @@ class CouchbaseTransactionRepository(
             TransactionItem(
                 id = (map["id"] as? Number)?.toLong() ?: return null,
                 transactionId = (map["transactionId"] as? Number)?.toLong() ?: 0,
+                transactionGuid = map["transactionGuid"] as? String ?: "",
+                transactionItemGuid = map["transactionItemGuid"] as? String ?: java.util.UUID.randomUUID().toString(),
                 branchProductId = (map["branchProductId"] as? Number)?.toInt() ?: 0,
                 branchProductName = map["branchProductName"] as? String ?: "",
                 quantityUsed = BigDecimal((map["quantityUsed"] as? Number)?.toString() ?: "1"),
@@ -440,6 +532,8 @@ class CouchbaseTransactionRepository(
             TransactionPayment(
                 id = (map["id"] as? Number)?.toLong() ?: return null,
                 transactionId = (map["transactionId"] as? Number)?.toLong() ?: 0,
+                transactionGuid = map["transactionGuid"] as? String ?: "",
+                transactionPaymentGuid = map["transactionPaymentGuid"] as? String ?: java.util.UUID.randomUUID().toString(),
                 paymentMethodId = (map["paymentMethodId"] as? Number)?.toInt() ?: 1,
                 paymentMethodName = map["paymentMethodName"] as? String ?: "Cash",
                 value = BigDecimal((map["value"] as? Number)?.toString() ?: "0"),

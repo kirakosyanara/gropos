@@ -254,6 +254,8 @@ data class LegacyTransactionItemDto(
     fun toDomain(): TransactionItem = TransactionItem(
         id = id,
         transactionId = transactionId,
+        transactionGuid = "", // Legacy documents don't have this - will be populated on new transactions
+        transactionItemGuid = java.util.UUID.randomUUID().toString(), // Generate for legacy
         branchProductId = branchProductId,
         branchProductName = branchProductName,
         quantityUsed = BigDecimal.valueOf(quantityUsed),
@@ -364,6 +366,8 @@ data class LegacyTransactionPaymentDto(
     fun toDomain(): TransactionPayment = TransactionPayment(
         id = id,
         transactionId = transactionId,
+        transactionGuid = "", // Legacy documents don't have this - will be populated on new transactions
+        transactionPaymentGuid = java.util.UUID.randomUUID().toString(), // Generate for legacy
         paymentMethodId = paymentMethodId,
         paymentMethodName = paymentMethodName,
         value = BigDecimal.valueOf(value),

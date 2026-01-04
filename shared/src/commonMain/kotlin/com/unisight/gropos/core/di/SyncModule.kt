@@ -1,10 +1,19 @@
 package com.unisight.gropos.core.di
 
 import com.unisight.gropos.core.sync.DefaultHeartbeatService
+import com.unisight.gropos.core.sync.DefaultOfflineQueueService
 import com.unisight.gropos.core.sync.DefaultSyncEngine
 import com.unisight.gropos.core.sync.HeartbeatConfig
 import com.unisight.gropos.core.sync.HeartbeatService
+import com.unisight.gropos.core.sync.OfflineQueueConfig
+import com.unisight.gropos.core.sync.OfflineQueueService
+import com.unisight.gropos.core.sync.QueueItemSyncHandler
+import com.unisight.gropos.core.sync.QueuePersistence
 import com.unisight.gropos.core.sync.SyncEngine
+import com.unisight.gropos.core.sync.TransactionSyncHandler
+import com.unisight.gropos.features.transaction.data.api.DefaultTransactionApiService
+import com.unisight.gropos.features.transaction.data.api.TransactionApiService
+import kotlinx.serialization.json.Json
 import org.koin.dsl.module
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -17,16 +26,16 @@ import kotlin.time.Duration.Companion.seconds
  * - SyncEngine handles download/upload of data
  * - Runs every 30 seconds for heartbeat, 5 minutes for full sync
  * 
+ * **Per TRANSACTION_API_SUBMISSION_IMPLEMENTATION_PLAN.md:**
+ * - TransactionApiService handles POST to /transactions/create-transaction
+ * - TransactionSyncHandler processes queued transactions
+ * - OfflineQueueService provides reliable delivery
+ * 
  * **Per DEVICE_REGISTRATION.md:**
  * - Services should start after successful login
  * - Initial sync happens during device registration
  * 
- * **Components:**
- * - SyncEngine: Production implementation for API calls
- * - HeartbeatService: Background service for periodic sync
- * 
  * **Note:** HeartbeatService.start() must be called after login.
- * Call it from MainViewModel or navigation setup.
  */
 val syncModule = module {
     
@@ -45,6 +54,66 @@ val syncModule = module {
             maxRetries = 3,
             requestTimeout = 10.seconds,
             syncOnStart = true  // Sync immediately when started
+        )
+    }
+    
+    /**
+     * OfflineQueueConfig with production settings.
+     * 
+     * Per TRANSACTION_API_SUBMISSION_IMPLEMENTATION_PLAN.md:
+     * - Max 5 retries before abandoning
+     * - Exponential backoff for retries
+     */
+    single {
+        OfflineQueueConfig(
+            maxRetries = 5
+        )
+    }
+    
+    /**
+     * TransactionApiService - HTTP layer for transaction submission.
+     * 
+     * Per TRANSACTION_API_SUBMISSION_IMPLEMENTATION_PLAN.md:
+     * - POST /api/v1/transactions/create-transaction
+     * - Handles success/error responses
+     */
+    single<TransactionApiService> {
+        DefaultTransactionApiService(
+            apiClient = get()
+        )
+    }
+    
+    /**
+     * QueueItemSyncHandler - Processes queued items for sync.
+     * 
+     * Per TRANSACTION_API_SUBMISSION_IMPLEMENTATION_PLAN.md:
+     * - Deserializes transaction payload
+     * - Calls TransactionApiService
+     * - Returns Success/Retry/Abandon
+     */
+    single<QueueItemSyncHandler> {
+        TransactionSyncHandler(
+            transactionApiService = get(),
+            transactionRepository = get(),
+            json = get()
+        )
+    }
+    
+    // NOTE: QueuePersistence is provided by DatabaseModule (platform-specific)
+    // Desktop/Android use CouchbaseQueuePersistence for crash recovery
+    
+    /**
+     * OfflineQueueService - Reliable delivery for transactions.
+     * 
+     * Per TRANSACTION_API_SUBMISSION_IMPLEMENTATION_PLAN.md:
+     * - Enqueues items for background sync
+     * - Processes queue with retry logic
+     */
+    single<OfflineQueueService> {
+        DefaultOfflineQueueService(
+            syncHandler = get(),
+            persistence = get(),
+            config = get()
         )
     }
     
@@ -78,6 +147,22 @@ val syncModule = module {
             offlineQueue = get(),
             config = get()
         )
+    }
+    
+    /**
+     * JSON serializer for transaction payloads.
+     * 
+     * Configured for API compatibility:
+     * - ignoreUnknownKeys for forward compatibility
+     * - isLenient for minor format variations
+     */
+    single {
+        Json {
+            ignoreUnknownKeys = true
+            isLenient = true
+            encodeDefaults = true
+            prettyPrint = false
+        }
     }
 }
 

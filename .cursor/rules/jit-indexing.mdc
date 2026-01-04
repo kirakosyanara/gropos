@@ -1,0 +1,27 @@
+---
+alwaysApply: true
+---
+
+# Just-in-Time (JIT) Indexing
+
+Before starting any implementation, bug fix, or refactoring task, you MUST perform **Just-in-Time (JIT) Indexing**.
+
+## Triggers
+- Any request to write code.
+- Any request to modify existing files.
+- Any request to analyze a specific feature or bug.
+
+## Action Protocol
+1.  **Identify Targets:** Determine the specific files, directories, or documentation strictly relevant to the immediate task.
+2.  **Explicit Read:** Use file reading tools (e.g., `read_file`, `list_dir`) to load these specific targets into the active context window *before* generating any code.
+3.  **Verify Context:** Ensure you have the latest version of the code before proposing changes to avoid overwriting recent updates.
+4.  **Avoid Pollution:** Do NOT read unrelated files "just in case." Keep the context focused on the task at hand.
+
+## Example Workflow
+**User Request:** "Add a new 'tips' field to the Transaction DTO."
+
+**Agent Action:**
+1.  `read_file(".../dtos/TransactionDto.kt")` -> To see current structure.
+2.  `read_file(".../domain/Transaction.kt")` -> To check source of truth.
+3.  *Analyze context.*
+4.  *Generate code change.*

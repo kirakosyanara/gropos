@@ -1,6 +1,8 @@
 package com.unisight.gropos.features.checkout.domain.model
 
 import java.math.BigDecimal
+import java.time.Instant
+import java.time.format.DateTimeFormatter
 
 /**
  * Represents the shopping cart containing all items in the current transaction.
@@ -117,8 +119,13 @@ data class Cart(
             updatedItems[existingIndex] = items[existingIndex].incrementQuantity(quantity)
             copy(items = updatedItems)
         } else {
-            // New product - add to list
-            copy(items = items + CartItem(product, quantity))
+            // New product - add to list with current timestamp
+            val scanDateTime = DateTimeFormatter.ISO_INSTANT.format(Instant.now())
+            copy(items = items + CartItem(
+                product = product,
+                quantityUsed = quantity,
+                scanDateTime = scanDateTime
+            ))
         }
     }
     

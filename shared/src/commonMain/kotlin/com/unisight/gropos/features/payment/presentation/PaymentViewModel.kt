@@ -2,6 +2,9 @@ package com.unisight.gropos.features.payment.presentation
 
 import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
+import com.unisight.gropos.core.sync.OfflineQueueService
+import com.unisight.gropos.core.sync.QueuedItem
+import com.unisight.gropos.core.sync.QueueItemType
 import com.unisight.gropos.core.util.CurrencyFormatter
 import com.unisight.gropos.features.checkout.domain.model.Cart
 import com.unisight.gropos.features.checkout.domain.repository.CartRepository
@@ -9,6 +12,8 @@ import com.unisight.gropos.features.payment.domain.model.AppliedPayment
 import com.unisight.gropos.features.payment.domain.model.PaymentType
 import com.unisight.gropos.features.payment.domain.terminal.PaymentResult
 import com.unisight.gropos.features.payment.domain.terminal.PaymentTerminal
+import com.unisight.gropos.features.transaction.data.api.TransactionApiService
+import com.unisight.gropos.features.transaction.data.mapper.toCreateTransactionRequest
 import com.unisight.gropos.features.transaction.domain.mapper.toTransaction
 import com.unisight.gropos.features.transaction.domain.model.Transaction
 import com.unisight.gropos.features.transaction.domain.repository.TransactionRepository
@@ -20,6 +25,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.util.UUID
@@ -42,12 +50,20 @@ import java.util.UUID
  * 
  * Per DATABASE_SCHEMA.md:
  * - Saves completed transactions to LocalTransaction collection
+ * 
+ * Per END_OF_TRANSACTION_API_SUBMISSION.md:
+ * - Transaction is POSTed to API IMMEDIATELY after completion
+ * - Only queued for retry if immediate POST fails (offline/error)
+ * - HeartbeatService is for RECEIVING updates, NOT sending transactions
  */
 class PaymentViewModel(
     private val cartRepository: CartRepository,
     private val currencyFormatter: CurrencyFormatter,
     private val transactionRepository: TransactionRepository,
     private val paymentTerminal: PaymentTerminal,
+    private val transactionApiService: TransactionApiService,
+    private val offlineQueue: OfflineQueueService? = null,
+    private val json: Json = Json { ignoreUnknownKeys = true },
     private val scope: CoroutineScope? = null
 ) : ScreenModel {
     
@@ -250,36 +266,42 @@ class PaymentViewModel(
     /**
      * Completes the transaction by:
      * 1. Converting cart to Transaction
-     * 2. Saving to database
-     * 3. Printing virtual receipt
-     * 4. Clearing cart
+     * 2. Saving to local database (crash safety)
+     * 3. IMMEDIATELY posting to backend API
+     * 4. On success: mark as synced
+     * 5. On failure: queue for retry later
+     * 6. Printing virtual receipt
+     * 7. Clearing cart
      * 
-     * Per DATABASE_SCHEMA.md: Save to LocalTransaction collection.
-     * Per reliability-stability.mdc: Handle save errors gracefully.
+     * Per END_OF_TRANSACTION_API_SUBMISSION.md:
+     * - Transaction is POSTed to API IMMEDIATELY after completion
+     * - Only queued for retry if immediate POST fails (offline/error)
+     * - HeartbeatService is for RECEIVING updates, NOT sending transactions
      */
     private suspend fun completeTransaction() {
         val cart = cartSnapshot ?: return
         
-        // Convert cart to transaction
+        // Step 1: Convert cart to transaction
         val transaction = cart.toTransaction(
             appliedPayments = appliedPayments.toList()
         )
         
-        // Save transaction to database
+        // Step 2: Save transaction to local database first (crash safety)
         val saveResult = transactionRepository.saveTransaction(transaction)
         
         saveResult.fold(
             onSuccess = {
-                // Print virtual receipt to console
+                println("PaymentViewModel: Transaction ${transaction.guid} saved locally")
+                
+                // Step 3: IMMEDIATELY post to backend API
+                submitTransactionToApi(transaction)
+                
+                // Step 4: Print virtual receipt to console
                 printVirtualReceipt(transaction)
                 
-                // Mark as complete
+                // Step 5: Mark as complete and clear cart
                 _state.value = _state.value.copy(isComplete = true)
-                
-                // Clear cart
                 cartRepository.clearCart()
-                
-                println("PaymentViewModel: Transaction ${transaction.id} saved successfully")
             },
             onFailure = { error ->
                 println("PaymentViewModel: Failed to save transaction - ${error.message}")
@@ -289,6 +311,123 @@ class PaymentViewModel(
                 )
             }
         )
+    }
+    
+    /**
+     * Submits transaction to backend API IMMEDIATELY.
+     * 
+     * Per END_OF_TRANSACTION_API_SUBMISSION.md:
+     * - POST to /transactions/create-transaction immediately
+     * - On success: mark transaction as synced in local DB
+     * - On failure: queue for retry later (offline mode)
+     * 
+     * The UI does NOT wait for API response - transaction is already saved locally.
+     */
+    private suspend fun submitTransactionToApi(transaction: Transaction) {
+        try {
+            // Create API request DTO
+            val request = transaction.toCreateTransactionRequest()
+            
+            println("[TransactionSubmit] POSTing transaction ${transaction.guid} to API...")
+            
+            // Debug: Log payload summary (no sensitive amounts)
+            println("[TransactionSubmit] Payload Summary:")
+            println("[TransactionSubmit]   - guid: ${request.transaction.guid}")
+            println("[TransactionSubmit]   - status: ${request.transaction.transactionStatusId}")
+            println("[TransactionSubmit]   - items: ${request.items.size}")
+            println("[TransactionSubmit]   - payments: ${request.payments.size}")
+            println("[TransactionSubmit]   - rowCount: ${request.transaction.rowCount}")
+            println("[TransactionSubmit]   - itemCount: ${request.transaction.itemCount}")
+            
+            // Debug: Log full JSON payload for troubleshooting
+            try {
+                val payloadJson = json.encodeToString(request)
+                println("[TransactionSubmit] Full JSON payload:")
+                println(payloadJson)
+            } catch (e: Exception) {
+                println("[TransactionSubmit] Failed to serialize payload for logging: ${e.message}")
+            }
+            
+            // IMMEDIATELY call API
+            val result = transactionApiService.createTransaction(request)
+            
+            result.fold(
+                onSuccess = { response ->
+                    // Check if actually successful (backend may return 202 with "Failure" status)
+                    if (response.isSuccess) {
+                        println("[TransactionSubmit] SUCCESS: Transaction ${transaction.guid} synced (remoteId: ${response.id})")
+                        
+                        try {
+                            transactionRepository.markAsSynced(transaction.guid, response.id ?: 0)
+                        } catch (e: Exception) {
+                            println("[TransactionSubmit] Warning: Failed to update local sync status: ${e.message}")
+                        }
+                    } else {
+                        // Backend returned success HTTP code but "Failure" status
+                        println("[TransactionSubmit] BACKEND FAILURE: ${response.message}")
+                        println("[TransactionSubmit] Status: ${response.status}, ID: ${response.id}")
+                        queueForRetry(transaction)
+                    }
+                },
+                onFailure = { error ->
+                    // API call failed - queue for retry
+                    println("[TransactionSubmit] FAILED: ${error.message} - queueing for retry")
+                    queueForRetry(transaction)
+                }
+            )
+        } catch (e: Exception) {
+            // Network or other error - queue for retry
+            println("[TransactionSubmit] EXCEPTION: ${e::class.simpleName} - ${e.message}")
+            queueForRetry(transaction)
+        }
+    }
+    
+    /**
+     * Queues a failed transaction for retry later.
+     * 
+     * Per END_OF_TRANSACTION_API_SUBMISSION.md:
+     * - Only called when immediate POST fails
+     * - Transaction already saved locally with PENDING status
+     * - Will be retried by background sync mechanism
+     */
+    private suspend fun queueForRetry(transaction: Transaction) {
+        val queue = offlineQueue ?: run {
+            println("[TransactionSubmit] OfflineQueue not available - will retry via getUnsynced()")
+            // Mark as failed so it can be picked up later
+            try {
+                transactionRepository.markSyncFailed(transaction.guid, "Immediate sync failed, no queue available")
+            } catch (e: Exception) {
+                println("[TransactionSubmit] Failed to mark sync failed: ${e.message}")
+            }
+            return
+        }
+        
+        try {
+            // Create API request DTO
+            val request = transaction.toCreateTransactionRequest()
+            
+            // Serialize to JSON
+            val payload = json.encodeToString(request)
+            
+            // Create queue item
+            val queueItem = QueuedItem(
+                id = 0L,
+                type = QueueItemType.TRANSACTION,
+                payload = payload,
+                createdAt = Clock.System.now(),
+                attempts = 1, // Already attempted once
+                lastAttempt = Clock.System.now()
+            )
+            
+            // Enqueue for retry
+            queue.enqueue(queueItem)
+            
+            println("[TransactionSubmit] Transaction ${transaction.guid} queued for retry")
+            
+        } catch (e: Exception) {
+            println("[TransactionSubmit] Failed to queue for retry: ${e::class.simpleName}")
+            // Transaction is still saved locally, will be picked up by getUnsynced()
+        }
     }
     
     /**

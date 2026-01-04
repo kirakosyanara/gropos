@@ -3,12 +3,7 @@ package com.unisight.gropos.core.di
 import com.unisight.gropos.core.database.DatabaseProvider
 import com.unisight.gropos.core.database.seeder.DebugDataSeeder
 import com.unisight.gropos.core.sync.CouchbaseQueuePersistence
-import com.unisight.gropos.core.sync.DefaultOfflineQueueService
-import com.unisight.gropos.core.sync.OfflineQueueService
-import com.unisight.gropos.core.sync.QueueItemSyncHandler
 import com.unisight.gropos.core.sync.QueuePersistence
-import com.unisight.gropos.core.sync.QueuedItem
-import com.unisight.gropos.core.sync.ProcessResult
 import com.unisight.gropos.features.device.data.CouchbaseLocalDeviceConfigRepository
 import com.unisight.gropos.features.device.domain.repository.LocalDeviceConfigRepository
 import com.unisight.gropos.features.cashier.data.CouchbaseVendorPayoutRepository
@@ -248,34 +243,10 @@ val databaseModule: Module = module {
      * 
      * Per QA Audit P0: Replaces in-memory storage with Couchbase.
      * Collection: OfflineQueue in "local" scope.
+     * 
+     * Note: QueueItemSyncHandler and OfflineQueueService are provided by SyncModule.
+     * SyncModule provides TransactionSyncHandler which calls the real API.
      */
     single<QueuePersistence> { CouchbaseQueuePersistence(get()) }
-    
-    /**
-     * Placeholder sync handler.
-     * 
-     * TODO: Replace with real sync handler that calls transaction API.
-     */
-    single<QueueItemSyncHandler> { 
-        object : QueueItemSyncHandler {
-            override suspend fun sync(item: QueuedItem): ProcessResult {
-                // TODO: Implement real API sync
-                println("[SYNC_HANDLER] Would sync item ${item.id}: ${item.type}")
-                return ProcessResult.Success
-            }
-        }
-    }
-    
-    /**
-     * Offline queue service with persistent storage.
-     * 
-     * Per QA Audit P0: Ensures transaction data survives crashes.
-     */
-    single<OfflineQueueService> { 
-        DefaultOfflineQueueService(
-            syncHandler = get(),
-            persistence = get()
-        )
-    }
 }
 

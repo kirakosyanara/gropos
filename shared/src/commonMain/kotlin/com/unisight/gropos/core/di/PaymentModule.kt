@@ -18,6 +18,10 @@ import org.koin.dsl.module
  * 
  * Per DESKTOP_HARDWARE.md:
  * - PaymentTerminal abstraction for hardware integration
+ * 
+ * Per END_OF_TRANSACTION_API_SUBMISSION.md:
+ * - TransactionApiService for IMMEDIATE transaction submission
+ * - OfflineQueueService only for retry when immediate POST fails
  */
 val paymentModule: Module = module {
 
@@ -47,7 +51,20 @@ val paymentModule: Module = module {
      * - CurrencyFormatter: For price formatting
      * - TransactionRepository: For persisting completed transactions
      * - PaymentTerminal: Hardware abstraction for card payments
+     * - TransactionApiService: For IMMEDIATE transaction submission to backend
+     * - OfflineQueueService: For retry when immediate POST fails (optional)
+     * - Json: For payload serialization
      */
-    factory { PaymentViewModel(get(), get(), get(), get()) }
+    factory { 
+        PaymentViewModel(
+            cartRepository = get(),
+            currencyFormatter = get(),
+            transactionRepository = get(),
+            paymentTerminal = get(),
+            transactionApiService = get(),  // IMMEDIATE submission to backend
+            offlineQueue = getOrNull(),     // Only for retry on failure
+            json = get()
+        ) 
+    }
 }
 

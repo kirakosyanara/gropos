@@ -44,7 +44,9 @@ val authModule = module {
     
     // Data Layer - Employee
     // Per LOCK_SCREEN_AND_CASHIER_LOGIN.md: GET /api/Employee/GetCashierEmployees
-    single<EmployeeRepository> { RemoteEmployeeRepository(get()) }
+    // Per END_OF_TRANSACTION_API_SUBMISSION.md: Must save access token after login for transaction submission
+    // Dependencies: ApiClient, TokenStorage, SecureStorage (for branchId)
+    single<EmployeeRepository> { RemoteEmployeeRepository(get(), get(), get()) }
     
     // Data Layer - Till
     // Per LOCK_SCREEN_AND_CASHIER_LOGIN.md: GET /api/account/GetTillAccountList
@@ -72,12 +74,15 @@ val authModule = module {
     // Per COUCHBASE_SYNCHRONIZATION_DETAILED.md:
     // - InitialSyncService: Performs initial data sync on first login
     // - SecureStorage: Tracks whether sync has been completed
+    // Per DEVICE_REGISTRATION.md:
+    // - DeviceRepository: Clear registration on 410 "Device deleted" error
     factory { 
         LoginViewModel(
             employeeRepository = get(),
             tillRepository = get(),
             nfcScanner = get(),
             deviceApi = get(),
+            deviceRepository = get(),  // For clearing registration on 410 error
             initialSyncService = getOrNull(),  // Optional - only available if syncModule loaded
             secureStorage = get()
         ) 

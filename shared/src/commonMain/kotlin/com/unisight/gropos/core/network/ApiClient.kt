@@ -10,8 +10,10 @@ import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.request.*
 import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.isSuccess
 import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
@@ -69,6 +71,10 @@ sealed class ApiException(message: String) : Exception(message) {
     
     /** 5xx Server Error */
     class ServerError(val statusCode: Int, message: String) : ApiException(message)
+    
+    /** Generic HTTP error for any non-2xx status */
+    class HttpError(val statusCode: Int, val statusDescription: String, val body: String) : 
+        ApiException("HTTP $statusCode $statusDescription: $body")
     
     /** Network error (no connection, timeout) */
     class NetworkError(message: String) : ApiException(message)
@@ -259,7 +265,16 @@ class ApiClient(
             }
             println("[ApiClient.authenticatedRequest] Response status: ${response.status}")
             println("[ApiClient.authenticatedRequest] Location header: ${response.headers["Location"]}")
-            Result.success(response.body<T>())
+            
+            // FIX: Check if response is successful (2xx status) before deserializing
+            if (response.status.isSuccess()) {
+                Result.success(response.body<T>())
+            } else {
+                // Non-2xx response is an error
+                val errorBody = try { response.bodyAsText() } catch (e: Exception) { "" }
+                println("[ApiClient.authenticatedRequest] Non-success status ${response.status}: $errorBody")
+                Result.failure(ApiException.HttpError(response.status.value, response.status.description, errorBody))
+            }
         } catch (e: ClientRequestException) {
             println("[ApiClient.authenticatedRequest] Client error: ${e.response.status}")
             if (e.response.status == HttpStatusCode.Unauthorized) {
@@ -305,7 +320,14 @@ class ApiClient(
     ): Result<T> {
         return try {
             val response = httpClient.block()
-            Result.success(response.body<T>())
+            // FIX: Check if response is successful (2xx status)
+            if (response.status.isSuccess()) {
+                Result.success(response.body<T>())
+            } else {
+                val errorBody = try { response.bodyAsText() } catch (e: Exception) { "" }
+                println("[ApiClient.deviceRequest] Non-success status ${response.status}: $errorBody")
+                Result.failure(ApiException.HttpError(response.status.value, response.status.description, errorBody))
+            }
         } catch (e: Exception) {
             Result.failure(ApiException.fromException(e))
         }
@@ -353,9 +375,17 @@ class ApiClient(
                 println("[ApiClient.request] Request URL: ${url.buildString()}")
             }
             println("[ApiClient.request] Response status: ${response.status}")
-                println("[ApiClient.request] Response headers: ${response.headers.entries()}")
-                println("[ApiClient.request] Location header: ${response.headers["Location"]}")
-            Result.success(response.body<T>())
+            println("[ApiClient.request] Response headers: ${response.headers.entries()}")
+            println("[ApiClient.request] Location header: ${response.headers["Location"]}")
+            
+            // FIX: Check if response is successful (2xx status) before deserializing
+            if (response.status.isSuccess()) {
+                Result.success(response.body<T>())
+            } else {
+                val errorBody = try { response.bodyAsText() } catch (e: Exception) { "" }
+                println("[ApiClient.request] Non-success status ${response.status}: $errorBody")
+                Result.failure(ApiException.HttpError(response.status.value, response.status.description, errorBody))
+            }
         } catch (e: ClientRequestException) {
             println("[ApiClient.request] Client error: ${e.response.status} - ${e.message}")
             Result.failure(ApiException.fromClientException(e))

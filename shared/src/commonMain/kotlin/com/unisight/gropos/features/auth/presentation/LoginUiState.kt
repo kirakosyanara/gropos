@@ -60,7 +60,12 @@ data class LoginUiState(
     
     // Sync Progress State (Per COUCHBASE_SYNCHRONIZATION_DETAILED.md)
     // Shows progress during initial data sync or after database wipe
-    val syncProgress: SyncProgressUiModel = SyncProgressUiModel()
+    val syncProgress: SyncProgressUiModel = SyncProgressUiModel(),
+    
+    // Device Re-Registration Required
+    // Set to true when backend returns 410 "Device has been deleted"
+    // UI should navigate to RegistrationScreen when this is true
+    val requiresReRegistration: Boolean = false
 ) {
     /**
      * Computed: PIN as dots for display
@@ -87,6 +92,13 @@ enum class LoginStage {
      * Per COUCHBASE_SYNCHRONIZATION_DETAILED.md: Shows detailed progress
      */
     SYNCING,
+    
+    /**
+     * Device has been deleted from backend (410 Gone).
+     * The device registration is invalid and re-registration is required.
+     * The UI should navigate to RegistrationScreen.
+     */
+    DEVICE_DELETED,
     
     /**
      * Show grid of employees to select from

@@ -33,7 +33,48 @@ class FakeTransactionRepository : TransactionRepository {
     }
     
     override suspend fun getPending(): List<Transaction> {
-        return transactions.filter { it.transactionStatusId == Transaction.PENDING }
+        return transactions.filter { it.syncStatus == Transaction.SYNC_PENDING }
+    }
+    
+    // ========================================================================
+    // Sync Operations
+    // ========================================================================
+    
+    override suspend fun markAsSynced(transactionGuid: String, remoteId: Int): Result<Unit> {
+        val index = transactions.indexOfFirst { it.guid == transactionGuid }
+        if (index >= 0) {
+            val updated = transactions[index].copy(
+                syncStatus = Transaction.SYNC_COMPLETED,
+                remoteId = remoteId
+            )
+            transactions[index] = updated
+            println("FakeTransactionRepository: Marked $transactionGuid as synced (remoteId: $remoteId)")
+        }
+        return Result.success(Unit)
+    }
+    
+    override suspend fun markSyncFailed(transactionGuid: String, errorMessage: String?): Result<Unit> {
+        val index = transactions.indexOfFirst { it.guid == transactionGuid }
+        if (index >= 0) {
+            val updated = transactions[index].copy(
+                syncStatus = Transaction.SYNC_FAILED
+            )
+            transactions[index] = updated
+            println("FakeTransactionRepository: Marked $transactionGuid as sync failed: $errorMessage")
+        }
+        return Result.success(Unit)
+    }
+    
+    override suspend fun getUnsynced(limit: Int): List<Transaction> {
+        return transactions.filter { 
+            it.syncStatus == Transaction.SYNC_PENDING || it.syncStatus == Transaction.SYNC_FAILED 
+        }.take(limit)
+    }
+    
+    override suspend fun deleteById(id: Long): Result<Unit> {
+        transactions.removeAll { it.id == id }
+        println("FakeTransactionRepository: Deleted transaction $id")
+        return Result.success(Unit)
     }
     
     override suspend fun holdTransaction(heldTransaction: HeldTransaction): Result<Unit> {

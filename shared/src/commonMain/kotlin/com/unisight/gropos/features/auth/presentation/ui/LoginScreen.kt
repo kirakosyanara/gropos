@@ -13,6 +13,7 @@ import com.unisight.gropos.core.sync.HeartbeatService
 import com.unisight.gropos.features.auth.presentation.LoginStage
 import com.unisight.gropos.features.auth.presentation.LoginViewModel
 import com.unisight.gropos.features.checkout.presentation.ui.CheckoutScreen
+import com.unisight.gropos.features.device.presentation.ui.RegistrationScreen
 import com.unisight.gropos.features.settings.presentation.AdminSettingsDialog
 import com.unisight.gropos.features.settings.presentation.SettingsViewModel
 import kotlinx.coroutines.CoroutineScope
@@ -40,6 +41,19 @@ class LoginScreen : Screen {
         
         // Inject HeartbeatService for background sync
         val heartbeatService: HeartbeatService = koinInject()
+        
+        // Navigate to RegistrationScreen if device has been deleted (410 Gone)
+        // Per device re-registration flow: Clear local data and show QR registration
+        LaunchedEffect(state.requiresReRegistration) {
+            if (state.requiresReRegistration) {
+                println("[LoginScreen] ========================================")
+                println("[LoginScreen] DEVICE DELETED - Navigating to RegistrationScreen")
+                println("[LoginScreen] ========================================")
+                
+                // Replace navigation stack with RegistrationScreen
+                navigator.replaceAll(RegistrationScreen())
+            }
+        }
         
         // Navigate to CheckoutScreen on successful login
         LaunchedEffect(state.stage) {

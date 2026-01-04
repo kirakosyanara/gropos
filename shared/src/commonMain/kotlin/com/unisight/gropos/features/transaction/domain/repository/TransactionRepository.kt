@@ -56,6 +56,61 @@ interface TransactionRepository {
     suspend fun getPending(): List<Transaction>
     
     // ========================================================================
+    // Sync Operations
+    // Per TRANSACTION_API_SUBMISSION_IMPLEMENTATION_PLAN.md: Sync tracking
+    // ========================================================================
+    
+    /**
+     * Marks a transaction as synced with the backend.
+     * 
+     * Updates local record with:
+     * - syncStatus = SYNC_COMPLETED
+     * - remoteId = backend-assigned ID
+     * 
+     * Per TRANSACTION_API_SUBMISSION_IMPLEMENTATION_PLAN.md:
+     * Called by TransactionSyncHandler after successful API submission.
+     * 
+     * @param transactionGuid The transaction GUID
+     * @param remoteId The backend-assigned transaction ID
+     * @return Result.success(Unit) on success, Result.failure on error
+     */
+    suspend fun markAsSynced(transactionGuid: String, remoteId: Int): Result<Unit>
+    
+    /**
+     * Marks a transaction sync as failed.
+     * 
+     * Updates local record with:
+     * - syncStatus = SYNC_FAILED
+     * - Optionally stores error message
+     * 
+     * @param transactionGuid The transaction GUID
+     * @param errorMessage Optional error message for debugging
+     * @return Result.success(Unit) on success, Result.failure on error
+     */
+    suspend fun markSyncFailed(transactionGuid: String, errorMessage: String? = null): Result<Unit>
+    
+    /**
+     * Gets transactions that need to be synced.
+     * 
+     * Returns transactions with syncStatus = SYNC_PENDING or SYNC_FAILED.
+     * 
+     * @param limit Maximum number to return
+     * @return List of unsynced transactions
+     */
+    suspend fun getUnsynced(limit: Int = 50): List<Transaction>
+    
+    /**
+     * Deletes a transaction by ID.
+     * 
+     * Per TRANSACTION_API_SUBMISSION_IMPLEMENTATION_PLAN.md:
+     * Optionally called after successful sync to remove local copy.
+     * 
+     * @param id The transaction ID
+     * @return Result.success(Unit) on success, Result.failure on error
+     */
+    suspend fun deleteById(id: Long): Result<Unit>
+    
+    // ========================================================================
     // Hold/Recall Operations
     // Per TRANSACTION_FLOW.md: Support for suspended transactions
     // ========================================================================

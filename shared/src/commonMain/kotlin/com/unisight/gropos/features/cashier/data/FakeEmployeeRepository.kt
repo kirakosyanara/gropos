@@ -3,6 +3,7 @@ package com.unisight.gropos.features.cashier.data
 import com.unisight.gropos.features.auth.domain.model.UserRole
 import com.unisight.gropos.features.cashier.domain.model.Employee
 import com.unisight.gropos.features.cashier.domain.repository.EmployeeRepository
+import com.unisight.gropos.features.cashier.domain.repository.LoginResult
 import kotlinx.coroutines.delay
 
 /**
@@ -84,6 +85,41 @@ class FakeEmployeeRepository : EmployeeRepository {
         return Result.success(employees.filter { 
             it.role == UserRole.MANAGER || it.role == UserRole.SUPERVISOR 
         })
+    }
+    
+    /**
+     * Fake login implementation for testing.
+     * Per BEARER_TOKEN_MANAGEMENT.md: Returns fake tokens for testing.
+     */
+    override suspend fun login(
+        employeeId: Int,
+        pin: String,
+        tillId: Int,
+        branchId: Int,
+        deviceId: Int
+    ): Result<LoginResult> {
+        delay(SIMULATED_DELAY_MS)
+        
+        val employee = employees.find { it.id == employeeId }
+            ?: return Result.failure(IllegalArgumentException("Employee not found"))
+        
+        // Validate PIN
+        val isValidPin = pin == VALID_PIN
+        val isBadgeToken = pin == employeeId.toString()
+        
+        if (!isValidPin && !isBadgeToken) {
+            return Result.failure(IllegalArgumentException("Invalid PIN"))
+        }
+        
+        // Return fake tokens for testing
+        return Result.success(
+            LoginResult(
+                employee = employee,
+                accessToken = "fake-access-token-${employeeId}-${tillId}",
+                refreshToken = "fake-refresh-token-${employeeId}",
+                expiresIn = 3600L
+            )
+        )
     }
     
     companion object {

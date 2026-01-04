@@ -1,5 +1,6 @@
 package com.unisight.gropos.features.payment.domain.model
 
+import com.unisight.gropos.features.transaction.domain.model.PaxData
 import java.math.BigDecimal
 
 /**
@@ -51,13 +52,22 @@ data class PaymentResponse(
  * Represents an applied payment on a transaction.
  * 
  * Per PAYMENT_PROCESSING.md: Payment record.
+ * Per TRANSACTION_API_SUBMISSION_IMPLEMENTATION_PLAN.md: Full API field alignment.
  */
 data class AppliedPayment(
     val id: String,
     val type: PaymentType,
     val amount: BigDecimal,
     val displayName: String,
+    /** Authorization code from payment processor */
     val authCode: String? = null,
-    val lastFour: String? = null
+    /** Last 4 digits of card number */
+    val lastFour: String? = null,
+    /** Reference number from payment processor */
+    val referenceNumber: String? = null,
+    /** Card type/brand (e.g., VISA, MASTERCARD) */
+    val cardType: String? = null,
+    /** Full PAX terminal response data */
+    val paxData: PaxData? = null
 )
 

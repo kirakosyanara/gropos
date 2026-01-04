@@ -305,6 +305,11 @@ private fun RightAuthSection(
                 )
             }
             LoginStage.SUCCESS -> SuccessContent()
+            LoginStage.DEVICE_DELETED -> {
+                // Device has been deleted from backend (410 Gone)
+                // Show loading while navigation to RegistrationScreen occurs
+                LoadingContent()
+            }
         }
     }
 }
