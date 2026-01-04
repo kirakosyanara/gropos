@@ -89,15 +89,11 @@ The Lottery API uses the same authentication mechanism as all other GroPOS APIs.
 ```json
 {
   "securitySchemes": {
-    "apiKeyHeader": {
+    "deviceApiKey": {
       "type": "apiKey",
-      "name": "Ocp-Apim-Subscription-Key",
-      "in": "header"
-    },
-    "apiKeyQuery": {
-      "type": "apiKey",
-      "name": "subscription-key",
-      "in": "query"
+      "name": "x-api-key",
+      "in": "header",
+      "description": "Device-specific API key received during device registration"
     }
   }
 }
@@ -109,10 +105,7 @@ The Lottery API uses the same authentication mechanism as all other GroPOS APIs.
 {
   "security": [
     {
-      "apiKeyHeader": []
-    },
-    {
-      "apiKeyQuery": []
+      "deviceApiKey": []
     }
   ]
 }
@@ -122,16 +115,13 @@ The Lottery API uses the same authentication mechanism as all other GroPOS APIs.
 
 | Method | Header/Parameter | Description |
 |--------|------------------|-------------|
-| **API Key Header** | `Ocp-Apim-Subscription-Key: <subscription-key>` | Primary method - API key in request header |
-| **API Key Query** | `?subscription-key=<subscription-key>` | Alternative method - API key in query string |
-| **Device API Key** | `x-api-key: <device-api-key>` | Device-level authentication after registration |
+| **Device API Key** | `x-api-key: <device-api-key>` | Device-level authentication using API key from registration |
 
 ### Example Request with Authentication
 
 ```http
 POST /lottery/sale HTTP/1.1
 Host: apim-service-unisight-dev.azure-api.net
-Ocp-Apim-Subscription-Key: abc123def456ghi789
 x-api-key: device-specific-api-key-from-registration
 version: v1
 Content-Type: application/json
@@ -151,12 +141,9 @@ Content-Type: application/json
 | Header | Required | Type | Description | Example |
 |--------|----------|------|-------------|---------|
 | `version` | **Yes** | `string` | API version identifier | `v1` |
-| `Ocp-Apim-Subscription-Key` | **Yes*** | `string` | Azure APIM subscription key | `abc123def456` |
 | `x-api-key` | **Yes** | `string` | Device-specific API key from registration | `device-key-xyz` |
 | `Content-Type` | **Yes** (POST/PUT) | `string` | Request body content type | `application/json` |
 | `Accept` | No | `string` | Expected response content type | `application/json` |
-
-> \* Either `Ocp-Apim-Subscription-Key` header OR `subscription-key` query parameter is required.
 
 ### Header Parameter Schema (OpenAPI)
 
@@ -485,7 +472,7 @@ Get payout threshold configuration for a branch.
 GET /lottery/payout-thresholds?branchId=1 HTTP/1.1
 Host: apim-service-unisight-dev.azure-api.net
 version: v1
-Ocp-Apim-Subscription-Key: abc123def456
+x-api-key: device-api-key-from-registration
 ```
 
 **Response Example (200 OK):**

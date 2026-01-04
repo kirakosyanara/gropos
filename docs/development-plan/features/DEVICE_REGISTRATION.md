@@ -284,7 +284,7 @@ Generates a new QR code for device registration.
 ```
 version: v1
 Content-Type: application/json
-Ocp-Apim-Subscription-Key: <subscription-key>  (optional, or via query param)
+x-api-key: <device-api-key>  (after registration)
 ```
 
 > **⚠️ IMPORTANT:** The `version` header must be `v1` (not `"1.0"`). This was confirmed via Postman API testing on 2026-01-03. Using `1.0` returns HTTP 404.
@@ -2584,7 +2584,6 @@ startKoin {
 │  ┌────────────────────────────────────────────────────────────┐     │
 │  │ Authorization: Bearer <temporaryAccessToken>               │     │
 │  │ version: v1                                                │     │
-│  │ Ocp-Apim-Subscription-Key: <subscriptionKey> (optional)   │     │
 │  └────────────────────────────────────────────────────────────┘     │
 │                                                                      │
 │  AFTER REGISTRATION (All API Calls):                                │
